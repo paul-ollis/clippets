@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Textual Snapshot Test Report</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
+    <style>
+        .overlay-container {
+            position: relative;
+        }
+        .diff-wrapper-actual {
+            mix-blend-mode: difference;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row mb-4" style="background-color:#F4F8F7;">
+        <div class="col-8 p-4">
+            <h4>
+                <strong>Textual</strong> Snapshot Tests
+            </h4>
+            <span class="text-muted">Showing diffs for 1 mismatched snapshot(s)</span>
+        </div>
+        <div class="col p-4">
+            <div class="w-100 d-flex justify-content-end mb-1 mt-2">
+                <span class="text-danger">
+                    <strong>1</strong> snapshots changed
+                </span>
+                <span class="text-muted mx-2">·</span>
+                <span class="text-success">
+                    <strong>0</strong> snapshots matched
+                </span>
+            </div>
+            <div class="progress">
+                <div class="progress-bar bg-danger" role="progressbar" aria-label="Segment one"
+                     style="width: 100.0%"
+                     aria-valuenow="1" aria-valuemin="0" aria-valuemax="1"></div>
+                <div class="progress-bar bg-success" role="progressbar" aria-label="Segment two"
+                     style="width: 0.0%"
+                     aria-valuenow="1" aria-valuemin="0"
+                     aria-valuemax="1"></div>
+            </div>
+        </div>
+    </div>
+
+    
+        <div class="row mb-4">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between">
+                        <span class="font-monospace mt-1">
+                            <span class="fw-bold">test_snapshot</span>
+                            <span class="text-muted px-2">
+                                /home/paul/np/sw/snippets/tests/test_snapshots.py:9
+                            </span>
+                        </span>
+                        
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">
+                                <svg class="rich-terminal" viewBox="0 0 994 635.5999999999999" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with Rich https://www.textualize.io -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .terminal-2772351899-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .terminal-2772351899-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+    .terminal-2772351899-r1 { fill: #c5c8c6 }
+.terminal-2772351899-r2 { fill: #dfdfe1 }
+.terminal-2772351899-r3 { fill: #fea62b }
+.terminal-2772351899-r4 { fill: #dddedf }
+.terminal-2772351899-r5 { fill: #1e1e1e }
+.terminal-2772351899-r6 { fill: #67696f }
+.terminal-2772351899-r7 { fill: #dfdfe0 }
+.terminal-2772351899-r8 { fill: #507bb3 }
+.terminal-2772351899-r9 { fill: #dfdfdf }
+.terminal-2772351899-r10 { fill: #e5ebf2 }
+.terminal-2772351899-r11 { fill: #0178d4 }
+.terminal-2772351899-r12 { fill: #dde8f3;font-weight: bold }
+.terminal-2772351899-r13 { fill: #ddedf9 }
+    </style>
+
+    <defs>
+    <clipPath id="terminal-2772351899-clip-terminal">
+      <rect x="0" y="0" width="975.0" height="584.5999999999999" />
+    </clipPath>
+    <clipPath id="terminal-2772351899-line-0">
+    <rect x="0" y="1.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-1">
+    <rect x="0" y="25.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-2">
+    <rect x="0" y="50.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-3">
+    <rect x="0" y="74.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-4">
+    <rect x="0" y="99.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-5">
+    <rect x="0" y="123.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-6">
+    <rect x="0" y="147.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-7">
+    <rect x="0" y="172.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-8">
+    <rect x="0" y="196.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-9">
+    <rect x="0" y="221.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-10">
+    <rect x="0" y="245.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-11">
+    <rect x="0" y="269.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-12">
+    <rect x="0" y="294.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-13">
+    <rect x="0" y="318.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-14">
+    <rect x="0" y="343.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-15">
+    <rect x="0" y="367.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-16">
+    <rect x="0" y="391.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-17">
+    <rect x="0" y="416.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-18">
+    <rect x="0" y="440.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-19">
+    <rect x="0" y="465.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-20">
+    <rect x="0" y="489.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-21">
+    <rect x="0" y="513.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-22">
+    <rect x="0" y="538.3" width="976" height="24.65"/>
+            </clipPath>
+    </defs>
+
+    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="992" height="633.6" rx="8"/><text class="terminal-2772351899-title" fill="#c5c8c6" text-anchor="middle" x="496" y="27">Comment&#160;snippet&#160;wrangler</text>
+            <g transform="translate(26,22)">
+            <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
+            <circle cx="22" cy="0" r="7" fill="#febc2e"/>
+            <circle cx="44" cy="0" r="7" fill="#28c840"/>
+            </g>
+        
+    <g transform="translate(9, 41)" clip-path="url(#terminal-2772351899-clip-terminal)">
+    <rect fill="#0b101a" x="0" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="12.2" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="24.4" y="1.5" width="61" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="85.4" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="97.6" y="1.5" width="231.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="329.4" y="1.5" width="292.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="622.2" y="1.5" width="231.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="854" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="866.2" y="1.5" width="0" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="866.2" y="1.5" width="97.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="963.8" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="25.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="12.2" y="25.9" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="25.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="50.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="12.2" y="50.3" width="97.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#e1e1e1" x="109.8" y="50.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0a0e18" x="122" y="50.3" width="244" height="24.65" shape-rendering="crispEdges"/><rect fill="#0a0e18" x="366" y="50.3" width="597.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="50.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="74.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="12.2" y="74.7" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="74.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="99.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="99.1" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="99.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="123.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="123.5" width="0" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="123.5" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="123.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="147.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="147.9" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="147.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="172.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="172.3" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="172.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="196.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="196.7" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="196.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="221.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="221.1" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="221.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="245.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="245.5" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="245.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="269.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="269.9" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="269.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="294.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="294.3" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="294.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="318.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="318.7" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="318.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#3b689f" x="0" y="343.1" width="61" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="61" y="343.1" width="854" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="915" y="343.1" width="61" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="367.5" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="48.8" y="367.5" width="109.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="158.6" y="367.5" width="805.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="367.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="391.9" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="48.8" y="391.9" width="915" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="391.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="416.3" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="440.7" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="465.1" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="489.5" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="513.9" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="538.3" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="0" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="48.8" y="562.7" width="73.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="122" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="170.8" y="562.7" width="85.4" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="256.2" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="305" y="562.7" width="256.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="561.2" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="610" y="562.7" width="170.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="780.8" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="829.6" y="562.7" width="146.4" height="24.65" shape-rendering="crispEdges"/>
+    <g class="terminal-2772351899-matrix">
+    <text class="terminal-2772351899-r2" x="12.2" y="20" textLength="12.2" clip-path="url(#terminal-2772351899-line-0)">⭘</text><text class="terminal-2772351899-r2" x="329.4" y="20" textLength="292.8" clip-path="url(#terminal-2772351899-line-0)">Comment&#160;snippet&#160;wrangler</text><text class="terminal-2772351899-r1" x="976" y="20" textLength="12.2" clip-path="url(#terminal-2772351899-line-0)">
+</text><text class="terminal-2772351899-r3" x="0" y="44.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-1)">┌</text><text class="terminal-2772351899-r3" x="12.2" y="44.4" textLength="951.6" clip-path="url(#terminal-2772351899-line-1)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r3" x="963.8" y="44.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-1)">┐</text><text class="terminal-2772351899-r1" x="976" y="44.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-1)">
+</text><text class="terminal-2772351899-r3" x="0" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">│</text><text class="terminal-2772351899-r4" x="12.2" y="68.8" textLength="97.6" clip-path="url(#terminal-2772351899-line-2)">Filter:&#160;</text><text class="terminal-2772351899-r5" x="109.8" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">E</text><text class="terminal-2772351899-r6" x="122" y="68.8" textLength="244" clip-path="url(#terminal-2772351899-line-2)">nter&#160;text&#160;to&#160;filter.</text><text class="terminal-2772351899-r3" x="963.8" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">│</text><text class="terminal-2772351899-r1" x="976" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">
+</text><text class="terminal-2772351899-r3" x="0" y="93.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-3)">└</text><text class="terminal-2772351899-r3" x="12.2" y="93.2" textLength="951.6" clip-path="url(#terminal-2772351899-line-3)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r3" x="963.8" y="93.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-3)">┘</text><text class="terminal-2772351899-r1" x="976" y="93.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-3)">
+</text><text class="terminal-2772351899-r8" x="0" y="117.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-4)">┌</text><text class="terminal-2772351899-r8" x="12.2" y="117.6" textLength="951.6" clip-path="url(#terminal-2772351899-line-4)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r8" x="963.8" y="117.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-4)">┐</text><text class="terminal-2772351899-r1" x="976" y="117.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-4)">
+</text><text class="terminal-2772351899-r8" x="0" y="142" textLength="12.2" clip-path="url(#terminal-2772351899-line-5)">│</text><text class="terminal-2772351899-r8" x="963.8" y="142" textLength="12.2" clip-path="url(#terminal-2772351899-line-5)">│</text><text class="terminal-2772351899-r1" x="976" y="142" textLength="12.2" clip-path="url(#terminal-2772351899-line-5)">
+</text><text class="terminal-2772351899-r8" x="0" y="166.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-6)">│</text><text class="terminal-2772351899-r8" x="963.8" y="166.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-6)">│</text><text class="terminal-2772351899-r1" x="976" y="166.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-6)">
+</text><text class="terminal-2772351899-r8" x="0" y="190.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-7)">│</text><text class="terminal-2772351899-r8" x="963.8" y="190.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-7)">│</text><text class="terminal-2772351899-r1" x="976" y="190.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-7)">
+</text><text class="terminal-2772351899-r8" x="0" y="215.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-8)">│</text><text class="terminal-2772351899-r8" x="963.8" y="215.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-8)">│</text><text class="terminal-2772351899-r1" x="976" y="215.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-8)">
+</text><text class="terminal-2772351899-r8" x="0" y="239.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-9)">│</text><text class="terminal-2772351899-r8" x="963.8" y="239.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-9)">│</text><text class="terminal-2772351899-r1" x="976" y="239.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-9)">
+</text><text class="terminal-2772351899-r8" x="0" y="264" textLength="12.2" clip-path="url(#terminal-2772351899-line-10)">│</text><text class="terminal-2772351899-r8" x="963.8" y="264" textLength="12.2" clip-path="url(#terminal-2772351899-line-10)">│</text><text class="terminal-2772351899-r1" x="976" y="264" textLength="12.2" clip-path="url(#terminal-2772351899-line-10)">
+</text><text class="terminal-2772351899-r8" x="0" y="288.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-11)">│</text><text class="terminal-2772351899-r8" x="963.8" y="288.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-11)">│</text><text class="terminal-2772351899-r1" x="976" y="288.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-11)">
+</text><text class="terminal-2772351899-r8" x="0" y="312.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-12)">│</text><text class="terminal-2772351899-r8" x="963.8" y="312.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-12)">│</text><text class="terminal-2772351899-r1" x="976" y="312.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-12)">
+</text><text class="terminal-2772351899-r8" x="0" y="337.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-13)">└</text><text class="terminal-2772351899-r8" x="12.2" y="337.2" textLength="951.6" clip-path="url(#terminal-2772351899-line-13)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r8" x="963.8" y="337.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-13)">┘</text><text class="terminal-2772351899-r1" x="976" y="337.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-13)">
+</text><text class="terminal-2772351899-r10" x="0" y="361.6" textLength="61" clip-path="url(#terminal-2772351899-line-14)">-Main</text><text class="terminal-2772351899-r1" x="976" y="361.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-14)">
+</text><text class="terminal-2772351899-r4" x="48.8" y="386" textLength="109.8" clip-path="url(#terminal-2772351899-line-15)">Snippet&#160;1</text><text class="terminal-2772351899-r1" x="976" y="386" textLength="12.2" clip-path="url(#terminal-2772351899-line-15)">
+</text><text class="terminal-2772351899-r11" x="48.8" y="410.4" textLength="915" clip-path="url(#terminal-2772351899-line-16)">───────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r1" x="976" y="410.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-16)">
+</text><text class="terminal-2772351899-r1" x="976" y="434.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-17)">
+</text><text class="terminal-2772351899-r1" x="976" y="459.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-18)">
+</text><text class="terminal-2772351899-r1" x="976" y="483.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-19)">
+</text><text class="terminal-2772351899-r1" x="976" y="508" textLength="12.2" clip-path="url(#terminal-2772351899-line-20)">
+</text><text class="terminal-2772351899-r1" x="976" y="532.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-21)">
+</text><text class="terminal-2772351899-r1" x="976" y="556.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-22)">
+</text><text class="terminal-2772351899-r12" x="0" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F2&#160;</text><text class="terminal-2772351899-r13" x="48.8" y="581.2" textLength="73.2" clip-path="url(#terminal-2772351899-line-23)">&#160;Edit&#160;</text><text class="terminal-2772351899-r12" x="122" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F3&#160;</text><text class="terminal-2772351899-r13" x="170.8" y="581.2" textLength="85.4" clip-path="url(#terminal-2772351899-line-23)">&#160;Clear&#160;</text><text class="terminal-2772351899-r12" x="256.2" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F7&#160;</text><text class="terminal-2772351899-r13" x="305" y="581.2" textLength="256.2" clip-path="url(#terminal-2772351899-line-23)">&#160;Edit&#160;group&#160;keywords&#160;</text><text class="terminal-2772351899-r12" x="561.2" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F8&#160;</text><text class="terminal-2772351899-r13" x="610" y="581.2" textLength="170.8" clip-path="url(#terminal-2772351899-line-23)">&#160;Toggle&#160;order&#160;</text><text class="terminal-2772351899-r12" x="780.8" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F9&#160;</text><text class="terminal-2772351899-r13" x="829.6" y="581.2" textLength="146.4" clip-path="url(#terminal-2772351899-line-23)">&#160;Toggle&#160;out…</text>
+    </g>
+    </g>
+</svg>
+
+                                <div class="w-100 d-flex justify-content-center mt-1">
+                                    <span class="small">Output from test (<a href="#" class="link-primary mb-0"
+                                                                             data-bs-toggle="modal"
+                                                                             data-bs-target="#environmentModal">More info</a>)</span>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="overlay-container">
+                                    <div class="diff-wrapper-actual" id="diff-overlay-0" hidden>
+                                        <svg class="rich-terminal" viewBox="0 0 994 635.5999999999999" xmlns="http://www.w3.org/2000/svg">
+    <!-- Generated with Rich https://www.textualize.io -->
+    <style>
+
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Regular"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Regular.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Regular.woff") format("woff");
+        font-style: normal;
+        font-weight: 400;
+    }
+    @font-face {
+        font-family: "Fira Code";
+        src: local("FiraCode-Bold"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff2/FiraCode-Bold.woff2") format("woff2"),
+                url("https://cdnjs.cloudflare.com/ajax/libs/firacode/6.2.0/woff/FiraCode-Bold.woff") format("woff");
+        font-style: bold;
+        font-weight: 700;
+    }
+
+    .terminal-2772351899-matrix {
+        font-family: Fira Code, monospace;
+        font-size: 20px;
+        line-height: 24.4px;
+        font-variant-east-asian: full-width;
+    }
+
+    .terminal-2772351899-title {
+        font-size: 18px;
+        font-weight: bold;
+        font-family: arial;
+    }
+
+    .terminal-2772351899-r1 { fill: #c5c8c6 }
+.terminal-2772351899-r2 { fill: #dfdfe1 }
+.terminal-2772351899-r3 { fill: #fea62b }
+.terminal-2772351899-r4 { fill: #dddedf }
+.terminal-2772351899-r5 { fill: #1e1e1e }
+.terminal-2772351899-r6 { fill: #67696f }
+.terminal-2772351899-r7 { fill: #dfdfe0 }
+.terminal-2772351899-r8 { fill: #507bb3 }
+.terminal-2772351899-r9 { fill: #dfdfdf }
+.terminal-2772351899-r10 { fill: #e5ebf2 }
+.terminal-2772351899-r11 { fill: #0178d4 }
+.terminal-2772351899-r12 { fill: #dde8f3;font-weight: bold }
+.terminal-2772351899-r13 { fill: #ddedf9 }
+    </style>
+
+    <defs>
+    <clipPath id="terminal-2772351899-clip-terminal">
+      <rect x="0" y="0" width="975.0" height="584.5999999999999" />
+    </clipPath>
+    <clipPath id="terminal-2772351899-line-0">
+    <rect x="0" y="1.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-1">
+    <rect x="0" y="25.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-2">
+    <rect x="0" y="50.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-3">
+    <rect x="0" y="74.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-4">
+    <rect x="0" y="99.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-5">
+    <rect x="0" y="123.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-6">
+    <rect x="0" y="147.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-7">
+    <rect x="0" y="172.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-8">
+    <rect x="0" y="196.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-9">
+    <rect x="0" y="221.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-10">
+    <rect x="0" y="245.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-11">
+    <rect x="0" y="269.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-12">
+    <rect x="0" y="294.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-13">
+    <rect x="0" y="318.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-14">
+    <rect x="0" y="343.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-15">
+    <rect x="0" y="367.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-16">
+    <rect x="0" y="391.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-17">
+    <rect x="0" y="416.3" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-18">
+    <rect x="0" y="440.7" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-19">
+    <rect x="0" y="465.1" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-20">
+    <rect x="0" y="489.5" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-21">
+    <rect x="0" y="513.9" width="976" height="24.65"/>
+            </clipPath>
+<clipPath id="terminal-2772351899-line-22">
+    <rect x="0" y="538.3" width="976" height="24.65"/>
+            </clipPath>
+    </defs>
+
+    <rect fill="#292929" stroke="rgba(255,255,255,0.35)" stroke-width="1" x="1" y="1" width="992" height="633.6" rx="8"/><text class="terminal-2772351899-title" fill="#c5c8c6" text-anchor="middle" x="496" y="27">Comment&#160;snippet&#160;wrangler</text>
+            <g transform="translate(26,22)">
+            <circle cx="0" cy="0" r="7" fill="#ff5f57"/>
+            <circle cx="22" cy="0" r="7" fill="#febc2e"/>
+            <circle cx="44" cy="0" r="7" fill="#28c840"/>
+            </g>
+        
+    <g transform="translate(9, 41)" clip-path="url(#terminal-2772351899-clip-terminal)">
+    <rect fill="#0b101a" x="0" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="12.2" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="24.4" y="1.5" width="61" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="85.4" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="97.6" y="1.5" width="231.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="329.4" y="1.5" width="292.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="622.2" y="1.5" width="231.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="854" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="866.2" y="1.5" width="0" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="866.2" y="1.5" width="97.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#0b101a" x="963.8" y="1.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="25.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="12.2" y="25.9" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="25.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="50.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="12.2" y="50.3" width="97.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#e1e1e1" x="109.8" y="50.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0a0e18" x="122" y="50.3" width="244" height="24.65" shape-rendering="crispEdges"/><rect fill="#0a0e18" x="366" y="50.3" width="597.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="50.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="74.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="12.2" y="74.7" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="74.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="99.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="99.1" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="99.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="123.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="123.5" width="0" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="123.5" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="123.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="147.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="147.9" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="147.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="172.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="172.3" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="172.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="196.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="196.7" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="196.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="221.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="221.1" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="221.1" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="245.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="245.5" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="245.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="269.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="269.9" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="269.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="294.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="294.3" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="294.3" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="0" y="318.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="12.2" y="318.7" width="951.6" height="24.65" shape-rendering="crispEdges"/><rect fill="#090b10" x="963.8" y="318.7" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#3b689f" x="0" y="343.1" width="61" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="61" y="343.1" width="854" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="915" y="343.1" width="61" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="367.5" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="48.8" y="367.5" width="109.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="158.6" y="367.5" width="805.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="367.5" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="391.9" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="48.8" y="391.9" width="915" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="963.8" y="391.9" width="12.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="416.3" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="440.7" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="465.1" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="489.5" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="513.9" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#00050f" x="0" y="538.3" width="976" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="0" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="48.8" y="562.7" width="73.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="122" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="170.8" y="562.7" width="85.4" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="256.2" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="305" y="562.7" width="256.2" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="561.2" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="610" y="562.7" width="170.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0053aa" x="780.8" y="562.7" width="48.8" height="24.65" shape-rendering="crispEdges"/><rect fill="#0178d4" x="829.6" y="562.7" width="146.4" height="24.65" shape-rendering="crispEdges"/>
+    <g class="terminal-2772351899-matrix">
+    <text class="terminal-2772351899-r2" x="12.2" y="20" textLength="12.2" clip-path="url(#terminal-2772351899-line-0)">⭘</text><text class="terminal-2772351899-r2" x="329.4" y="20" textLength="292.8" clip-path="url(#terminal-2772351899-line-0)">Comment&#160;snippet&#160;wrangler</text><text class="terminal-2772351899-r1" x="976" y="20" textLength="12.2" clip-path="url(#terminal-2772351899-line-0)">
+</text><text class="terminal-2772351899-r3" x="0" y="44.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-1)">┌</text><text class="terminal-2772351899-r3" x="12.2" y="44.4" textLength="951.6" clip-path="url(#terminal-2772351899-line-1)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r3" x="963.8" y="44.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-1)">┐</text><text class="terminal-2772351899-r1" x="976" y="44.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-1)">
+</text><text class="terminal-2772351899-r3" x="0" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">│</text><text class="terminal-2772351899-r4" x="12.2" y="68.8" textLength="97.6" clip-path="url(#terminal-2772351899-line-2)">Filter:&#160;</text><text class="terminal-2772351899-r5" x="109.8" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">E</text><text class="terminal-2772351899-r6" x="122" y="68.8" textLength="244" clip-path="url(#terminal-2772351899-line-2)">nter&#160;text&#160;to&#160;filter.</text><text class="terminal-2772351899-r3" x="963.8" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">│</text><text class="terminal-2772351899-r1" x="976" y="68.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-2)">
+</text><text class="terminal-2772351899-r3" x="0" y="93.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-3)">└</text><text class="terminal-2772351899-r3" x="12.2" y="93.2" textLength="951.6" clip-path="url(#terminal-2772351899-line-3)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r3" x="963.8" y="93.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-3)">┘</text><text class="terminal-2772351899-r1" x="976" y="93.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-3)">
+</text><text class="terminal-2772351899-r8" x="0" y="117.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-4)">┌</text><text class="terminal-2772351899-r8" x="12.2" y="117.6" textLength="951.6" clip-path="url(#terminal-2772351899-line-4)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r8" x="963.8" y="117.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-4)">┐</text><text class="terminal-2772351899-r1" x="976" y="117.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-4)">
+</text><text class="terminal-2772351899-r8" x="0" y="142" textLength="12.2" clip-path="url(#terminal-2772351899-line-5)">│</text><text class="terminal-2772351899-r8" x="963.8" y="142" textLength="12.2" clip-path="url(#terminal-2772351899-line-5)">│</text><text class="terminal-2772351899-r1" x="976" y="142" textLength="12.2" clip-path="url(#terminal-2772351899-line-5)">
+</text><text class="terminal-2772351899-r8" x="0" y="166.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-6)">│</text><text class="terminal-2772351899-r8" x="963.8" y="166.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-6)">│</text><text class="terminal-2772351899-r1" x="976" y="166.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-6)">
+</text><text class="terminal-2772351899-r8" x="0" y="190.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-7)">│</text><text class="terminal-2772351899-r8" x="963.8" y="190.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-7)">│</text><text class="terminal-2772351899-r1" x="976" y="190.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-7)">
+</text><text class="terminal-2772351899-r8" x="0" y="215.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-8)">│</text><text class="terminal-2772351899-r8" x="963.8" y="215.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-8)">│</text><text class="terminal-2772351899-r1" x="976" y="215.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-8)">
+</text><text class="terminal-2772351899-r8" x="0" y="239.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-9)">│</text><text class="terminal-2772351899-r8" x="963.8" y="239.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-9)">│</text><text class="terminal-2772351899-r1" x="976" y="239.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-9)">
+</text><text class="terminal-2772351899-r8" x="0" y="264" textLength="12.2" clip-path="url(#terminal-2772351899-line-10)">│</text><text class="terminal-2772351899-r8" x="963.8" y="264" textLength="12.2" clip-path="url(#terminal-2772351899-line-10)">│</text><text class="terminal-2772351899-r1" x="976" y="264" textLength="12.2" clip-path="url(#terminal-2772351899-line-10)">
+</text><text class="terminal-2772351899-r8" x="0" y="288.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-11)">│</text><text class="terminal-2772351899-r8" x="963.8" y="288.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-11)">│</text><text class="terminal-2772351899-r1" x="976" y="288.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-11)">
+</text><text class="terminal-2772351899-r8" x="0" y="312.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-12)">│</text><text class="terminal-2772351899-r8" x="963.8" y="312.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-12)">│</text><text class="terminal-2772351899-r1" x="976" y="312.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-12)">
+</text><text class="terminal-2772351899-r8" x="0" y="337.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-13)">└</text><text class="terminal-2772351899-r8" x="12.2" y="337.2" textLength="951.6" clip-path="url(#terminal-2772351899-line-13)">──────────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r8" x="963.8" y="337.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-13)">┘</text><text class="terminal-2772351899-r1" x="976" y="337.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-13)">
+</text><text class="terminal-2772351899-r10" x="0" y="361.6" textLength="61" clip-path="url(#terminal-2772351899-line-14)">-Main</text><text class="terminal-2772351899-r1" x="976" y="361.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-14)">
+</text><text class="terminal-2772351899-r4" x="48.8" y="386" textLength="109.8" clip-path="url(#terminal-2772351899-line-15)">Snippet&#160;1</text><text class="terminal-2772351899-r1" x="976" y="386" textLength="12.2" clip-path="url(#terminal-2772351899-line-15)">
+</text><text class="terminal-2772351899-r11" x="48.8" y="410.4" textLength="915" clip-path="url(#terminal-2772351899-line-16)">───────────────────────────────────────────────────────────────────────────</text><text class="terminal-2772351899-r1" x="976" y="410.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-16)">
+</text><text class="terminal-2772351899-r1" x="976" y="434.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-17)">
+</text><text class="terminal-2772351899-r1" x="976" y="459.2" textLength="12.2" clip-path="url(#terminal-2772351899-line-18)">
+</text><text class="terminal-2772351899-r1" x="976" y="483.6" textLength="12.2" clip-path="url(#terminal-2772351899-line-19)">
+</text><text class="terminal-2772351899-r1" x="976" y="508" textLength="12.2" clip-path="url(#terminal-2772351899-line-20)">
+</text><text class="terminal-2772351899-r1" x="976" y="532.4" textLength="12.2" clip-path="url(#terminal-2772351899-line-21)">
+</text><text class="terminal-2772351899-r1" x="976" y="556.8" textLength="12.2" clip-path="url(#terminal-2772351899-line-22)">
+</text><text class="terminal-2772351899-r12" x="0" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F2&#160;</text><text class="terminal-2772351899-r13" x="48.8" y="581.2" textLength="73.2" clip-path="url(#terminal-2772351899-line-23)">&#160;Edit&#160;</text><text class="terminal-2772351899-r12" x="122" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F3&#160;</text><text class="terminal-2772351899-r13" x="170.8" y="581.2" textLength="85.4" clip-path="url(#terminal-2772351899-line-23)">&#160;Clear&#160;</text><text class="terminal-2772351899-r12" x="256.2" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F7&#160;</text><text class="terminal-2772351899-r13" x="305" y="581.2" textLength="256.2" clip-path="url(#terminal-2772351899-line-23)">&#160;Edit&#160;group&#160;keywords&#160;</text><text class="terminal-2772351899-r12" x="561.2" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F8&#160;</text><text class="terminal-2772351899-r13" x="610" y="581.2" textLength="170.8" clip-path="url(#terminal-2772351899-line-23)">&#160;Toggle&#160;order&#160;</text><text class="terminal-2772351899-r12" x="780.8" y="581.2" textLength="48.8" clip-path="url(#terminal-2772351899-line-23)">&#160;F9&#160;</text><text class="terminal-2772351899-r13" x="829.6" y="581.2" textLength="146.4" clip-path="url(#terminal-2772351899-line-23)">&#160;Toggle&#160;out…</text>
+    </g>
+    </g>
+</svg>
+
+                                    </div>
+                                </div>
+                                <div class="diff-wrapper-snapshot">
+                                    
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h4>No history for this test</h4>
+                                                <p class="lead">If you're happy with the content on the left,
+                                                    save it to disk by running pytest with the <code>--snapshot-update</code> flag.</p>
+                                                <h5>Unexpected?</h5>
+                                                <p class="lead">
+                                                    Snapshots are named after the name of the test you call <code>snap_compare</code> in by default.
+                                                    <br>
+                                                    If you've renamed a test, the association between the snapshot and the test is lost,
+                                                    and you'll need to run with <code>--snapshot-update</code> to associate the snapshot
+                                                    with the new test name.
+                                                    </p>
+                                            </div>
+                                        </div>
+                                    
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                
+                <div class="modal modal-lg fade" id="environmentModal" tabindex="-1"
+                     aria-labelledby="environmentModalLabel"
+                     aria-hidden="true">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title" id="environmentModalLabel">More info for <span
+                                        class="font-monospace">test_snapshot</span></h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                        aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body overflow-auto">
+                                <h5>Textual App State</h5>
+                                <table class="table mb-4">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Variable</th>
+                                        <th scope="col">Value</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr>
+                                        <td class="font-monospace">app.console.legacy_windows</td>
+                                        <td class="font-monospace">False</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="font-monospace">app.console.size</td>
+                                        <td class="font-monospace">ConsoleDimensions(width=201, height=108)</td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                                <h5>Environment (<span class="font-monospace">os.environ</span>)</h5>
+                                <table class="table">
+                                    <thead>
+                                    <tr>
+                                        <th scope="col">Variable</th>
+                                        <th scope="col">Value</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_HISTORY_FILE</td>
+                                            <td class="font-monospace">/home/paul/.local/share/xonsh/history_json/xonsh-2aee18dd-ca72-4bd5-844e-cd5a2f24bbaa.json</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">LANGUAGE</td>
+                                            <td class="font-monospace">en_GB:en</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">USER</td>
+                                            <td class="font-monospace">paul</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">RAISE_SUBPROC_ERROR</td>
+                                            <td class="font-monospace"></td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_SEAT</td>
+                                            <td class="font-monospace">seat0</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_INTERACTIVE</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">COMPLETIONS_CONFIRM</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_SESSION_TYPE</td>
+                                            <td class="font-monospace">x11</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">COMPIZ_CONFIG_PROFILE</td>
+                                            <td class="font-monospace">mint</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">MULTILINE_PROMPT</td>
+                                            <td class="font-monospace">•</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_HISTORY_MATCH_ANYWHERE</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">DYNAMIC_CWD_ELISION_CHAR</td>
+                                            <td class="font-monospace">»</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_APPEND_NEWLINE</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">HOSTNAME</td>
+                                            <td class="font-monospace">daffy</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">SHLVL</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">IGNOREEOF</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">GROFF_SGR</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">HOME</td>
+                                            <td class="font-monospace">/home/paul</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">OLDPWD</td>
+                                            <td class="font-monospace">/home/paul/np/sw/snippets/tests</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_SYS_CONFIG_DIR</td>
+                                            <td class="font-monospace">/etc/xonsh</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">MAN_KEEP_FORMATTING</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">DESKTOP_SESSION</td>
+                                            <td class="font-monospace">fvwm3</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">MANROFFOPT</td>
+                                            <td class="font-monospace">-- -p -i</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_CONFIG_DIR</td>
+                                            <td class="font-monospace">/home/paul/.config/xonsh</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSHRC</td>
+                                            <td class="font-monospace">/etc/xonsh/xonshrc:/home/paul/.config/xonsh/rc.xsh:/home/paul/.xonshrc</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_DATA_DIR</td>
+                                            <td class="font-monospace">/home/paul/.local/share/xonsh</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">PROMPT</td>
+                                            <td class="font-monospace">{env_name}{GREEN}{user}@{hostname}{RESET} {BOLD_BLUE}{my_cwd}{RESET}{BOLD_BLUE}{prompt_end}{RESET} </td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">THREAD_SUBPROCS</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">GTK_MODULES</td>
+                                            <td class="font-monospace">gail:atk-bridge</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_SEAT_PATH</td>
+                                            <td class="font-monospace">/org/freedesktop/DisplayManager/Seat0</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">LC_COLORS</td>
+                                            <td class="font-monospace">*~=0;38;2;102;102;102:bd=0;38;2;154;237;254;48;2;51;51;51:ca=0:cd=0;38;2;255;106;193;48;2;51;51;51:di=0;38;2;87;199;255:do=0;38;2;0;0;0;48;2;255;106;193:ex=1;38;2;255;92;87:fi=0:ln=0;38;2;255;106;193:mh=0:mi=0;38;2;0;0;0;48;2;255;92;87:no=0:or=0;38;2;0;0;0;48;2;255;92;87:ow=0:pi=0;38;2;0;0;0;48;2;87;199;255:rs=0:sg=0:so=0;38;2;0;0;0;48;2;255;106;193:st=0:su=0:tw=0:*.a=1;38;2;255;92;87:*.c=0;38;2;90;247;142:*.d=0;38;2;90;247;142:*.h=0;38;2;90;247;142:*.m=0;38;2;90;247;142:*.o=0;38;2;102;102;102:*.p=0;38;2;90;247;142:*.r=0;38;2;90;247;142:*.t=0;38;2;90;247;142:*.z=4;38;2;154;237;254:*.7z=4;38;2;154;237;254:*.as=0;38;2;90;247;142:*.bc=0;38;2;102;102;102:*.bz=4;38;2;154;237;254:*.cc=0;38;2;90;247;142:*.cp=0;38;2;90;247;142:*.cr=0;38;2;90;247;142:*.cs=0;38;2;90;247;142:*.di=0;38;2;90;247;142:*.el=0;38;2;90;247;142:*.ex=0;38;2;90;247;142:*.fs=0;38;2;90;247;142:*.go=0;38;2;90;247;142:*.gv=0;38;2;90;247;142:*.gz=4;38;2;154;237;254:*.hh=0;38;2;90;247;142:*.hi=0;38;2;102;102;102:*.hs=0;38;2;90;247;142:*.jl=0;38;2;90;247;142:*.js=0;38;2;90;247;142:*.ko=1;38;2;255;92;87:*.kt=0;38;2;90;247;142:*.la=0;38;2;102;102;102:*.ll=0;38;2;90;247;142:*.lo=0;38;2;102;102;102:*.md=0;38;2;243;249;157:*.ml=0;38;2;90;247;142:*.mn=0;38;2;90;247;142:*.nb=0;38;2;90;247;142:*.pl=0;38;2;90;247;142:*.pm=0;38;2;90;247;142:*.pp=0;38;2;90;247;142:*.ps=0;38;2;255;92;87:*.py=0;38;2;90;247;142:*.rb=0;38;2;90;247;142:*.rm=0;38;2;255;180;223:*.rs=0;38;2;90;247;142:*.sh=0;38;2;90;247;142:*.so=1;38;2;255;92;87:*.td=0;38;2;90;247;142:*.ts=0;38;2;90;247;142:*.ui=0;38;2;243;249;157:*.vb=0;38;2;90;247;142:*.wv=0;38;2;255;180;223:*.xz=4;38;2;154;237;254:*.aif=0;38;2;255;180;223:*.ape=0;38;2;255;180;223:*.apk=4;38;2;154;237;254:*.arj=4;38;2;154;237;254:*.asa=0;38;2;90;247;142:*.aux=0;38;2;102;102;102:*.avi=0;38;2;255;180;223:*.awk=0;38;2;90;247;142:*.bag=4;38;2;154;237;254:*.bak=0;38;2;102;102;102:*.bat=1;38;2;255;92;87:*.bbl=0;38;2;102;102;102:*.bcf=0;38;2;102;102;102:*.bib=0;38;2;243;249;157:*.bin=4;38;2;154;237;254:*.blg=0;38;2;102;102;102:*.bmp=0;38;2;255;180;223:*.bsh=0;38;2;90;247;142:*.bst=0;38;2;243;249;157:*.bz2=4;38;2;154;237;254:*.c++=0;38;2;90;247;142:*.cfg=0;38;2;243;249;157:*.cgi=0;38;2;90;247;142:*.clj=0;38;2;90;247;142:*.com=1;38;2;255;92;87:*.cpp=0;38;2;90;247;142:*.css=0;38;2;90;247;142:*.csv=0;38;2;243;249;157:*.csx=0;38;2;90;247;142:*.cxx=0;38;2;90;247;142:*.deb=4;38;2;154;237;254:*.def=0;38;2;90;247;142:*.dll=1;38;2;255;92;87:*.dmg=4;38;2;154;237;254:*.doc=0;38;2;255;92;87:*.dot=0;38;2;90;247;142:*.dox=0;38;2;165;255;195:*.dpr=0;38;2;90;247;142:*.elc=0;38;2;90;247;142:*.elm=0;38;2;90;247;142:*.epp=0;38;2;90;247;142:*.eps=0;38;2;255;180;223:*.erl=0;38;2;90;247;142:*.exe=1;38;2;255;92;87:*.exs=0;38;2;90;247;142:*.fls=0;38;2;102;102;102:*.flv=0;38;2;255;180;223:*.fnt=0;38;2;255;180;223:*.fon=0;38;2;255;180;223:*.fsi=0;38;2;90;247;142:*.fsx=0;38;2;90;247;142:*.gif=0;38;2;255;180;223:*.git=0;38;2;102;102;102:*.gvy=0;38;2;90;247;142:*.h++=0;38;2;90;247;142:*.hpp=0;38;2;90;247;142:*.htc=0;38;2;90;247;142:*.htm=0;38;2;243;249;157:*.hxx=0;38;2;90;247;142:*.ico=0;38;2;255;180;223:*.ics=0;38;2;255;92;87:*.idx=0;38;2;102;102;102:*.ilg=0;38;2;102;102;102:*.img=4;38;2;154;237;254:*.inc=0;38;2;90;247;142:*.ind=0;38;2;102;102;102:*.ini=0;38;2;243;249;157:*.inl=0;38;2;90;247;142:*.ipp=0;38;2;90;247;142:*.iso=4;38;2;154;237;254:*.jar=4;38;2;154;237;254:*.jpg=0;38;2;255;180;223:*.kex=0;38;2;255;92;87:*.kts=0;38;2;90;247;142:*.log=0;38;2;102;102;102:*.ltx=0;38;2;90;247;142:*.lua=0;38;2;90;247;142:*.m3u=0;38;2;255;180;223:*.m4a=0;38;2;255;180;223:*.m4v=0;38;2;255;180;223:*.mid=0;38;2;255;180;223:*.mir=0;38;2;90;247;142:*.mkv=0;38;2;255;180;223:*.mli=0;38;2;90;247;142:*.mov=0;38;2;255;180;223:*.mp3=0;38;2;255;180;223:*.mp4=0;38;2;255;180;223:*.mpg=0;38;2;255;180;223:*.nix=0;38;2;243;249;157:*.odp=0;38;2;255;92;87:*.ods=0;38;2;255;92;87:*.odt=0;38;2;255;92;87:*.ogg=0;38;2;255;180;223:*.org=0;38;2;243;249;157:*.otf=0;38;2;255;180;223:*.out=0;38;2;102;102;102:*.pas=0;38;2;90;247;142:*.pbm=0;38;2;255;180;223:*.pdf=0;38;2;255;92;87:*.pgm=0;38;2;255;180;223:*.php=0;38;2;90;247;142:*.pid=0;38;2;102;102;102:*.pkg=4;38;2;154;237;254:*.png=0;38;2;255;180;223:*.pod=0;38;2;90;247;142:*.ppm=0;38;2;255;180;223:*.pps=0;38;2;255;92;87:*.ppt=0;38;2;255;92;87:*.pro=0;38;2;165;255;195:*.ps1=0;38;2;90;247;142:*.psd=0;38;2;255;180;223:*.pyc=0;38;2;102;102;102:*.pyd=0;38;2;102;102;102:*.pyo=0;38;2;102;102;102:*.rar=4;38;2;154;237;254:*.rpm=4;38;2;154;237;254:*.rst=0;38;2;243;249;157:*.rtf=0;38;2;255;92;87:*.sbt=0;38;2;90;247;142:*.sql=0;38;2;90;247;142:*.sty=0;38;2;102;102;102:*.svg=0;38;2;255;180;223:*.swf=0;38;2;255;180;223:*.swp=0;38;2;102;102;102:*.sxi=0;38;2;255;92;87:*.sxw=0;38;2;255;92;87:*.tar=4;38;2;154;237;254:*.tbz=4;38;2;154;237;254:*.tcl=0;38;2;90;247;142:*.tex=0;38;2;90;247;142:*.tgz=4;38;2;154;237;254:*.tif=0;38;2;255;180;223:*.tml=0;38;2;243;249;157:*.tmp=0;38;2;102;102;102:*.toc=0;38;2;102;102;102:*.tsx=0;38;2;90;247;142:*.ttf=0;38;2;255;180;223:*.txt=0;38;2;243;249;157:*.vcd=4;38;2;154;237;254:*.vim=0;38;2;90;247;142:*.vob=0;38;2;255;180;223:*.wav=0;38;2;255;180;223:*.wma=0;38;2;255;180;223:*.wmv=0;38;2;255;180;223:*.xcf=0;38;2;255;180;223:*.xlr=0;38;2;255;92;87:*.xls=0;38;2;255;92;87:*.xml=0;38;2;243;249;157:*.xmp=0;38;2;243;249;157:*.yml=0;38;2;243;249;157:*.zip=4;38;2;154;237;254:*.zsh=0;38;2;90;247;142:*.zst=4;38;2;154;237;254:*TODO=1:*hgrc=0;38;2;165;255;195:*.bash=0;38;2;90;247;142:*.conf=0;38;2;243;249;157:*.dart=0;38;2;90;247;142:*.diff=0;38;2;90;247;142:*.docx=0;38;2;255;92;87:*.epub=0;38;2;255;92;87:*.fish=0;38;2;90;247;142:*.flac=0;38;2;255;180;223:*.h264=0;38;2;255;180;223:*.hgrc=0;38;2;165;255;195:*.html=0;38;2;243;249;157:*.java=0;38;2;90;247;142:*.jpeg=0;38;2;255;180;223:*.json=0;38;2;243;249;157:*.less=0;38;2;90;247;142:*.lisp=0;38;2;90;247;142:*.lock=0;38;2;102;102;102:*.make=0;38;2;165;255;195:*.mpeg=0;38;2;255;180;223:*.opus=0;38;2;255;180;223:*.orig=0;38;2;102;102;102:*.pptx=0;38;2;255;92;87:*.psd1=0;38;2;90;247;142:*.psm1=0;38;2;90;247;142:*.purs=0;38;2;90;247;142:*.rlib=0;38;2;102;102;102:*.sass=0;38;2;90;247;142:*.scss=0;38;2;90;247;142:*.tbz2=4;38;2;154;237;254:*.tiff=0;38;2;255;180;223:*.toml=0;38;2;243;249;157:*.webm=0;38;2;255;180;223:*.webp=0;38;2;255;180;223:*.woff=0;38;2;255;180;223:*.xbps=4;38;2;154;237;254:*.xlsx=0;38;2;255;92;87:*.yaml=0;38;2;243;249;157:*.cabal=0;38;2;90;247;142:*.cache=0;38;2;102;102;102:*.class=0;38;2;102;102;102:*.cmake=0;38;2;165;255;195:*.dyn_o=0;38;2;102;102;102:*.ipynb=0;38;2;90;247;142:*.mdown=0;38;2;243;249;157:*.patch=0;38;2;90;247;142:*.scala=0;38;2;90;247;142:*.shtml=0;38;2;243;249;157:*.swift=0;38;2;90;247;142:*.toast=4;38;2;154;237;254:*.xhtml=0;38;2;243;249;157:*README=0;38;2;40;42;54;48;2;243;249;157:*passwd=0;38;2;243;249;157:*shadow=0;38;2;243;249;157:*.config=0;38;2;243;249;157:*.dyn_hi=0;38;2;102;102;102:*.flake8=0;38;2;165;255;195:*.gradle=0;38;2;90;247;142:*.groovy=0;38;2;90;247;142:*.ignore=0;38;2;165;255;195:*.matlab=0;38;2;90;247;142:*COPYING=0;38;2;153;153;153:*INSTALL=0;38;2;40;42;54;48;2;243;249;157:*LICENSE=0;38;2;153;153;153:*TODO.md=1:*.desktop=0;38;2;243;249;157:*.gemspec=0;38;2;165;255;195:*Doxyfile=0;38;2;165;255;195:*Makefile=0;38;2;165;255;195:*TODO.txt=1:*setup.py=0;38;2;165;255;195:*.DS_Store=0;38;2;102;102;102:*.cmake.in=0;38;2;165;255;195:*.fdignore=0;38;2;165;255;195:*.kdevelop=0;38;2;165;255;195:*.markdown=0;38;2;243;249;157:*.rgignore=0;38;2;165;255;195:*COPYRIGHT=0;38;2;153;153;153:*README.md=0;38;2;40;42;54;48;2;243;249;157:*configure=0;38;2;165;255;195:*.gitconfig=0;38;2;165;255;195:*.gitignore=0;38;2;165;255;195:*.localized=0;38;2;102;102;102:*.scons_opt=0;38;2;102;102;102:*CODEOWNERS=0;38;2;165;255;195:*Dockerfile=0;38;2;243;249;157:*INSTALL.md=0;38;2;40;42;54;48;2;243;249;157:*README.txt=0;38;2;40;42;54;48;2;243;249;157:*SConscript=0;38;2;165;255;195:*SConstruct=0;38;2;165;255;195:*.gitmodules=0;38;2;165;255;195:*.synctex.gz=0;38;2;102;102;102:*.travis.yml=0;38;2;90;247;142:*INSTALL.txt=0;38;2;40;42;54;48;2;243;249;157:*LICENSE-MIT=0;38;2;153;153;153:*MANIFEST.in=0;38;2;165;255;195:*Makefile.am=0;38;2;165;255;195:*Makefile.in=0;38;2;102;102;102:*.applescript=0;38;2;90;247;142:*.fdb_latexmk=0;38;2;102;102;102:*CONTRIBUTORS=0;38;2;40;42;54;48;2;243;249;157:*appveyor.yml=0;38;2;90;247;142:*configure.ac=0;38;2;165;255;195:*.clang-format=0;38;2;165;255;195:*.gitattributes=0;38;2;165;255;195:*.gitlab-ci.yml=0;38;2;90;247;142:*CMakeCache.txt=0;38;2;102;102;102:*CMakeLists.txt=0;38;2;165;255;195:*LICENSE-APACHE=0;38;2;153;153;153:*CONTRIBUTORS.md=0;38;2;40;42;54;48;2;243;249;157:*.sconsign.dblite=0;38;2;102;102;102:*CONTRIBUTORS.txt=0;38;2;40;42;54;48;2;243;249;157:*requirements.txt=0;38;2;165;255;195:*package-lock.json=0;38;2;102;102;102:*.CFUserTextEncoding=0;38;2;102;102;102</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">FVWM_USERDIR</td>
+                                            <td class="font-monospace">/home/paul/.fvwm</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">DBUS_SESSION_BUS_ADDRESS</td>
+                                            <td class="font-monospace">unix:path=/run/user/1000/bus</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">COLORTERM</td>
+                                            <td class="font-monospace">truecolor</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">TERMINATOR_DBUS_NAME</td>
+                                            <td class="font-monospace">net.tenshu.Terminator21a9d5db22c73a993ff0b42f64b396873</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">FVWM_IS_FVWM3</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">LIBVIRT_DEFAULT_URI</td>
+                                            <td class="font-monospace">qemu:///system</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">FVWM_DATADIR</td>
+                                            <td class="font-monospace">/usr/local/share/fvwm3</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">VI_MODE</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSHRC_DIR</td>
+                                            <td class="font-monospace">/etc/xonsh/rc.d:/home/paul/.config/xonsh/rc.d</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_COLOR_STYLE</td>
+                                            <td class="font-monospace">fruity</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">PROMPT_UPDATE_INTERVAL</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">QT_QPA_PLATFORMTHEME</td>
+                                            <td class="font-monospace">qt5ct</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">LOGNAME</td>
+                                            <td class="font-monospace">paul</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">HOSTDISPLAY</td>
+                                            <td class="font-monospace">daffy:0</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">SHELL_TYPE</td>
+                                            <td class="font-monospace">prompt_toolkit</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">ANDROIDAPI</td>
+                                            <td class="font-monospace">19</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">_</td>
+                                            <td class="font-monospace">/home/paul/.local/bin/xonsh</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">PKG_CONFIG_PATH</td>
+                                            <td class="font-monospace">/home/paul/.local/lib/pkgconfig:/usr/local/lib/pkgconfig:/home/paul</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_SESSION_CLASS</td>
+                                            <td class="font-monospace">user</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">VIRTUALENV_HOME</td>
+                                            <td class="font-monospace">/home/paul/.virtualenvs</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">UPDATE_OS_ENVIRON</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">TERM</td>
+                                            <td class="font-monospace">xterm-256color</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_SESSION_ID</td>
+                                            <td class="font-monospace">c3</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_LOGIN</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">ANDROIDNDK</td>
+                                            <td class="font-monospace">/home/paul/develop/tools/android/ndk</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">HOWDOI_COLORIZE</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">BASH_COMPLETIONS</td>
+                                            <td class="font-monospace">/usr/share/bash-completion/bash_completion</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_AUTOPAIR</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">LAST_RETURN_CODE</td>
+                                            <td class="font-monospace">0</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">PATH</td>
+                                            <td class="font-monospace">/home/paul/.virtualenvs/snippets/bin:/home/paul/tmpbin:/home/paul/bin:/home/paul/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/home/paul/.local/devtools/arduino-1.8.13</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">GDM_LANG</td>
+                                            <td class="font-monospace">en_GB</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">GTK3_MODULES</td>
+                                            <td class="font-monospace">xapp-gtk3-module</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_SESSION_PATH</td>
+                                            <td class="font-monospace">/org/freedesktop/DisplayManager/Session0</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">ANDROIDNDKVER</td>
+                                            <td class="font-monospace">r9</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_RUNTIME_DIR</td>
+                                            <td class="font-monospace">/run/user/1000</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">DYNAMIC_CWD_WIDTH</td>
+                                            <td class="font-monospace">10.0%</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">DISPLAY</td>
+                                            <td class="font-monospace">:0</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_COMPLETER_DIRS</td>
+                                            <td class="font-monospace">/home/paul/.config/xonsh/completions:/etc/xonsh/completions:/home/paul/.local/share/xonsh/generated_completions:/usr/share/fvwm3/xonsh/vendor_completions:/home/paul/.local/share/flatpak/exports/share/xonsh/vendor_completions:/var/lib/flatpak/exports/share/xonsh/vendor_completions:/usr/local/share/xonsh/vendor_completions:/usr/share/xonsh/vendor_completions</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">TERMINATOR_DBUS_PATH</td>
+                                            <td class="font-monospace">/net/tenshu/Terminator2</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">LANG</td>
+                                            <td class="font-monospace">en_GB.UTF-8</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">IBUS_ENABLE_SYNC_MODE</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">GpGKEY</td>
+                                            <td class="font-monospace">1D910539</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">ANDROIDSDK</td>
+                                            <td class="font-monospace">/home/paul/develop/tools/android/sdk</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_SESSION_DESKTOP</td>
+                                            <td class="font-monospace">fvwm3</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XAUTHORITY</td>
+                                            <td class="font-monospace">/home/paul/.Xauthority</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">LS_COLORS</td>
+                                            <td class="font-monospace">*.7z=4;38;5;33:*.CFUserTextEncoding=38;5;59:*.DS_Store=38;5;59:*.a=1;38;5;202:*.aif=38;5;15:*.ape=38;5;15:*.apk=4;38;5;33:*.applescript=38;5;102:*.arj=4;38;5;33:*.as=38;5;102:*.asa=38;5;102:*.aux=38;5;59:*.avi=38;5;15:*.awk=38;5;102:*.bag=4;38;5;33:*.bak=38;5;59:*.bash=38;5;102:*.bat=1;38;5;202:*.bbl=38;5;59:*.bc=38;5;59:*.bcf=38;5;59:*.bib=38;5;187:*.bin=4;38;5;33:*.blg=38;5;59:*.bmp=38;5;15:*.bsh=38;5;102:*.bst=38;5;187:*.bz=4;38;5;33:*.bz2=4;38;5;33:*.c=38;5;102:*.c++=38;5;102:*.cabal=38;5;102:*.cache=38;5;59:*.cc=38;5;102:*.cfg=38;5;187:*.cgi=38;5;102:*.clang-format=38;5;187:*.class=38;5;59:*.clj=38;5;102:*.cmake=38;5;187:*.cmake.in=38;5;187:*.com=1;38;5;202:*.conf=38;5;187:*.config=38;5;187:*.cp=38;5;102:*.cpp=38;5;102:*.cr=38;5;102:*.cs=38;5;102:*.css=38;5;102:*.csv=38;5;187:*.csx=38;5;102:*.cxx=38;5;102:*.d=38;5;102:*.dart=38;5;102:*.deb=4;38;5;33:*.def=38;5;102:*.desktop=38;5;187:*.di=38;5;102:*.diff=38;5;102:*.dll=1;38;5;202:*.dmg=4;38;5;33:*.doc=38;5;202:*.docx=38;5;202:*.dot=38;5;102:*.dox=38;5;187:*.dpr=38;5;102:*.dyn_hi=38;5;59:*.dyn_o=38;5;59:*.el=38;5;102:*.elc=38;5;102:*.elm=38;5;102:*.epp=38;5;102:*.eps=38;5;15:*.epub=38;5;202:*.erl=38;5;102:*.ex=38;5;102:*.exe=1;38;5;202:*.exs=38;5;102:*.fdb_latexmk=38;5;59:*.fdignore=38;5;187:*.fish=38;5;102:*.flac=38;5;15:*.flake8=38;5;187:*.fls=38;5;59:*.flv=38;5;15:*.fnt=38;5;15:*.fon=38;5;15:*.fs=38;5;102:*.fsi=38;5;102:*.fsx=38;5;102:*.gemspec=38;5;187:*.gif=38;5;15:*.git=38;5;59:*.gitattributes=38;5;187:*.gitconfig=38;5;187:*.gitignore=38;5;187:*.gitlab-ci.yml=38;5;102:*.gitmodules=38;5;187:*.go=38;5;102:*.gradle=38;5;102:*.groovy=38;5;102:*.gv=38;5;102:*.gvy=38;5;102:*.gz=4;38;5;33:*.h=38;5;102:*.h++=38;5;102:*.h264=38;5;15:*.hgrc=38;5;187:*.hh=38;5;102:*.hi=38;5;59:*.hpp=38;5;102:*.hs=38;5;102:*.htc=38;5;102:*.htm=38;5;187:*.html=38;5;187:*.hxx=38;5;102:*.ico=38;5;15:*.ics=38;5;202:*.idx=38;5;59:*.ignore=38;5;187:*.ilg=38;5;59:*.img=4;38;5;33:*.inc=38;5;102:*.ind=38;5;59:*.ini=38;5;187:*.inl=38;5;102:*.ipp=38;5;102:*.ipynb=38;5;102:*.iso=4;38;5;33:*.jar=4;38;5;33:*.java=38;5;102:*.jl=38;5;102:*.jpeg=38;5;15:*.jpg=38;5;15:*.js=38;5;102:*.json=38;5;187:*.kdevelop=38;5;187:*.kex=38;5;202:*.ko=1;38;5;202:*.kt=38;5;102:*.kts=38;5;102:*.la=38;5;59:*.less=38;5;102:*.lisp=38;5;102:*.ll=38;5;102:*.lo=38;5;59:*.localized=38;5;59:*.lock=38;5;59:*.log=38;5;59:*.ltx=38;5;102:*.lua=38;5;102:*.m=38;5;102:*.m3u=38;5;15:*.m4a=38;5;15:*.m4v=38;5;15:*.make=38;5;187:*.markdown=38;5;187:*.matlab=38;5;102:*.md=38;5;187:*.mdown=38;5;187:*.mid=38;5;15:*.mir=38;5;102:*.mkv=38;5;15:*.ml=38;5;102:*.mli=38;5;102:*.mn=38;5;102:*.mov=38;5;15:*.mp3=38;5;15:*.mp4=38;5;15:*.mpeg=38;5;15:*.mpg=38;5;15:*.nb=38;5;102:*.nix=38;5;187:*.o=38;5;59:*.odp=38;5;202:*.ods=38;5;202:*.odt=38;5;202:*.ogg=38;5;15:*.opus=38;5;15:*.org=38;5;187:*.orig=38;5;59:*.otf=38;5;15:*.out=38;5;59:*.p=38;5;102:*.pas=38;5;102:*.patch=38;5;102:*.pbm=38;5;15:*.pdf=38;5;202:*.pgm=38;5;15:*.php=38;5;102:*.pid=38;5;59:*.pkg=4;38;5;33:*.pl=38;5;102:*.pm=38;5;102:*.png=38;5;15:*.pod=38;5;102:*.pp=38;5;102:*.ppm=38;5;15:*.pps=38;5;202:*.ppt=38;5;202:*.pptx=38;5;202:*.pro=38;5;187:*.ps=38;5;202:*.ps1=38;5;102:*.psd=38;5;15:*.psd1=38;5;102:*.psm1=38;5;102:*.purs=38;5;102:*.py=38;5;102:*.pyc=38;5;59:*.pyd=38;5;59:*.pyo=38;5;59:*.r=38;5;102:*.rar=4;38;5;33:*.rb=38;5;102:*.rgignore=38;5;187:*.rlib=38;5;59:*.rm=38;5;15:*.rpm=4;38;5;33:*.rs=38;5;102:*.rst=38;5;187:*.rtf=38;5;202:*.sass=38;5;102:*.sbt=38;5;102:*.scala=38;5;102:*.scons_opt=38;5;59:*.sconsign.dblite=38;5;59:*.scss=38;5;102:*.sh=38;5;102:*.shtml=38;5;187:*.so=1;38;5;202:*.sql=38;5;102:*.sty=38;5;59:*.svg=38;5;15:*.swf=38;5;15:*.swift=38;5;102:*.swp=38;5;59:*.sxi=38;5;202:*.sxw=38;5;202:*.synctex.gz=38;5;59:*.t=38;5;102:*.tar=4;38;5;33:*.tbz=4;38;5;33:*.tbz2=4;38;5;33:*.tcl=38;5;102:*.td=38;5;102:*.tex=38;5;102:*.tgz=4;38;5;33:*.tif=38;5;15:*.tiff=38;5;15:*.tml=38;5;187:*.tmp=38;5;59:*.toast=4;38;5;33:*.toc=38;5;59:*.toml=38;5;187:*.travis.yml=38;5;102:*.ts=38;5;102:*.tsx=38;5;102:*.ttf=38;5;15:*.txt=38;5;187:*.ui=38;5;187:*.vb=38;5;102:*.vcd=4;38;5;33:*.vim=38;5;102:*.vob=38;5;15:*.wav=38;5;15:*.webm=38;5;15:*.webp=38;5;15:*.wma=38;5;15:*.wmv=38;5;15:*.woff=38;5;15:*.wv=38;5;15:*.xbps=4;38;5;33:*.xcf=38;5;15:*.xhtml=38;5;187:*.xlr=38;5;202:*.xls=38;5;202:*.xlsx=38;5;202:*.xml=38;5;187:*.xmp=38;5;187:*.xz=4;38;5;33:*.yaml=38;5;187:*.yml=38;5;187:*.z=4;38;5;33:*.zip=4;38;5;33:*.zsh=38;5;102:*.zst=4;38;5;33:*CMakeCache.txt=38;5;59:*CMakeLists.txt=38;5;187:*CODEOWNERS=38;5;187:*CONTRIBUTORS=38;5;59;48;5;187:*CONTRIBUTORS.md=38;5;59;48;5;187:*CONTRIBUTORS.txt=38;5;59;48;5;187:*COPYING=38;5;187:*COPYRIGHT=38;5;187:*Dockerfile=38;5;187:*Doxyfile=38;5;187:*INSTALL=38;5;59;48;5;187:*INSTALL.md=38;5;59;48;5;187:*INSTALL.txt=38;5;59;48;5;187:*LICENSE=38;5;187:*LICENSE-APACHE=38;5;187:*LICENSE-MIT=38;5;187:*MANIFEST.in=38;5;187:*Makefile=38;5;187:*Makefile.am=38;5;187:*Makefile.in=38;5;59:*README=38;5;59;48;5;187:*README.md=38;5;59;48;5;187:*README.txt=38;5;59;48;5;187:*SConscript=38;5;187:*SConstruct=38;5;187:*TODO=1;38;5;187:*TODO.md=1;38;5;187:*TODO.txt=1;38;5;187:*appveyor.yml=38;5;102:*configure=38;5;187:*configure.ac=38;5;187:*hgrc=38;5;187:*package-lock.json=38;5;59:*passwd=38;5;187:*requirements.txt=38;5;187:*setup.py=38;5;187:*shadow=38;5;187:*~=38;5;59:bd=38;5;33;48;5;59:ca=0:cd=38;5;198;48;5;59:di=38;5;33:do=38;5;16;48;5;198:ex=1;38;5;202:fi=0:ln=38;5;198:mh=0:mi=38;5;16;48;5;202:no=0:or=38;5;16;48;5;202:ow=0:pi=38;5;16;48;5;33:rs=0:sg=0:so=38;5;16;48;5;198:st=0:su=0:tw=0</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_GREETER_DATA_DIR</td>
+                                            <td class="font-monospace">/var/lib/lightdm-data/paul</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_CACHE_DIR</td>
+                                            <td class="font-monospace">/home/paul/.cache/xonsh</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">SHELL</td>
+                                            <td class="font-monospace">/bin/bash</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">TERMINATOR_UUID</td>
+                                            <td class="font-monospace">urn:uuid:a3b719c7-7811-4a05-8d2b-b9868db68d5c</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">QT_ACCESSIBILITY</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">NO_AT_BRIDGE</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">FVWM_MODULEDIR</td>
+                                            <td class="font-monospace">/usr/local/libexec/fvwm3/1.0.3</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">GDMSESSION</td>
+                                            <td class="font-monospace">fvwm3</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">FVWMMFL_SOCKET</td>
+                                            <td class="font-monospace">/tmp/fvwm_mfl.sock</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">GPG_AGENT_INFO</td>
+                                            <td class="font-monospace">/run/user/1000/gnupg/S.gpg-agent:0:1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_STORE_STDOUT</td>
+                                            <td class="font-monospace">1</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_CAPTURE_ALWAYS</td>
+                                            <td class="font-monospace"></td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_VTNR</td>
+                                            <td class="font-monospace">7</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">ANDROID</td>
+                                            <td class="font-monospace">/home/paul/develop/tools/android</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_TRACEBACK_LOGFILE</td>
+                                            <td class="font-monospace">/home/paul/tmp/xonsh-tb.log</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">VIRTUAL_ENV</td>
+                                            <td class="font-monospace">/home/paul/.virtualenvs/snippets</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">PWD</td>
+                                            <td class="font-monospace">/home/paul/np/sw/snippets</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_CONFIG_DIRS</td>
+                                            <td class="font-monospace">/etc/xdg/xdg-fvwm3:/etc/xdg</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XDG_DATA_DIRS</td>
+                                            <td class="font-monospace">/usr/share/fvwm3:/home/paul/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share:/usr/share</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_SHOW_TRACEBACK</td>
+                                            <td class="font-monospace"></td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">XONSH_VERSION</td>
+                                            <td class="font-monospace">0.13.4.dev57</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">MYPYPATH</td>
+                                            <td class="font-monospace">/home/paul/.config/mypy/stubs</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">VTE_VERSION</td>
+                                            <td class="font-monospace">6800</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">HOSTTYPE</td>
+                                            <td class="font-monospace">x86_64</td>
+                                        </tr>
+                                    
+                                        <tr>
+                                            <td class="font-monospace">EDITOR</td>
+                                            <td class="font-monospace">gvim -f</td>
+                                        </tr>
+                                    
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+
+    <div class="row" style="background-color:#F4F8F7;">
+        <div class="col">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <p class="card-text">If you're happy with the test output, run <span class="font-monospace text-primary">pytest</span> with the <span
+                            class="font-monospace text-primary">--snapshot-update</span> flag to update the snapshot.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col">
+            <div class="w-100 d-flex p-4 justify-content-center">
+                <p class="text-muted">Report generated at UTC 2023-06-25 08:31:53.690078.</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p"
+        crossorigin="anonymous"></script>
+
+<script type="application/javascript">
+    function toggleOverlayCheckbox(element, index) {
+        const overlay = document.getElementById(`diff-overlay-${index}`)
+        overlay.hidden = !overlay.hidden
+    }
+</script>
+
+</body>
+</html>

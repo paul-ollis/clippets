@@ -1,0 +1,44 @@
+per-file-ignores = {}
+target-version = "py38"
+line-length = 79
+select = ["E", "F", "PL", "D"]
+ignore = [
+    "ANN101",  # Missing self: type.
+    "ANN204",  # Missing __init__ return type.
+    "B905",    # Do not require strict argument for zip().
+    "D105",    # Do not require docstring for dunder methods.
+    "D107",    # Do not require docstring for __init__().
+               # The class docstring should provide details of construction.
+    "FIX002",  # A 'todo' in the line.
+    "I001",    # Unsorted imports.
+               # I think I can re-enable this if Ruff starts to support the
+               # multi-line-output option.
+    "PLC1901", # Do not compare equal to empty string.
+    "RET505",  # Unnecessary else after return.
+    "S101",    # Use of assert.
+    "S603",    # General subprocess security warning.
+    "T20",     # Allow the print function to be used.
+
+    # Below are checks I wish re-enable, once the code is cleaner.
+    "ANN001",  # Missing return type argument.
+    "ANN002",  # Missing return type for *args.
+    "ANN003",  # Missing return type for **kwargs.
+    "ANN201",  # Missing return type for public method/function.
+    "ANN202",  # Missing return type for private method/function.
+    "TD002",   # Author missing for 'todo'
+    "TD003",   # Issue ref missing for 'todo'
+]
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
+[mccabe]
+# Unlike Flake8, default to a complexity level of 10.
+max-complexity = 10
+
+[pydocstyle]
+convention = "pep257"
+
+[flake8-quotes]
+inline-quotes = "single"
+multiline-quotes = "single"

@@ -1,0 +1,152 @@
+Screen {
+    background: $panel-darken-2;
+}
+
+/* The single line filter input. */
+#filter {
+    /* # dock: top; */
+    margin: 0 0 0 0;
+    padding: 0 0 0 0;
+    border: none;
+}
+.input {
+    height: auto;
+    border: solid $primary-lighten-3;
+}
+
+.group_row {
+    height: 1;
+}
+
+#snippet-list {
+    min-height: 1;
+}
+
+/* How tags are displayed after the group name. */
+.tag {
+    margin: 0 0 0 1;
+    color: $success-darken-3
+}
+.tag_1 {
+    color: $success-darken-1
+}
+.tag_2 {
+    color: $success
+}
+.tag_3 {
+    color: $success-lighten-2
+}
+
+.is_snippet {
+    height: auto;
+    padding: 0 0 0 0;
+    margin: 0 1 0 4;
+    outline-bottom: solid $accent;
+}
+
+/* Markup when moving a snippet. */
+.dest_below {
+    border-top: none;
+    outline-bottom: thick $success;
+}
+.dest_above {
+    border-top: thick $success;
+    outline-bottom: solid  $success;
+}
+.moving {
+    outline: solid $success;
+    padding: 1 1 0 1;
+}
+
+/* Markup to highlight the selected snipet. */
+.kb_focussed {
+    outline: solid $secondary;
+    padding: 1 1 0 1;
+}
+
+/* Markup for a snippet currently added to the clipbard selection. */
+.selected {
+    background: $background-lighten-2;
+    color: $text-muted;
+}
+
+/* Markup to highlight the snippet under the mouse. */
+.mouse_hover {
+    background: $background-lighten-3;
+    color: $text;
+}
+
+/* Set the indentation accodrding to the level of nesting. */
+.snippet-level-2 {
+    margin: 0 1 0 4;
+}
+.snippet-level-3 {
+    margin: 0 1 0 8;
+}
+.snippet-level-4 {
+    margin: 0 1 0 12;
+}
+.group-level-1 {
+    padding: 0 0 0 0;
+}
+.group-level-2 {
+    padding: 0 0 0 4;
+}
+.group-level-2 {
+    padding: 0 0 0 8;
+}
+
+/* Remove the default padding of Markdown paragraphs. */
+MarkdownParagraph {
+    padding: 0 0 0 0;
+}
+
+/* Basic settings for group labels and snippets. */
+.is_group {
+    background: $primary-lighten-2;
+}
+.is_text {
+    padding: 0 0 1 0;
+}
+
+#result {
+    width: 100%;
+}
+
+#view {
+    background: $background 50%;
+    margin: 0 0 0 0;
+    height: 10;
+    overflow: hidden auto;
+    border: solid $primary-lighten-3;
+}
+
+#view:focus {
+    border: tall $accent;
+}
+
+#dialog {
+    grid-size: 3;
+    grid-gutter: 1 2;
+    grid-rows: 1 3;
+    padding: 0 1;
+    width: auto;
+    height: auto;
+    border: thick $background 80%;
+    background: $surface;
+}
+
+#question {
+    height: 1;
+    width: 1fr;
+    column-span: 3;
+    content-align: center middle;
+}
+
+Button {
+    width: 100%;
+}
+
+SnippetMenu {
+    align: center middle;
+}

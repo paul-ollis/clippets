@@ -1,0 +1,10 @@
+config-path
+markdown
+markdown_strings
+textual
+textual[dev]
+
+jinja2
+pytest
+pytest-rich/
+syrupy
