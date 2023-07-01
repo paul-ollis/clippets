@@ -11,7 +11,7 @@ Screen {
 }
 .input {
     height: auto;
-    border: solid $primary-lighten-3;
+    border: solid $primary;
 }
 
 .group_row {
@@ -62,6 +62,10 @@ Screen {
 .kb_focussed {
     outline: solid $secondary;
     padding: 1 1 0 1;
+}
+.input.kb_focussed {
+    outline: solid $secondary;
+    padding: 0 1 0 1;
 }
 
 /* Markup for a snippet currently added to the clipbard selection. */

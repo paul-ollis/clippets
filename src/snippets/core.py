@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 """Program to allow efficient composition of text snippets."""
 
-#
-# 1. This needs a lot of clean up. Adding new features is getting too hard.
 # 2. A help page is needed.
 # 3. A user guide will be needed if this is to be made available to others.
 # 4. Make snippet movement:
@@ -13,7 +11,6 @@
 # 6. Global keywords?
 # 7. Support full keyboard operation.
 # 8. Make it work on Macs.
-# 9. Make it work on Windows.
 # 10. Genertae frozen versions for all platforms.
 # 11. Watch the input file(s) and be able to 're-start' in response to changes.
 # 12. Move indentation (snippet-level-2, etc) out of CSS and set in the code.
@@ -29,7 +26,7 @@ import sys
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING, Tuple
 
 from rich.text import Text
 from textual.app import App, Binding, ComposeResult
@@ -113,6 +110,8 @@ class Snippets(App):
         Binding('ctrl+r', 'do_redo', 'Redo', priority=True),
         Binding('ctrl+q', 'quit', 'Quit', priority=True),
     ]
+    id_to_focus = {'input': 'filter'}
+
     class RefreshRequired(Message):
         """Indication that the UI content needs refreshing."""
 
@@ -158,7 +157,7 @@ class Snippets(App):
         """Build the widget hierarchy."""
         yield Header()
 
-        with Horizontal(classes='input'):
+        with Horizontal(id='input', classes='input oneline'):
             yield MyLabel('Filter: ')
             yield MyInput(placeholder='Enter text to filter.', id='filter')
 
@@ -187,7 +186,6 @@ class Snippets(App):
 
     def on_ready(self) -> None:
         """React to the DOM having been created."""
-        self.screen.focus_next('#result')
         self.set_visuals()
 
     def make_snippet_widget(self, uid, snippet) -> Optional[Widget]:
@@ -266,23 +264,61 @@ class Snippets(App):
         if tag:
             self.action_toggle_tag(tag.name)
 
-    def key_select_move(self, find_near_snippet) -> None:
-        """Move the keyboard driven focus to the next widget."""
-        if self.kb_focussed_uid is not None:
-            new_uid = id_of(find_near_snippet(self.kb_focussed_uid))
-        else:
-            new_uid = id_of(self.groups.first_snippet())
-        if new_uid is not None:
-            self.kb_focussed_uid = new_uid
-            self.set_visuals()
+    def handle_selection_keypress(self):
+        """Handle any key that is used to select a snippet."""
+        if self.groups.find_element_by_uid(self.kb_focussed_uid) is not None:
+            self.push_undo()
+            id_str = self.kb_focussed_uid
+            if id_str in self.chosen:
+                self.chosen.remove(id_str)
+            else:
+                self.chosen.append(id_str)
+            self.update_selected()
+            self.update_result()
+
+    def key_select_move(self, inc: int, *, dry_run: bool) -> None:
+        """Move the keyboard driven focus to the next available widget."""
+        widgets = self.focussable_widgets()
+        valid_widgets = [w for w in widgets if w.display]
+        valid_range = range(len(widgets))
+
+        k = -1
+        for i, w in enumerate(widgets):
+            if w.id == self.kb_focussed_uid:
+                k = i + inc
+                while k in valid_range and not widgets[k].display:
+                    k += inc
+                break
+
+        # Note that widgets[0] is always present and visible.
+        if k not in valid_range:
+            k = 0 if k < 0 else len(valid_widgets) - 1
+        if dry_run:
+            return k
+
+        self.kb_focussed_uid = widgets[k].id
+        self.set_visuals()
+        return k
+
+    def fix_selection(self):
+        """Update the keyboard selected focus when widgets get hidden."""
+        w = self._query_one(f'#{self.kb_focussed_uid}')
+        if not w.display:
+            k = self.key_select_move(inc=-1, dry_run=True)
+            if k == 0:
+                k = self.key_select_move(inc=1, dry_run=False)
+            else:
+                self.key_select_move(inc=-1, dry_run=False)
 
     def key_select_next(self) -> None:
         """Move the keyboard driven focus to the next widget."""
-        self.key_select_move(self.groups.find_snippet_after_id)
+        self.key_select_move(inc=1, dry_run=False)
+        self.update_focus()
 
     def key_select_prev(self) -> None:
         """Move the keyboard driven focus to the next widget."""
-        self.key_select_move(self.groups.find_snippet_before_id)
+        self.key_select_move(inc=-1, dry_run=False)
+        self.update_focus()
 
     def action_toggle_order(self) -> None:
         """Toggle the order of selected snippets."""
@@ -460,6 +496,12 @@ class Snippets(App):
             self.key_select_prev()
         elif ev.key == 'down':
             self.key_select_next()
+        elif ev.key in ('enter', 'space'):
+            self.handle_selection_keypress()
+        elif ev.key in ('e', 'insert'):
+            self.edit_snippet(self.kb_focussed_uid)
+        elif ev.key in ('d', 'c'):
+            self.duplicate_snippet(self.kb_focussed_uid)
         else:
             return
         ev.stop()
@@ -480,23 +522,25 @@ class Snippets(App):
 
     def duplicate_snippet(self, id_str: str):
         """Duplicate and the edit the current snippet."""
-        w = self.query_one(f'#{id_str}')
         snippet = self.groups.find_element_by_uid(id_str)
-        text = self.run_editor(snippet)
+        if snippet is not None:
+            w = self.query_one(f'#{id_str}')
+            text = self.run_editor(snippet)
 
-        curr_snippets = snippet.parent.children
-        new_snippet = snippet.duplicate()
-        new_snippet.set_text(text)
+            curr_snippets = snippet.parent.children
+            new_snippet = snippet.duplicate()
+            new_snippet.set_text(text)
 
-        i = curr_snippets.index(snippet)
-        curr_snippets[i:i] = [new_snippet]
+            i = curr_snippets.index(snippet)
+            curr_snippets[i:i] = [new_snippet]
 
-        backup_file(self.args.snippet_file)
-        snippets.save(self.args.snippet_file, self.groups)
+            backup_file(self.args.snippet_file)
+            snippets.save(self.args.snippet_file, self.groups)
 
-        new_widget = self.make_snippet_widget(new_snippet.uid(), new_snippet)
-        self.mount(new_widget, after=w)
-        self.schedule_refresh(new_snippet.uid())
+            new_widget = self.make_snippet_widget(
+                new_snippet.uid(), new_snippet)
+            self.mount(new_widget, after=w)
+            self.schedule_refresh(new_snippet.uid())
 
     def on_snippets_refresh_required(self, _m) -> None:
         """Perform a requested UI refresh."""
@@ -510,14 +554,14 @@ class Snippets(App):
     def edit_snippet(self, id_str) -> None:
         """Invoke the user's editor on a snippet."""
         snippet = self.groups.find_element_by_uid(id_str)
-        text = self.run_editor(snippet)
-
-        if text.strip() != snippet.text.strip():
-            snippet.set_text(text)
-            backup_file(self.args.snippet_file)
-            snippets.save(self.args.snippet_file, self.groups)
-            self.update_result()
-            self.schedule_refresh(snippet.uid())
+        if snippet is not None:
+            text = self.run_editor(snippet)
+            if text.strip() != snippet.text.strip():
+                snippet.set_text(text)
+                backup_file(self.args.snippet_file)
+                snippets.save(self.args.snippet_file, self.groups)
+                self.update_result()
+                self.schedule_refresh(snippet.uid())
 
     def action_edit_keywords(self) -> None:
         """Invoke the user's editor on the current group's keyword list."""
@@ -599,7 +643,7 @@ class Snippets(App):
 
     def on_mount(self) -> None:
         """Perform app start-up actions."""
-        self.query_one(Input).focus()
+        #@ self.query_one(Input).focus()
         self.dark = True
         self.populate()
 
@@ -619,7 +663,7 @@ class Snippets(App):
         self.dirty_uids = set()
 
     def filter_view(self) -> None:
-        """Hide snippets that do not match the current filter text."""
+        """Hide snippets that have been filtered out of folded away."""
         def st_opened():
             return all(ste.uid() not in self.collapsed for ste in stack)
 
@@ -654,6 +698,7 @@ class Snippets(App):
                     pass
                 else:
                     w.display = bool(matcher.search(el.text)) and opened
+        self.fix_selection()
 
     async def on_input_changed(self, message: Input.Changed) -> None:
         """Handle a text changed message."""
@@ -676,10 +721,17 @@ class Snippets(App):
         except NoMatches:
             return None
 
+    def focussable_widgets(self) -> Tuple[Widget, ...]:
+        """Create a tuple of 'focussable' widgets."""
+        a = [self._query_one('#input')]
+        b = (
+            self._query_one(f'#{s.uid()}')
+            for s in self.groups.walk_snippets())
+        return (*a, *b)
+
     def set_visuals(self) -> None:
         """Set and clear widget classes that control visual highlighting."""
-        for snip in self.groups.walk_snippets():
-            w = self._query_one(f'#{snip.uid()}')
+        for w in self.focussable_widgets():
             w.remove_class('kb_focussed')
             w.remove_class('mouse_hover')
             w.remove_class('moving')
@@ -687,9 +739,9 @@ class Snippets(App):
             w.remove_class('dest_below')
             if self.move_info is not None:
                 info = self.move_info
-                if snip.uid() == info.uid:
+                if w.id == info.uid:
                     w.add_class('moving')
-                elif snip.uid() == info.dest_uid and info.dest_uid != info.uid:
+                elif w.id == info.dest_uid and info.dest_uid != info.uid:
                     if self.groups.correctly_ordered(info.uid, info.dest_uid):
                         w.add_class('dest_below')
                     else:
@@ -699,6 +751,13 @@ class Snippets(App):
                     w.add_class('kb_focussed')
                 if w.id == self.hover_uid:
                     w.add_class('mouse_hover')
+
+    def update_focus(self):
+        """Set input focus according to the keyboard selected widget."""
+        if self.move_info is None and self.kb_focussed_uid == 'input':
+            self.screen.set_focus(self._query_one('#filter'))
+        else:
+            self.screen.set_focus(None)
 
 
 def parse_args() -> argparse.Namespace:

@@ -1,3 +1,6 @@
+[project]
+requires-python = ">=3.7"
+
 [tool.ruff]
 per-file-ignores = {}
 target-version = "py38"
@@ -20,6 +23,10 @@ ignore = [
     "S603",    # General subprocess security warning.
     "T20",     # Aloow the print function to be used.
     "UP007",   # Use bit-operators instead of typing.Union.
+
+    # Features not available in Python 3.7
+    "UP006",   # Use of tuple subscripting in type annotations.
+
 
     # Below are checks I wish re-enable, once the code is cleaner.
     "ANN001",  # Missing return type argument.
