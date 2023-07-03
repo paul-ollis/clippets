@@ -27,7 +27,6 @@ ignore = [
     # Features not available in Python 3.7
     "UP006",   # Use of tuple subscripting in type annotations.
 
-
     # Below are checks I wish re-enable, once the code is cleaner.
     "ANN001",  # Missing return type argument.
     "ANN002",  # Missing return type for *args.

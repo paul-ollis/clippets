@@ -1,14 +1,20 @@
 """Application specific widgets."""
 
 import re
+from collections import defaultdict
 from contextlib import suppress
+from typing import ClassVar, Optional
 
+import rich.repr
 from rich.style import Style
 from rich.text import Span, Text
+from rich.console import RenderableType
+from textual import events
 from textual.app import Binding
 from textual.containers import Grid, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Markdown, Static
+from textual.widget import Widget
+from textual.widgets import Button, Footer, Input, Label, Markdown, Static
 from textual.widgets._markdown import MarkdownBlock
 
 from .colors import keyword_colors
@@ -92,6 +98,70 @@ class SnippetMenu(ModalScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Process a mouse click on a button."""
         self.dismiss(event.button.id)
+
+
+@rich.repr.auto
+class MyFooter(Footer):
+    """A simple footer docked to the bottom of the parent container."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._context = self.app.context_name()
+
+    def check_context(self):
+        """Check whether the appliation context has changed."""
+        new_name = self.app.context_name()
+        if new_name != self._context:
+            self._context = new_name
+            self._bindings_changed(self)
+
+    def _make_key_text(self) -> Text:
+        """Create text containing all the keys."""
+        base_style = self.rich_style
+        text = Text(
+            style=self.rich_style,
+            no_wrap=True,
+            overflow='ellipsis',
+            justify='left',
+            end='',
+        )
+        highlight_style = self.get_component_rich_style('footer--highlight')
+        highlight_key_style = self.get_component_rich_style(
+            'footer--highlight-key')
+        key_style = self.get_component_rich_style('footer--key')
+        description_style = self.get_component_rich_style(
+            'footer--description')
+
+        bindings = self.app.active_shown_bindings()
+        action_to_bindings = defaultdict(list)
+        for binding in bindings:
+            action_to_bindings[binding.action].append(binding)
+
+        for _, bindings in action_to_bindings.items():
+            binding = bindings[0]
+            if binding.key_display is None:
+                key_display = self.app.get_key_display(binding.key)
+                if key_display is None:
+                    key_display = binding.key.upper()
+            else:
+                key_display = binding.key_display
+            hovered = self.highlight_key == binding.key
+            key_text = Text.assemble(
+                (
+                    f' {key_display} ',
+                    highlight_key_style if hovered else key_style),
+                (
+                    f' {binding.description} ',
+                    highlight_style if hovered
+                        else base_style + description_style,
+                ),
+                meta={
+                    '@click': f'app.check_bindings("{binding.key}")',
+                    'key': binding.key,
+                },
+            )
+            text.append_text(key_text)
+        return text
 
 
 class Extend:

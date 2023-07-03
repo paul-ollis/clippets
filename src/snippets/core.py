@@ -25,15 +25,18 @@ import subprocess
 import sys
 from contextlib import suppress
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING, Tuple
+from typing import Dict, Iterable, Optional, TYPE_CHECKING, Tuple
 
 from rich.text import Text
 from textual.app import App, Binding, ComposeResult
 from textual.containers import Horizontal
 from textual.css.query import NoMatches
 from textual.message import Message
-from textual.widgets import Footer, Header, Input
+from textual.screen import ModalScreen
+from textual.walk import walk_breadth_first, walk_depth_first
+from textual.widgets import Header, Input, MarkdownViewer, Static
 
 from . import snippets
 from .platform import (
@@ -41,7 +44,8 @@ from .platform import (
     terminal_title)
 from .snippets import id_of_element as id_of
 from .widgets import (
-    MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll, SnippetMenu)
+    MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
+    SnippetMenu)
 
 if TYPE_CHECKING:
     from textual.widget import Widget
@@ -95,21 +99,49 @@ class Matcher:
         return not self.pat or self.pat in text.lower()
 
 
+banner = r'''
+  ____        _                  _
+ / ___| _ __ (_)_ __  _ __   ___| |_ ___
+ \___ \| '_ \| | '_ \| '_ \ / _ \ __/ __|
+  ___) | | | | | |_) | |_) |  __/ |_\__ \
+ |____/|_| |_|_| .__/| .__/ \___|\__|___/
+               |_|   |_|
+'''
+
+
+class HelpScreen(ModalScreen):
+    """Tada."""
+
+    def compose(self) -> ComposeResult:
+        """Tada."""
+        yield Header()
+        yield Static(banner, classes='banner')
+        help_file = Path(__file__).parent / 'help.md'
+        with help_file.open() as f:
+            text = f.read()
+        self.md = MarkdownViewer(text, show_table_of_contents=True)
+        yield self.md
+        for w in walk_depth_first(self.md):
+            w.add_class('help')
+        yield MyFooter()
+
+    def on_idle(self) -> None:
+        """React to the DOM having been created."""
+        md = self.md
+        if md is not None:
+            self.md = None
+            s = []
+            for w in walk_depth_first(md):
+                s.append(f'W {type(w).__name__}: {w.id}')
+            print('\n'.join(s))
+
+
 class Snippets(App):
     """The textual application object."""
 
     TITLE = 'Comment snippet wrangler'
     CSS_PATH = 'snippets.css'
-    BINDINGS = [
-        Binding('f2', 'edit_clipboard', 'Edit'),
-        Binding('f3', 'clear_selection', 'Clear'),
-        Binding('f7', 'edit_keywords', 'Edit group keywords'),
-        Binding('f8', 'toggle_order', 'Toggle order'),
-        Binding('f9', 'toggle_outline', 'Toggle outline'),
-        Binding('ctrl+u', 'do_undo', 'Undo', priority=True),
-        Binding('ctrl+r', 'do_redo', 'Redo', priority=True),
-        Binding('ctrl+q', 'quit', 'Quit', priority=True),
-    ]
+    SCREENS = {'help': HelpScreen()}
     id_to_focus = {'input': 'filter'}
 
     class RefreshRequired(Message):
@@ -136,6 +168,8 @@ class Snippets(App):
         self.full_refresh_required = False
         self.hover_uid = None
         self.kb_focussed_uid = id_of(self.groups.first_snippet())
+        self.key_handler = KeyHandler(self)
+        self.init_bindings()
 
     def xrun(self, *args, **kwargs) -> int:
         """Wrap the standar run method."""
@@ -147,6 +181,53 @@ class Snippets(App):
             return ret
         finally:
             sys.stdout, sys.stderr = saved
+
+    def context_name(self) -> str:
+        """Provide a name identifying the current context."""
+        if self.screen.id == 'help':
+            return 'help'
+        elif self.move_info is None:
+            return 'normal'
+        else:
+            return 'moving'
+
+    def init_bindings(self):
+        """Set up the application bindings."""
+        bind = partial(self.key_handler.bind, ('normal',), show=False)
+        bind('up', 'select_prev')
+        bind('down', 'select_next')
+        bind('e', 'edit_snippet')
+        bind('d c', 'duplicate_snippet')
+        bind('ctrl+u', 'do_undo', description='Undo', priority=True)
+        bind('ctrl+r', 'do_redo', description='Redo', priority=True)
+        bind('f8', 'toggle_order', description='Toggle order')
+        bind('f9', 'toggle_outline', description='Toggle outline')
+
+        bind = partial(self.key_handler.bind, ('normal',), show=True)
+        bind('f1', 'show_help', description='Help')
+        bind('f2', 'edit_clipboard', description='Edit')
+        bind('f3', 'clear_selection', description='Clear')
+        bind('f7', 'edit_keywords', description='Edit keywords')
+        bind('ctrl+q', 'quit', description='Quit', priority=True)
+        bind('enter space', 'toggle_select', description='Toggle select')
+
+        bind = partial(self.key_handler.bind, ('moving',), show=True)
+        bind('up', 'move_insert_up', description='Ins point up')
+        bind('down', 'move_insert_down', description='Ins point down')
+        bind('enter', 'complete_move', description='Insert')
+        bind('escape', 'stop_moving', description='Cancel')
+
+        bind = partial(self.key_handler.bind, ('help',), show=True)
+        bind('f1', 'pop_screem', description='Close help')
+
+    def active_shown_bindings(self):
+        """Provide a list of bindings used for the application Footer."""
+        return self.key_handler.active_shown_bindings()
+
+    def on_idle(self):
+        """Perform idle processing."""
+        w = self._query_one(MyFooter)
+        w.check_context()
 
     def update_hover(self, w) -> None:
         """Update the UI to indicate where the mouse is."""
@@ -182,7 +263,9 @@ class Snippets(App):
                     snippet = self.make_snippet_widget(uid, el)
                     if snippet:
                         yield snippet
-        yield Footer()
+        footer = MyFooter()
+        footer.add_class('footer')
+        yield footer
 
     def on_ready(self) -> None:
         """React to the DOM having been created."""
@@ -264,18 +347,6 @@ class Snippets(App):
         if tag:
             self.action_toggle_tag(tag.name)
 
-    def handle_selection_keypress(self):
-        """Handle any key that is used to select a snippet."""
-        if self.groups.find_element_by_uid(self.kb_focussed_uid) is not None:
-            self.push_undo()
-            id_str = self.kb_focussed_uid
-            if id_str in self.chosen:
-                self.chosen.remove(id_str)
-            else:
-                self.chosen.append(id_str)
-            self.update_selected()
-            self.update_result()
-
     def key_select_move(self, inc: int, *, dry_run: bool) -> None:
         """Move the keyboard driven focus to the next available widget."""
         widgets = self.focussable_widgets()
@@ -310,15 +381,35 @@ class Snippets(App):
             else:
                 self.key_select_move(inc=-1, dry_run=False)
 
-    def key_select_next(self) -> None:
+    def action_select_next(self) -> None:
         """Move the keyboard driven focus to the next widget."""
         self.key_select_move(inc=1, dry_run=False)
         self.update_focus()
 
-    def key_select_prev(self) -> None:
+    def action_select_prev(self) -> None:
         """Move the keyboard driven focus to the next widget."""
         self.key_select_move(inc=-1, dry_run=False)
         self.update_focus()
+
+    def action_edit_snippet(self) -> None:
+        """Edit the currently selected snippet."""
+        self.edit_snippet(self.kb_focussed_uid)
+
+    def action_duplicate_snippet(self) -> None:
+        """Duplicate and edit the currently selected snippet."""
+        self.duplicate_snippet(self.kb_focussed_uid)
+
+    def action_toggle_select(self):
+        """Handle any key that is used to select a snippet."""
+        if self.groups.find_element_by_uid(self.kb_focussed_uid) is not None:
+            self.push_undo()
+            id_str = self.kb_focussed_uid
+            if id_str in self.chosen:
+                self.chosen.remove(id_str)
+            else:
+                self.chosen.append(id_str)
+            self.update_selected()
+            self.update_result()
 
     def action_toggle_order(self) -> None:
         """Toggle the order of selected snippets."""
@@ -397,7 +488,7 @@ class Snippets(App):
         #@     if binding.show:
         #@         self.hidden_bindings.add(key)
         #@         binding.show = False
-        self.push_screen('help')
+        self.push_screen(HelpScreen(id='help'))
 
     def push_undo(self) -> None:
         """Save state onto the undo stack."""
@@ -437,7 +528,7 @@ class Snippets(App):
         self.move_info = MoveInfo(id_str, id_str)
         self.set_visuals()
 
-    def stop_moving(self) -> None:
+    def action_stop_moving(self) -> None:
         """Stop moving a snippet - cancelling the move operation."""
         self.move_info = None
         self.set_visuals()
@@ -475,43 +566,22 @@ class Snippets(App):
                 info.dest_uid = new_uid
                 self.set_visuals()
 
-    def handle_key_during_move(self, ev) -> None:
-        """Handle a key press during a snipper move operation."""
-        if ev.key == 'up':
-            self.move_insertion_point(self.groups.find_snippet_before_id)
-        elif ev.key == 'down':
-            self.move_insertion_point(self.groups.find_snippet_after_id)
-        elif ev.key == 'enter':
-            self.complete_move()
-            self.stop_moving()
-        elif ev.key == 'escape':
-            self.stop_moving()
-        else:
-            return
-        ev.stop()
+    def action_move_insert_up(self):
+        """Move the snippet insetion point up."""
+        self.move_insertion_point(self.groups.find_snippet_before_id)
 
-    def handle_key_in_normal_mode(self, ev: Event) -> None:
-        """Handle a key press in normal mode."""
-        if ev.key == 'up':
-            self.key_select_prev()
-        elif ev.key == 'down':
-            self.key_select_next()
-        elif ev.key in ('enter', 'space'):
-            self.handle_selection_keypress()
-        elif ev.key in ('e', 'insert'):
-            self.edit_snippet(self.kb_focussed_uid)
-        elif ev.key in ('d', 'c'):
-            self.duplicate_snippet(self.kb_focussed_uid)
-        else:
-            return
-        ev.stop()
+    def action_move_insert_down(self):
+        """Move the snippet insetion point up."""
+        self.move_insertion_point(self.groups.find_snippet_after_id)
 
-    def on_key(self, ev: Event) -> None:
+    def action_complete_move(self):
+        """Complete a snippet move operation."""
+        self.complete_move()
+        self.action_stop_moving()
+
+    async def on_key(self, ev: Event) -> None:
         """Handle a top level key press."""
-        if self.move_info is not None:
-            self.handle_key_during_move(ev)
-        else:
-            self.handle_key_in_normal_mode(ev)
+        await self.key_handler.handle_key(ev)
 
     def schedule_refresh(self, *uids, full: bool = False):
         """Schedule the UI to refresh as soon as possible."""
@@ -758,6 +828,63 @@ class Snippets(App):
             self.screen.set_focus(self._query_one('#filter'))
         else:
             self.screen.set_focus(None)
+
+
+class ContextualBinding:
+    """A key binding associated with one or more contexts."""
+
+    def __init__(self, binding: Binding, contexts: Iterable[str]):
+        self.binding = binding
+        self.contexts = set(contexts)
+
+
+class KeyHandler:
+    """Context specific key handling for an App."""
+
+    def __init__(self, app):
+        self.app = app
+        self.bindings: Dict[Tuple(str, str), Binding] = {}
+
+    async def handle_key(self, ev: Event) -> None:
+        """Handle a top level key press."""
+        app = self.app
+        context = app.context_name()
+        binding = self.bindings.get((context, ev.key))
+        if binding is not None:
+            await app.run_action(binding.action)
+
+    def bind(                                                   # noqa: PLR0913
+        self,
+        contexts: Iterable[str],
+        keys: str,
+        action: str,
+        *,
+        description: str = '',
+        show: bool = True,
+        key_display: str | None = None,
+        priority: bool = False,
+    ) -> None:
+        """Bind a key to an action.
+
+        Args:
+            keys: A comma separated list of keys, i.e.
+            action: Action to bind to.
+            description: Short description of action.
+            show: Show key in UI.
+            key_display: Replacement text for key, or None to use default.
+        """
+        for key in keys.split():
+            binding = Binding(
+                key, action, description, show, key_display, priority)
+            for context in contexts:
+                self.bindings[(context, key)] = binding
+
+    def active_shown_bindings(self):
+        """Provide a list of bindings used for the application Footer."""
+        context = self.app.context_name()
+        return [
+            binding for (ctx, key), binding in self.bindings.items()
+            if ctx == context and binding.show]
 
 
 def parse_args() -> argparse.Namespace:

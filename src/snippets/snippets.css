@@ -154,3 +154,52 @@ Button {
 SnippetMenu {
     align: center middle;
 }
+
+/* Tweaks to Markdown rendering. */
+.help MarkdownBlock {
+    background: $background;
+    border: none $background;
+    content-align: left middle;
+
+    padding: 0 0 1 4;
+    margin: 0;
+    color: $text;
+}
+
+.help MarkdownHeader {
+    background: $background;
+    border: none $background;
+    content-align: left middle;
+
+    padding: 0 0 1 0;
+    margin: 0;
+    text-style: bold underline;
+    color: $success;
+}
+
+.help MarkdownFence {
+    background: $background;
+    border: none $background;
+    content-align: center middle;
+
+    padding: 0 0 1 0;
+    margin: 0;
+    width: auto;
+    color: $success;
+}
+
+.help MarkdownBlockQuote {
+    background: $background;
+    border: none $background;
+    content-align: left middle;
+
+    padding: 0 0 1 4;
+    margin: 0;
+    color: $text;
+}
+
+.banner {
+    content-align: center middle;
+    padding: 0 0 0 0;
+    margin: 0 0 0 0;
+}
