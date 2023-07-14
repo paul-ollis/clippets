@@ -1,19 +1,22 @@
 """Application specific widgets."""
 
+import asyncio
 import re
+import unicodedata
 from collections import defaultdict
 from contextlib import suppress
-from typing import ClassVar, Optional
+from typing import Iterable, Optional
 
 import rich.repr
 from rich.style import Style
 from rich.text import Span, Text
-from rich.console import RenderableType
 from textual import events
-from textual.app import Binding
+from textual._wait import wait_for_idle
+from textual.app import App, Binding
 from textual.containers import Grid, VerticalScroll
+from textual.keys import (
+    REPLACED_KEYS, _character_to_key, _get_unicode_name_from_key)
 from textual.screen import ModalScreen
-from textual.widget import Widget
 from textual.widgets import Button, Footer, Input, Label, Markdown, Static
 from textual.widgets._markdown import MarkdownBlock
 
@@ -25,7 +28,7 @@ from .colors import keyword_colors
 re_keyword = re.compile('\u2e24([^\u2e25]*)\u2e25')
 
 
-class StdMixin:
+class StdMixin:                        # pylint: disable=too-few-public-methods
     """Common code for various widgets."""
 
     def on_enter(self, _ev):
@@ -164,7 +167,7 @@ class MyFooter(Footer):
         return text
 
 
-class Extend:
+class ExtendMixin:
     """Namespace to hold ``textual`` extension methods."""
 
     def on_enter(self, ev):
@@ -207,6 +210,42 @@ class Extend:
         self._text = text
         self.update(text)
 
+    async def _press_keys(self, keys: Iterable[str]) -> None:
+        """Simulate a key press.
 
-MarkdownBlock.on_enter = Extend.on_enter
-MarkdownBlock.set_content = Extend.set_content
+        This is a copy of the standrard Textual code except:
+
+        - print calls have been removed.
+        - assertions have been removed.
+        """
+        app = self
+        driver = app._driver                                     # noqa: SLF001
+        await wait_for_idle(0)
+        for key in keys:
+            if key.startswith('wait:'):
+                _, wait_ms = key.split(':')
+                await asyncio.sleep(float(wait_ms) / 1000)
+                await app._animator.wait_until_complete()        # noqa: SLF001
+                await wait_for_idle(0)
+            else:
+                if len(key) == 1 and not key.isalnum():
+                    key = _character_to_key(key)                # noqa: PLW2901
+                original_key = REPLACED_KEYS.get(key, key)
+                char: Optional[str] = None
+                try:
+                    char = unicodedata.lookup(
+                        _get_unicode_name_from_key(original_key))
+                except KeyError:
+                    char = key if len(key) == 1 else None
+                key_event = events.Key(key, char)
+                key_event._set_sender(app)                       # noqa: SLF001
+                driver.send_event(key_event)
+                await wait_for_idle(0)
+
+        await app._animator.wait_until_complete()                # noqa: SLF001
+        await wait_for_idle(0)
+
+
+MarkdownBlock.on_enter = ExtendMixin.on_enter
+MarkdownBlock.set_content = ExtendMixin.set_content
+App._press_keys = ExtendMixin._press_keys                        # noqa: SLF001

@@ -8,6 +8,13 @@ from typing import List
 data_dir = Path('/tmp/girok')
 
 
+class Namespace:                       # pylint: disable=too-few-public-methods
+    """Simple emulation of an argparse.Namespace."""
+
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+
 class ApproxInt(int):
     """An integer that can approximately compare as equal.
 

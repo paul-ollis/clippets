@@ -1,9 +1,10 @@
 """Paul's custom test configuration."""
 
+import difflib
 import os
 import sys
-from dataclasses import dataclass
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import datetime
 from operator import attrgetter
 from os import PathLike
@@ -25,7 +26,7 @@ from textual.pilot import Pilot
 
 from syrupy import SnapshotAssertion
 
-from fixtures import snippet_infile, snippet_outfile, gen_tempfile
+from fixtures import gen_tempfile, snippet_infile, snippet_outfile
 
 pytest_config = sys.modules['_pytest.config']
 
@@ -33,15 +34,144 @@ pytest_config = sys.modules['_pytest.config']
 __all__ = (
     'snippet_infile', 'snippet_outfile',
 )
-pytest_plugins = ('pytest_rich',)
+pytest_plugins = ('rich', 'asyncio')
 TEXTUAL_SNAPSHOT_SVG_KEY = pytest.StashKey[str]()
 TEXTUAL_ACTUAL_SVG_KEY = pytest.StashKey[str]()
 TEXTUAL_SNAPSHOT_PASS = pytest.StashKey[bool]()
 TEXTUAL_APP_KEY = pytest.StashKey[App]()
 
 
-def pytest_assertrepr_compare(op, left, right):
+class DiffGroup:
+    """A group of difference lines."""
+
+    def __init__(self, lines, code):
+        self.lines = lines
+        self.code = code
+
+
+def prep_diffs(l1, l2):
+    """Prepare a set of diffenerce blocks.
+
+    Each block stores a subset of the lines from the before and after lines.
+    Each block groups lines according to whether thery are:
+
+    unchanged
+        Identical lines in before and after.
+    context
+        Identical lines in before and after, providing context around the
+        following or preceding differene.
+    deleted
+        Lines only present in before.
+    inserted
+        Lines only present in after.
+    replaced
+        Lines that differ between before and after.
+    """
+    m = difflib.SequenceMatcher(a=l1, b=l2)
+    s1, s2 = enumerate(l1), enumerate(l2)
+
+    lhs = []
+    rhs = []
+    prev_a = 0
+    for group in m.get_grouped_opcodes():
+        for tag, a, b, c, d in group:
+            l_lines = []
+            r_lines = []
+            for _ in range(prev_a, a):
+                l_lines.append(next(s1))
+                r_lines.append(next(s2))
+            lhs.append(DiffGroup(l_lines, 'unchanged'))
+            rhs.append(DiffGroup(r_lines, 'unchanged'))
+            prev_a = a
+
+            l_lines = []
+            r_lines = []
+            if tag == 'equal':
+                for _ in range(a, b):
+                    l_lines.append(next(s1))
+                    r_lines.append(next(s2))
+                lhs.append(DiffGroup(l_lines, 'context'))
+                rhs.append(DiffGroup(r_lines, 'context'))
+            elif tag == 'delete':
+                for _ in range(a, b):
+                    l_lines.append(next(s1))
+                    r_lines.append((-1, ''))
+                lhs.append(DiffGroup(l_lines, 'deleted'))
+                rhs.append(DiffGroup(r_lines, 'deleted'))
+            elif tag == 'insert':
+                for _ in range(c, d):
+                    l_lines.append((-1, ''))
+                    r_lines.append(next(s2))
+                lhs.append(DiffGroup(l_lines, 'inserted'))
+                rhs.append(DiffGroup(r_lines, 'inserted'))
+            elif tag == 'replace':
+                for _ in range(a, b):
+                    l_lines.append(next(s1))
+                for _ in range(c, d):
+                    r_lines.append(next(s2))
+                rl, rr = b - a, d - c
+                for _ in range(rl, rr):
+                    l_lines.append((-1, ''))
+                for _ in range(rr, rl):
+                    l_lines.append((-1, ''))
+                lhs.append(DiffGroup(l_lines, 'replaced'))
+                rhs.append(DiffGroup(r_lines, 'replaced'))
+
+            prev_a = b
+
+    return lhs, rhs
+
+
+def lstr(idx: int):
+    if idx < 0:
+        return '     '
+    else:
+        return f'{idx + 1:>4}:'
+
+
+def _strequals(config, op, left, right):
+    return (
+        op == '==' and isinstance(left, str) and isinstance(right, str)
+        and config.pluginmanager.has_plugin('rich')
+        and config.getoption("rich")
+    )
+
+
+def pytest_assertrepr_compare(config, op, left, right):
     """Customise certain type comparison reports."""
+    # pylint: disable=too-many-locals
+    if _strequals(config, op, left, right):
+        s = ['<<--RICH-->>']
+        lhs, rhs = prep_diffs(left.splitlines(), right.splitlines())
+        for before, after in zip(lhs, rhs):
+            for (ai, a), (bi, b) in zip(before.lines, after.lines):
+                bar = '::'
+                lhs_str = f'{a:<40}'
+                rhs_str = f'{b}'
+                err = '[bold red]E[/bold red] '
+
+                if before.code == 'unchanged':
+                    continue
+
+                if before.code == 'context':
+                    err = '[dim]c[/dim] '
+                    bar = '=='
+                elif before.code == 'deleted':
+                    lhs_str = f'[bold red]{a:<40}[/bold red]'
+                    bar = '[red bold]<-[/red bold]'
+                elif before.code == 'inserted':
+                    rhs_str = f'[yellow]{b}[/yellow]'
+                    bar = '[yellow]->[/yellow]'
+                elif before.code == 'replaced':
+                    bar = '[green]<>[/green]'
+                    lhs_str = f'[bold red]{a:<40}[/bold red]'
+                    rhs_str = f'[yellow]{b}[/yellow]'
+
+                s.append(
+                    f'{err}{lstr(ai)} {lhs_str} {bar} {lstr(bi)} {rhs_str}')
+        return s
+    else:
+        return None
 
 
 def pytest_addoption(parser, pluginmanager):

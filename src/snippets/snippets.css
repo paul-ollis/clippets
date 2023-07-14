@@ -56,6 +56,15 @@ Screen {
 .moving {
     outline: solid $success;
     padding: 1 1 0 1;
+    outline-bottom: solid  $success;
+}
+
+.is_placehoder.dest_above {
+    height: 3;
+    padding: 0 0 0 0;
+    margin: 0 1 0 4;
+    color: $text-disabled;
+    outline-bottom: solid  $success;
 }
 
 /* Markup to highlight the selected snipet. */
@@ -78,26 +87,6 @@ Screen {
 .mouse_hover {
     background: $background-lighten-3;
     color: $text;
-}
-
-/* Set the indentation accodrding to the level of nesting. */
-.snippet-level-2 {
-    margin: 0 1 0 4;
-}
-.snippet-level-3 {
-    margin: 0 1 0 8;
-}
-.snippet-level-4 {
-    margin: 0 1 0 12;
-}
-.group-level-1 {
-    padding: 0 0 0 0;
-}
-.group-level-2 {
-    padding: 0 0 0 4;
-}
-.group-level-2 {
-    padding: 0 0 0 8;
 }
 
 /* Remove the default padding of Markdown paragraphs. */
@@ -155,51 +144,37 @@ SnippetMenu {
     align: center middle;
 }
 
-/* Tweaks to Markdown rendering. */
-.help MarkdownBlock {
-    background: $background;
-    border: none $background;
-    content-align: left middle;
-
-    padding: 0 0 1 4;
-    margin: 0;
-    color: $text;
-}
-
-.help MarkdownHeader {
-    background: $background;
-    border: none $background;
-    content-align: left middle;
-
-    padding: 0 0 1 0;
-    margin: 0;
-    text-style: bold underline;
-    color: $success;
-}
-
-.help MarkdownFence {
-    background: $background;
-    border: none $background;
-    content-align: center middle;
-
-    padding: 0 0 1 0;
-    margin: 0;
-    width: auto;
-    color: $success;
-}
-
-.help MarkdownBlockQuote {
-    background: $background;
-    border: none $background;
-    content-align: left middle;
-
-    padding: 0 0 1 4;
-    margin: 0;
-    color: $text;
-}
-
+/* The help text. */
 .banner {
     content-align: center middle;
     padding: 0 0 0 0;
     margin: 0 0 0 0;
+}
+
+.heading {
+    text-style: bold;
+    padding: 1 0 1 0;
+}
+.heading_1 {
+    outline-bottom: double $success;
+}
+.heading_2 {
+    outline-bottom: $success;
+}
+.heading_3 {
+    text-style: bold underline;
+}
+.paragraph {
+    padding: 1 0 0 0;
+}
+.term_para_1 {
+    padding: 0 0 0 0;
+}
+.code {
+    padding: 0 0 0 0;
+}
+.term_para {
+}
+MarkdownFence > * {
+    padding: 0 0 0 0;
 }

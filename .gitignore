@@ -1,0 +1,5 @@
+.screenshot_cache
+src/snippets.egg-info
+tags
+temp.txt
+temp.txt.bak*

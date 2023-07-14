@@ -1,16 +1,133 @@
 """Data structure used to store the snippet text."""
+from __future__ import annotations
 
 import itertools
 import re
+import shutil
 import sys
 import textwrap
 import weakref
+from  contextlib import suppress
+from functools import partial
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple, Union
 
 from markdown_strings import esc_format
 
 from . import colors
+
+
+class SnippetInsertionPointer:
+    """A 'pointer' of where to insert a snippet within a snippet tree.
+
+    An insertion point can be before or after a snippet. Within a group, an
+    insertion point below one snippet is equal to an insertion point above the
+    following snippet.
+    """
+
+    def __init__(self, snippet):
+        self._snippet = snippet
+        self.after = False
+        self._prev_snippet: Union[bool, None, Snippet] = False
+        self._next_snippet: Union[bool, None, Snippet] = False
+
+    @property
+    def snippet(self):
+        """The snippet part of this pointer."""
+        return self._snippet
+
+    @snippet.setter
+    def snippet(self, value):
+        self._snippet = value
+        self._prev_snippet = False
+        self._next_snippet = False
+
+    @property
+    def prev_snippet(self):
+        """The previous snippet within this snippet's group."""
+        if self._prev_snippet is False:
+            self._prev_snippet = self.snippet.neighbour(
+                backwards=True, within_group=True, predicate=is_snippet_like)
+        return self._prev_snippet
+
+    @property
+    def next_snippet(self):
+        """The next snippet within this snippet's group."""
+        if self._next_snippet is False:
+            self._next_snippet = self.snippet.neighbour(
+                backwards=False, within_group=True, predicate=is_snippet_like)
+        return self._next_snippet
+
+    @property
+    def addr(self) -> Tuple[str, bool]:
+        """The insertaion point in the form (uid, insert_after)."""
+        return self.snippet.uid(), self.after
+
+    def move(self, *, backwards: bool, skip: Snippet) -> bool:
+        """Move to the next insertion point.
+
+        :return:
+            True if movement occurred.
+        """
+        def do_move():
+            snippet = self.snippet
+            if backwards:
+                if self.after:
+                    self.after = False
+                    return
+            elif not self.after and snippet.is_last():
+                self.after = True
+                return
+            new_snippet = snippet.neighbour(
+                backwards=backwards, within_group=False,
+                predicate=is_snippet_like)
+            if new_snippet:
+                self.snippet = new_snippet
+                if isinstance(new_snippet, PlaceHolder):
+                    self.after = False
+                elif new_snippet.is_last():
+                    self.after = backwards
+                else:
+                    self.after = False
+
+        saved = self.snippet, self.after
+        addr = self.addr
+        for _ in range(3):
+            do_move()
+            if addr != self.addr and not self.is_next_to(skip):
+                return True
+
+        self.snippet, self.after = saved
+        return False
+
+    def is_next_to(self, snippet: Snippet) -> bool:
+        """Test if a this pointer is adjacent to a snippet."""
+        if self.snippet.parent is not snippet.parent:
+            return False
+        elif self.snippet is snippet:
+            return True
+        elif self.prev_snippet is snippet:
+            return not self.after
+        elif self.next_snippet is snippet:
+            return self.after
+        else:
+            return False
+
+    def move_snippet(self, snippet) -> bool:
+        """Move a given snippet to this insertion point."""
+        if self.is_next_to(snippet):
+            return False
+        snippet.parent.remove(snippet)
+        snippet.parent.clean()
+        if self.after:
+            self.snippet.parent.add(snippet, after=self.snippet)
+        else:
+            self.snippet.parent.add(snippet, before=self.snippet)
+        self.snippet.parent.clean()
+        return True
+
+    def __repr__(self):
+        return f'Pointer({self.snippet.uid()}, {self.after})'
 
 
 class Element:
@@ -18,11 +135,18 @@ class Element:
 
     id_source = itertools.count()
 
-    def __init__(self, parent: 'Element', first_line: Optional[str] = None):
+    def __init__(self, parent: Element, first_line: Optional[str] = None):
         self.parent = parent
         self._uid = f'{self.__class__.__name__.lower()}-{next(self.id_source)}'
         self.first_line = first_line
         self.source_lines = []
+
+    @property
+    def root(self):
+        """The root group of the tree containin this group."""
+        if self.parent is None:
+            return self
+        return self.parent.root
 
     def uid(self):
         """Derive a unique ID for this element."""
@@ -42,11 +166,9 @@ class Element:
         """Calculete the number of line in this snippet."""
         return len(self.source_lines)
 
-    def walk(self):
-        """Walk this sub-tree - NOP default implementation."""
-        return []
-
-    def full_repr(self, end='\n'):                               # noqa: ARG002
+    def full_repr(                            # pylint: disable=unused-argument
+            self,
+            end='\n'):                                           # noqa: ARG002
         """Format a simple representation of this element.
 
         This is intended for test support. The exact format may change between
@@ -56,7 +178,7 @@ class Element:
         spc = ' ' if body else ''
         return f'{self.__class__.__name__}:{spc}{body}'
 
-    def body_repr(self):
+    def body_repr(self):                          # pylint: disable=no-self-use
         """Format a simple representation of this element's body.
 
         This is intended for test support. The exact format may change between
@@ -64,18 +186,46 @@ class Element:
         """
         return ''
 
-    def file_text(self):
+    def file_text(self):                          # pylint: disable=no-self-use
         """Generate the text that should be written to a file."""
         return ''
 
-    def clean(self) -> Optional['Element']:
+    def clean(self):
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
         """
         self.source_lines = [
             line.expandtabs().rstrip() for line in self.source_lines]
+
+    def neighbour(
+            self, *, backwards: bool, within_group: bool,
+            predicate=lambda _el: True) -> Optional[Snippet]:
+        """Get this element's immediate neighbour.
+
+        :backwards:    If set then find preceding neighbour.
+        :within_group: If set then do not check neighbouring groups.
+        :predicate:    Funciton to test whether a given element should be
+                       considered a neighbour.
+        """
+        snippets = self.root.walk(
+            predicate=predicate, first_id=self.uid(), backwards=backwards)
+        for i, snippet in enumerate(snippets):
+            if i == 1:
+                if within_group and snippet.parent is not self.parent:
+                    return None
+                else:
+                    return snippet
         return None
+
+
+class PlaceHolder(Element):
+    """A place holder used in empty groups."""
+
+    @staticmethod
+    def is_last() -> bool:
+        """Return false."""
+        return False
 
 
 class TextualElement(Element):
@@ -138,7 +288,7 @@ class PreservedText(TextualElement):
         """Generate the text that should be written to a file."""
         return '\n'.join(self.source_lines) + '\n'
 
-    def clean(self) -> Optional['Element']:
+    def clean(self) -> Optional[Element]:
         """Clean the source lines."""
         if self.first_line is not None:
             self.source_lines = [self.first_line,  *self.source_lines]
@@ -180,6 +330,14 @@ class Snippet(TextualElement):
         """Clear any cached state."""
         self._marked_lines = []
 
+    def is_first(self) -> bool:
+        """Test if a snippet is the first in its group."""
+        return self.parent.is_first_snippet(self)
+
+    def is_last(self) -> bool:
+        """Test if a snippet is the last in its group."""
+        return self.parent.is_last_snippet(self)
+
     def md_lines(self):
         """Provide snippet lines in Markdown format.
 
@@ -204,7 +362,7 @@ class Snippet(TextualElement):
         if self.source_lines[-1].strip():
             self.source_lines.append('')
 
-    def clean(self) -> Optional['Element']:
+    def clean(self) -> Optional[Element]:
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
@@ -285,16 +443,13 @@ class KeywordSet(TextualElement):
         return f'{" ".join(sorted(self.words))}'
 
     @classmethod
-    def combine(cls, *keyword_sets):
+    def combine(cls, parent, *keyword_sets):
         """Combine multiple KeywordSet instances into just one."""
         words = set(itertools.chain(*[kws.words for kws in keyword_sets]))
+        kws = cls(parent=parent)
         if words:
-            first = keyword_sets[0]
-            kws = cls(parent=first.parent)
             kws.words.update(words)
-            return kws
-        else:
-            return None
+        return kws
 
 
 class Title(TextualElement):
@@ -303,160 +458,20 @@ class Title(TextualElement):
     marker = '@title:'
 
 
-class Group(Element):
-    """A group of sniipets and/or sub groups."""
+class GroupDebugMixin:
+    """Support for test and debug of the `Group`` class."""
 
-    all_tags = set()
+    def indexed_group(self, idx):
+        """Get a group using an index.
 
-    def __init__(self, name, parent=None, tag_text=''):
-        super().__init__(parent)
-        self.name = name
-        self.groups = {}
-        tags = {t.strip() for t in tag_text.split()}
-        self.tags = sorted(tags)
-        for t in self.tags:
-            self.all_tags.add(t)
-        self.children = [KeywordSet(parent=self)]
-
-    def add_group(self, name):
-        """Add a new group as a child of this group."""
-        name, _, rem = name.partition('[')
-        tag_text, *_ = rem.partition(']')
-        name = name.strip()
-
-        if name not in self.groups:
-            if self.tags:
-                tag_text = ' '.join(self.tags) + ' ' + tag_text
-            self.groups[name] = Group(
-                name, weakref.proxy(self), tag_text=tag_text)
-        return self.groups[name]
-
-    def add(self, child):
-        """Add a new element as a child of this group."""
-        self.children.append(child)
-
-    def clean(self):
-        """Clean up this and any shild groups.
-
-        Empty children and groups are removed.
+        :idx: The group index. Negative indices are not supported.
         """
-        self.children[:] = [c for c in self.children if not c.is_empty()]
-        for group in self.groups.values():
-            group.clean()
-        for child in self.children:
-            child.clean()
-        keyword_sets = {c for c in self.children if isinstance(c, KeywordSet)}
-        self.children = [c for c in self.children if c not in keyword_sets]
-        kws = KeywordSet.combine(*keyword_sets)
-        if kws:
-            self.children[0:0] = [kws]
+        for i, group in enumerate(self.groups.values()):
+            if i == idx:
+                return group
 
-    def is_empty(self):
-        """Test whether this group has zero children."""
-        return bool(self.children)
-
-    def snippets(self) -> List[Snippet]:
-        """Provide this group's snippets."""
-        return [c for c in self.children if isinstance(c, Snippet)]
-
-    def walk(self, predicate=lambda _el: True):
-        """Iterate over the entire tree of groups and snippets.
-
-        Immediate child snippets are visited before sub-groups.
-        """
-        yield from (c for c in self.children if predicate(c))
-        for group in self.groups.values():
-            if predicate(group):
-                yield group
-            yield from group.walk(predicate)
-
-    def walk_snippets(self):
-        """Iterate over all snippets, breadth first."""
-        def is_textual(el):
-            return isinstance(el, Snippet)
-
-        yield from self.walk(predicate=is_textual)
-
-    def walk_groups(self, predicate=lambda _el: True):
-        """Iterate over all groups."""
-        for g in self.walk(predicate=lambda el: isinstance(el, Group)):
-            if predicate(g):
-                yield g
-
-    def first_snippet(self) -> Optional[Snippet]:
-        """Get the first snippit, if any."""
-        try:
-            return next(self.walk_snippets())
-        except StopIteration:
-            return None
-
-    def find_element_by_uid(self, uid) -> Optional[Element]:
-        """Find an element with the given UID."""
-        for el in self.walk():
-            if el.uid() == uid:
-                return el
-        return None
-
-    def find_snippet_before_id(self, uid):
-        """Find the snippet before the one with the given UID."""
-        def is_textual(el):
-            return isinstance(el, Snippet)
-
-        prev = None
-        for el in self.walk():
-            if is_textual(el):
-                if el.uid() == uid:
-                    return prev
-                else:
-                    prev = el
-        return None
-
-    def find_snippet_after_id(self, uid):
-        """Find the snippet after the one with the given UID."""
-        def is_textual(el):
-            return isinstance(el, Snippet)
-
-        prev = None
-        for el in self.walk():
-            if is_textual(el):
-                if prev and prev.uid() == uid:
-                    return el
-                else:
-                    prev = el
-        return None
-
-    def iter_from_to(self, first, second):
-        """Iterate iver a subset of elements."""
-        def is_textual(el):
-            return isinstance(el, Snippet)
-
-        in_range = False
-        for el in self.walk():
-            if is_textual(el):
-                if in_range:
-                    yield el
-                if el.uid() == first:
-                    in_range = True
-                    yield el
-            if el.uid() == second:
-                break
-
-    def correctly_ordered(self, first, second):
-        """Test whether first is after second."""
-        for el in self.walk():
-            if el.uid() == first:
-                return True
-            elif el.uid() == second:
-                return False
-        return False
-
-    def keyword_set(self) -> Optional[KeywordSet]:
-        """Find the keyword set, if any, for this group."""
-        return self.children[0]
-
-    def keywords(self) -> Set[str]:
-        """Provide all the keywords applicable to this group's snippets."""
-        return self.keyword_set().words
+        message = f'Subgroup index ({idx}) out of range'
+        raise IndexError(message)
 
     def outline_repr(self, end='\n'):
         """Format a simple group-only outline representation of the tree.
@@ -482,9 +497,247 @@ class Group(Element):
             s.append(g.full_repr(end=''))
         return '\n'.join(s) + end
 
+
+class Group(GroupDebugMixin, Element):
+    """A group of snippets and/or sub groups."""
+
+    # pylint: disable=too-many-public-methods
+    all_tags = set()
+
+    def __init__(self, name, parent=None, tag_text=''):
+        super().__init__(parent)
+        self.name = name
+        self.groups = {}
+        tags = {t.strip() for t in tag_text.split()}
+        self.tags = sorted(tags)
+        for t in self.tags:
+            self.all_tags.add(t)
+        self.children = []
+
+    def add_group(self, name):
+        """Add a new group as a child of this group."""
+        name, _, rem = name.partition('[')
+        tag_text, *_ = rem.partition(']')
+        name = name.strip()
+
+        if name not in self.groups:
+            if self.tags:
+                tag_text = ' '.join(self.tags) + ' ' + tag_text
+            self.groups[name] = Group(
+                name, weakref.proxy(self), tag_text=tag_text)
+        return self.groups[name]
+
+    def add(
+            self, child,
+            after: Optional[Element] = None,
+            before: Optional[Element] = None):
+        """Add a new element as a child of this group."""
+        children = self.children
+        if after:
+            p = children.index(after) + 1
+        elif before:
+            p = children.index(before)
+        else:
+            p = len(children)
+        self.children[p:p] = [child]
+        child.parent = self
+
+    def remove(self, child):
+        """Add a new element as a child of this group."""
+        with suppress(ValueError):
+            self.children.remove(child)
+        snippets = [el for el in self.children if isinstance(el, Snippet)]
+        if not snippets:
+            self.children.append(PlaceHolder(parent=self))
+
+    def clean(self):
+        """Clean up this and any child groups.
+
+        Empty children and groups are removed.
+        """
+        self.children[:] = [c for c in self.children if not c.is_empty()]
+        for group in self.groups.values():
+            group.clean()
+        for child in self.children:
+            child.clean()
+        keyword_sets = {c for c in self.children if isinstance(c, KeywordSet)}
+        self.children = [c for c in self.children if c not in keyword_sets]
+        kws = KeywordSet.combine(self, *keyword_sets)
+        self.children[0:0] = [kws]
+
+        if self.parent:
+            snippets = [el for el in self.children if isinstance(el, Snippet)]
+            if not snippets:
+                self.children.append(PlaceHolder(parent=self))
+
+    def is_empty(self):
+        """Test whether this group has zero children."""
+        return bool(self.children)
+
+    def snippets(self) -> List[Snippet]:
+        """Provide this group's snippets."""
+        return [c for c in self.children if isinstance(c, Snippet)]
+
+    def basic_walk(self, *, backwards: bool):
+        """Iterate over the entire tree of groups and snippets.
+
+        :backwards:
+            If set the walk in reverse order; i.e. last snippt is visited
+            first.
+        """
+        if backwards:
+            for group in reversed(self.groups.values()):
+                yield group
+                yield from group.basic_walk(backwards=backwards)
+            yield from reversed(self.children[1:])
+        else:
+            yield from self.children[1:]
+            for group in self.groups.values():
+                yield group
+                yield from group.basic_walk(backwards=backwards)
+
+    @property
+    def root(self):
+        """The root group of the tree containin this group."""
+        if self.parent is None:
+            return self
+        return self.parent.root
+
+    def walk(
+            self, predicate=lambda _el: True, *, first_id: str = '',
+            backwards: bool):
+        """Iterate over the entire tree of groups and snippets.
+
+        :predicate:
+            A function  taking an 'Element' as it only argument. Only elements
+            for which this returns a true value are visited.
+        :first_id:
+            If not an empty string, Skip all elements before the one with this
+            ID.
+        :backwards:
+            If set the walk in reverse order; i.e. last snippt is visited
+            first.
+        """
+        yield from walk_group_tree(
+            partial(self.basic_walk, backwards=backwards),
+            predicate=predicate, first_id=first_id)
+
+    def walk_snippets(self, *, first_id: str = '', backwards: bool):
+        """Iterate over all snippets."""
+        yield from self.walk(
+            predicate=lambda el: isinstance(el, Snippet),
+            first_id=first_id,
+            backwards=backwards)
+
+    def walk_groups(self, *, backwards: bool):
+        """Iterate over all groups."""
+        yield from self.walk(
+            predicate=lambda el: isinstance(el, Group),
+            backwards=backwards)
+
+    def is_first_snippet(self, snippet: Snippet) -> bool:
+        """Test if a snippet is the first in this gruop."""
+        snippets = [el for el in self.children if isinstance(el, Snippet)]
+        return snippets and snippets[0] is snippet
+
+    def is_last_snippet(self, snippet: Snippet) -> bool:
+        """Test if a snippet is the last in this gruop."""
+        snippets = [el for el in self.children if isinstance(el, Snippet)]
+        return snippets and snippets[-1] is snippet
+
+    def first_snippet(self) -> Optional[Snippet]:
+        """Get the first snippet, if any."""
+        try:
+            return next(self.walk_snippets(backwards=False))
+        except StopIteration:
+            return None
+
+    def find_element_by_uid(self, uid) -> Optional[Element]:
+        """Find an element with the given UID."""
+        for el in self.walk(backwards=False):
+            if el.uid() == uid:
+                return el
+        return None
+
+    def find_snippet_before_id(self, uid):
+        """Find the snippet before the one with the given UID."""
+        def is_textual(el):
+            return isinstance(el, Snippet)
+
+        prev = None
+        for el in self.walk(backwards=False):
+            if is_textual(el):
+                if el.uid() == uid:
+                    return prev
+                else:
+                    prev = el
+        return None
+
+    def find_snippet_after_id(self, uid):
+        """Find the snippet after the one with the given UID."""
+        for i, el in enumerate(
+                self.walk_snippets(first_id=uid, backwards=False)):
+            if i == 1:
+                return el
+        return None
+
+    # TODO: Should soon lose this.
+    def iter_from_to(self, first, second):
+        """Iterate iver a subset of elements."""
+        def is_textual(el):
+            return isinstance(el, Snippet)
+
+        in_range = False
+        for el in self.walk(backwards=False):
+            if is_textual(el):
+                if in_range:
+                    yield el
+                if el.uid() == first:
+                    in_range = True
+                    yield el
+            if el.uid() == second:
+                break
+
+    def correctly_ordered(self, first, second):
+        """Test whether first is after second."""
+        for el in self.walk(backwards=False):
+            if el.uid() == first:
+                return True
+            elif el.uid() == second:
+                return False
+        return False
+
+    def keyword_set(self) -> Optional[KeywordSet]:
+        """Find the keyword set, if any, for this group."""
+        return self.children[0]
+
+    def keywords(self) -> Set[str]:
+        """Provide all the keywords applicable to this group's snippets."""
+        return self.keyword_set().words
+
     def file_text(self):
         """Generate the text that should be written to a file."""
         return f'{self.name}\n'
+
+
+def walk_group_tree(
+        basic_walk, predicate=lambda _el: True, first_id: str = ''):
+    """Perform a walk."""
+    #@print('START WALK', repr(first_id))
+    it = basic_walk()
+    if first_id:
+        for el in it:
+            #@print('  A.NEXT', el.uid())
+            if el.uid() == first_id:
+                #@print('    A.TEST', predicate(el))
+                if predicate(el):
+                    #@print('        A.YIELD FIRST')
+                    yield el
+                break
+    for el in it:
+        #@print('  B.NEXT', el.uid(), predicate(el))
+        if predicate(el):
+            yield el
 
 
 class Loader:
@@ -561,7 +814,7 @@ class Loader:
 
     def load(self):
         """Load a tree of snippets from a file."""
-        with Path(self.path).open(mode='rt') as f:
+        with Path(self.path).open(mode='rt', encoding='utf8') as f:
             self.el = PreservedText(parent=None)
             for rawline in f:
                 line = rawline.rstrip()
@@ -576,9 +829,31 @@ class Loader:
         if not self.root.groups:
             sys.exit(f'File {self.path} contains no groups')
 
-        for el in self.root.walk_snippets():
+        for el in self.root.walk_snippets(backwards=False):
             el.reset()
         return self.root, self.title
+
+
+# Conveniant types.
+SnippetLike = Union[Snippet, PlaceHolder]
+
+
+def is_snippet(el: Element) -> bool:
+    """Test if an element is a snippet."""
+    return isinstance(el, Snippet)
+
+
+def is_snippet_like(el: Element) -> bool:
+    """Test if an element is like a snippet.
+
+    This treats a PlaceHolder as like a snippet.
+    """
+    return isinstance(el, SnippetLike)
+
+
+def is_snippet(el: Element) -> bool:
+    """Test if an element is a group."""
+    return isinstance(el, Group)
 
 
 def id_of_element(obj: Optional[Element]) -> Optional[str]:
@@ -594,6 +869,30 @@ def load(path):
 
 def save(path, root):
     """Save a snippet tree to a file."""
-    with Path(path).open('wt') as f:
-        for el in root.walk():
+    with Path(path).open('wt', encoding='utf8') as f:
+        for el in root.walk(backwards=False):
+            if isinstance(el, KeywordSet) and el.is_empty():
+                continue
             f.write(el.file_text())
+
+
+def backup_file(path):
+    """Create a new backup of path.
+
+    Up to 10 numbered backups are maintained.
+    """
+    path = Path(path)
+    dirpath = path.parent
+    name = path.name
+    names = [f'{name}.bak{n}' for n in range(1, 11)]
+    old_names = reversed(names[:-1])
+    new_names = reversed(names[1:])
+    for old_name, new_name in zip(old_names, new_names):
+        src_path = dirpath / old_name
+        if src_path.exists():
+            with suppress(OSError):
+                print('MOVE', src_path, dirpath / new_name)
+                shutil.move(src_path, dirpath / new_name)
+    with suppress(OSError):
+        print('BACKUP', path, dirpath / names[0])
+        shutil.copy(path, dirpath / names[0])

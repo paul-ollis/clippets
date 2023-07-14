@@ -1,5 +1,33 @@
 [project]
-requires-python = ">=3.7"
+name = "snippets"
+version = "0.0.1"
+authors = [
+  { name="Paul Ollis", email="paul@cleversheep.org" },
+]
+description = "UI to built up clipboard context from (rich) text snippets."
+requires-python = ">=3.8"
+readme = "README.md"
+classifiers = [
+    'Development Status :: 3 - Alpha',
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Linux, Windows",
+    "Programming Language :: Python :: 3",
+    "Environment :: Console :: UI",
+]
+
+[tool.setuptools.package-data]
+snippets = ["help.txt", "snippets.css"]
+
+[project.scripts]
+snippets = "snippets.core:main"
+
+[project.urls]
+"Homepage" = "https://github.com/paul-ollis/snippets"
+"Bug Tracker" = "https://github.com/paul-ollis/snippets/issues"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 per-file-ignores = {}
@@ -18,14 +46,11 @@ ignore = [
     "I001",    # Unsorted imports.
                # I think I can re-enable this if Ruff starts to support the
                # multi-line-output option.
+    "N818",    # Silly rule about exception names ending in 'Error'.
     "PLC1901", # Do not compare equal to empty string.
     "RET505",  # Unnecessary else after return.
     "S603",    # General subprocess security warning.
-    "T20",     # Aloow the print function to be used.
-    "UP007",   # Use bit-operators instead of typing.Union.
-
-    # Features not available in Python 3.7
-    "UP006",   # Use of tuple subscripting in type annotations.
+    "T20",     # Allow the print function to be used.
 
     # Below are checks I wish re-enable, once the code is cleaner.
     "ANN001",  # Missing return type argument.
@@ -36,7 +61,6 @@ ignore = [
     "ANN206",  # Missing return type for class method.
     "TD002",   # Author missing for 'todo'
     "TD003",   # Issue ref missing for 'todo'
-
 ]
 
 # Allow unused variables when underscore-prefixed.

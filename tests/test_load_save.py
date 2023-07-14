@@ -62,6 +62,7 @@ def dump(*strings):
         print('--------')
 
 
+# TODO: Support empty or non-existant file.
 def test_load_empty_file(snippet_infile):
     """An empty snippet file is considered an error."""
     with pytest.raises(SystemExit) as info:
@@ -71,7 +72,10 @@ def test_load_empty_file(snippet_infile):
 
 
 def test_single_empty_group(snippet_infile):
-    """A file with at least one group is valid, even without any snippets."""
+    """A file with at least one group is valid, even without any snippets.
+
+    The first element in the group will be an empty keywrod set.
+    """
     populate(snippet_infile, '''
         Main
     ''')
@@ -83,7 +87,9 @@ def test_single_empty_group(snippet_infile):
     assert root.outline_repr() == expect
     expect = clean_text('''
         Group: <ROOT>
-        Group: Main''')
+        KeywordSet:
+        Group: Main
+        KeywordSet:''')
     assert root.full_repr() == expect
 
 
@@ -102,7 +108,9 @@ def test_single_entry_group(snippet_infile):
     assert root.outline_repr() == expect
     expect = clean_text(r'''
         Group: <ROOT>
+        KeywordSet:
         Group: Main
+        KeywordSet:
         Snippet: 'Snippet 1'
     ''')
     assert root.full_repr() == expect
@@ -123,7 +131,9 @@ def test_single_markdown_snipper(snippet_infile):
     assert root.outline_repr() == expect
     expect = clean_text(r'''
         Group: <ROOT>
+        KeywordSet:
         Group: Main
+        KeywordSet:
         MarkdownSnippet: 'Snippet 1'
     ''')
     assert root.full_repr() == expect
@@ -145,8 +155,10 @@ def test_leading_blank_line(snippet_infile):
     assert root.outline_repr() == expect
     expect = clean_text(r'''
         Group: <ROOT>
+        KeywordSet:
         PreservedText: ''
         Group: Main
+        KeywordSet:
         MarkdownSnippet: 'Snippet 1'
     ''')
     assert root.full_repr() == expect
@@ -172,7 +184,7 @@ def test_keywords(snippet_infile):
           @keywords@
             five three
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, _ = snippets.load(snippet_infile.name)
     expect = clean_text('''
         <ROOT>
         Main
@@ -181,6 +193,7 @@ def test_keywords(snippet_infile):
     assert root.outline_repr() == expect
     expect = clean_text(r'''
         Group: <ROOT>
+        KeywordSet:
         Group: Main
         KeywordSet: one two
         Snippet: 'Snippet 1'
@@ -199,7 +212,7 @@ def test_simple_single_snippet_is_preserved(snippet_infile, snippet_outfile):
             Snippet 1
     ''')
     populate(snippet_infile, expected)
-    root, title = snippets.load(snippet_infile.name)
+    root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -214,7 +227,7 @@ def test_two_snippets_are_preserved(snippet_infile, snippet_outfile):
             Snippet 2
     ''')
     populate(snippet_infile, expected)
-    root, title = snippets.load(snippet_infile.name)
+    root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -228,7 +241,7 @@ def test_leading_comment_block_is_preserved(snippet_infile, snippet_outfile):
           @md@
             Snippet 1
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -246,7 +259,7 @@ def test_leading_blank_lines_are_preserved(snippet_infile, snippet_outfile):
           @md@
             Snippet 1
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -263,7 +276,7 @@ def test_interspersed_text_is_preserved(snippet_infile, snippet_outfile):
           @md@
             Snippet 2
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -278,6 +291,6 @@ def test_trailing_text_is_preserved(snippet_infile, snippet_outfile):
         # Comment
         |
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected

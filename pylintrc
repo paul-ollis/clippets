@@ -1,0 +1,218 @@
+[MASTER]
+jobs=20
+extension-pkg-whitelist=
+fail-under=10.0
+ignore=CVS
+ignore-patterns=
+limit-inference-results=100
+load-plugins=
+    pylint.extensions.no_self_use,
+persistent=yes
+suggestion-mode=yes
+unsafe-load-any-extension=no
+
+init-hook=
+    import sys, os
+    sys.path[0:0] = [
+        os.path.abspath('src'),
+    ]
+
+[MESSAGES CONTROL]
+confidence=
+enable=
+    c-extension-no-member,
+    useless-suppression,
+
+disable=
+    fixme,
+
+    # Pylint incorrectly complains about [n for x in y if (n := foo(x))]
+    superfluous-parens,
+
+    # Sometimes Pylint's rules are just plain wrong!
+    no-else-return,
+
+    bad-inline-option,
+    consider-using-with,
+    deprecated-pragma,
+    file-ignored,
+    locally-disabled,
+    raw-checker-failed,
+    suppressed-message,
+    useless-suppression,
+    use-symbolic-message-instead,
+
+    # Checks provided by Ruff.
+    protected-access,
+    unused-import,
+
+[REPORTS]
+evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)
+output-format=text
+reports=no
+score=no
+
+[REFACTORING]
+max-nested-blocks=5
+never-returning-functions=sys.exit
+
+[SIMILARITIES]
+ignore-comments=yes
+ignore-docstrings=yes
+ignore-imports=no
+min-similarity-lines=4
+
+[BASIC]
+argument-naming-style=snake_case
+attr-naming-style=snake_case
+
+bad-names=foo,
+          bar,
+          baz,
+          toto,
+          tutu,
+          tata
+
+bad-names-rgxs=
+class-attribute-naming-style=any
+class-naming-style=PascalCase
+const-naming-style=UPPER_CASE
+docstring-min-length=-1
+function-naming-style=snake_case
+
+good-names=i,
+           j,
+           k,
+           f,
+           ex,
+           Run,
+           _
+
+good-names-rgxs=[a-z][a-z_]*
+include-naming-hint=no
+inlinevar-naming-style=any
+method-naming-style=snake_case
+module-naming-style=snake_case
+name-group=
+no-docstring-rgx=^_
+property-classes=abc.abstractproperty
+variable-naming-style=snake_case
+
+[VARIABLES]
+additional-builtins=
+allow-global-unused-variables=yes
+
+callbacks=cb_,
+          _cb,
+          handle_
+
+dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
+ignored-argument-names=_.*|^ignored_|^unused_
+init-import=no
+redefining-builtins-modules=six.moves,past.builtins,future.builtins,builtins,io
+
+[SPELLING]
+max-spelling-suggestions=4
+spelling-dict=
+spelling-ignore-words=
+spelling-private-dict-file=
+spelling-store-unknown-words=no
+
+[FORMAT]
+expected-line-ending-format=
+ignore-long-lines=^\s*(# )?<?https?://\S+>?$
+indent-after-paren=4
+indent-string='    '
+max-line-length=100
+max-module-lines=1000
+single-line-class-stmt=no
+single-line-if-stmt=no
+
+
+[TYPECHECK]
+
+contextmanager-decorators=contextlib.contextmanager
+
+generated-members=
+
+ignore-mixin-members=yes
+
+ignore-none=yes
+
+ignore-on-opaque-inference=yes
+
+ignored-classes=optparse.Values,thread._local,_thread._local
+
+ignored-modules=
+
+missing-member-hint=yes
+
+missing-member-hint-distance=1
+
+missing-member-max-choices=1
+
+signature-mutators=
+    requires_checked_buf
+
+
+[LOGGING]
+
+logging-format-style=old
+
+logging-modules=logging
+
+
+[MISCELLANEOUS]
+
+notes=FIXME,
+      XXX,
+      TODO
+
+[STRING]
+
+check-quote-consistency=no
+check-str-concat-over-line-jumps=no
+
+[CLASSES]
+valid-classmethod-first-arg=cls
+valid-metaclass-classmethod-first-arg=cls
+
+defining-attr-methods=__init__,
+                      __new__,
+                      setUp,
+                      __post_init__
+
+exclude-protected=_asdict,
+                  _fields,
+                  _replace,
+                  _source,
+                  _make
+
+[DESIGN]
+max-args=5
+max-attributes=7
+max-bool-expr=5
+max-branches=12
+max-locals=15
+max-parents=7
+max-public-methods=20
+max-returns=6
+max-statements=50
+min-public-methods=2
+
+[IMPORTS]
+allow-any-import-level=
+allow-wildcard-with-all=no
+analyse-fallback-blocks=no
+deprecated-modules=optparse,tkinter.tix
+ext-import-graph=
+import-graph=
+int-import-graph=
+known-standard-library=
+known-third-party=enchant
+preferred-modules=
+
+[EXCEPTIONS]
+overgeneral-exceptions=
+    builtins.BaseException,
+    builtins.Exception

@@ -4,24 +4,20 @@ import platform
 import tempfile
 from pathlib import Path
 
-__all__ = [                                                        # noqa: F822
+__all__ = [
     'get_editor_command',
     'get_winpos',
     'put_to_clipboard',
+    'SharedTempFile',
     'terminal_title',
 ]
 
 if platform.system() == 'Windows':
-    from . import win as _platform
+    from .win import (
+        get_editor_command, get_winpos, put_to_clipboard, terminal_title)
 elif platform.system() == 'Linux':
-    from . import linux as _platform
-
-for name in __all__:
-    d = globals()
-    d[name] = getattr(_platform, name)
-del _platform
-
-__all__.extend(['SharedTempFile'])
+    from .linux import (
+        get_editor_command, get_winpos, put_to_clipboard, terminal_title)
 
 
 class SharedTempFile(Path):
@@ -35,12 +31,16 @@ class SharedTempFile(Path):
     manager, which handles deletion of the file.
     """
 
+    # pylint: disable=no-member
     _flavour = type(Path())._flavour                             # noqa: SLF001
 
-    def __new__(cls, *args, **kwargs):
-        # Create a named temporary file with auto-delete disabled. This allows
-        # it to be kept closed when not reading or writing to the file. Thus
-        # allowing the file to be shared when running under Windows.
+    def __new__(cls, *args, **kwargs) -> 'SharedTempFile':
+        """Extend behaviour of Path.__new__.
+
+        Create a named temporary file with auto-delete disabled. This allows it
+        to be kept closed when not reading or writing to the file. Thus
+        allowing the file to be shared when running under Windows.
+        """
         tf = tempfile.NamedTemporaryFile(mode='wt+', delete=False)
         tf.close()
         return super().__new__(cls, tf.name, *args, **kwargs)

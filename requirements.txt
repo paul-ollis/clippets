@@ -1,10 +1,16 @@
 config-path
 markdown
 markdown_strings
-textual
-textual[dev]
+-e /home/paul/np/os/python/textual/
+-e /home/paul/np/os/python/textual-dev/
 
 jinja2
+pycodestyle
+pylint
 pytest
-pytest-rich/
+pytest-asyncio
+-e pytest-rich/
 syrupy
+
+build
+twine
