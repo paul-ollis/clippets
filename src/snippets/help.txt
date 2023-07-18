@@ -36,7 +36,8 @@ indicated.
     Display of this help. Press F1 again to return to *normal mode*.
 
 **Up, Down**
-    Move to the previous or next snippet.
+    Move to the previous or next snippet. This will cause the filter field to
+    loase focus.
 
 **Enter (Return), Space**
     If the highlighted snippet is already in the clipboard, remove it. Otherwise
@@ -62,8 +63,8 @@ indicated.
     effect of undo.
 
 **Ctrl+F**
-    Toggle the focus for the filter field at the top of the display. See (TBD)
-    for how this is used.
+    Toggle the focus to or away from the filter field at the top of the display.
+    See (TBD) for how this is used.
 
     [Mouse: Left click the field to give it focus.]
 

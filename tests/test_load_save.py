@@ -89,8 +89,9 @@ def test_single_empty_group(snippet_infile):
         Group: <ROOT>
         KeywordSet:
         Group: Main
-        KeywordSet:''')
-    assert root.full_repr() == expect
+        KeywordSet:
+        PlaceHolder:''')
+    assert expect == root.full_repr()
 
 
 def test_single_entry_group(snippet_infile):
@@ -294,3 +295,21 @@ def test_trailing_text_is_preserved(snippet_infile, snippet_outfile):
     root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
+
+
+def test_keywords_are_saved(snippet_infile, snippet_outfile):
+    """Keywords are saved."""
+    expected = populate(snippet_infile, '''
+        Main
+          @keywords@
+            one
+            two
+          @md@
+            Snippet 1
+
+        # Comment
+        |
+    ''')
+    root, _ = snippets.load(snippet_infile.name)
+    snippets.save(snippet_outfile.name, root)
+    assert expected == str(snippet_outfile)

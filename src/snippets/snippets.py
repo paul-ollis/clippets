@@ -10,7 +10,7 @@ import weakref
 from  contextlib import suppress
 from functools import partial
 from pathlib import Path
-from typing import List, Optional, Set, Tuple, Union
+from typing import ClassVar
 
 from markdown_strings import esc_format
 
@@ -28,8 +28,8 @@ class SnippetInsertionPointer:
     def __init__(self, snippet):
         self._snippet = snippet
         self.after = False
-        self._prev_snippet: Union[bool, None, Snippet] = False
-        self._next_snippet: Union[bool, None, Snippet] = False
+        self._prev_snippet: bool | None | Snippet = False
+        self._next_snippet: bool | None | Snippet = False
 
     @property
     def snippet(self):
@@ -59,7 +59,7 @@ class SnippetInsertionPointer:
         return self._next_snippet
 
     @property
-    def addr(self) -> Tuple[str, bool]:
+    def addr(self) -> tuple[str, bool]:
         """The insertaion point in the form (uid, insert_after)."""
         return self.snippet.uid(), self.after
 
@@ -135,11 +135,22 @@ class Element:
 
     id_source = itertools.count()
 
-    def __init__(self, parent: Element, first_line: Optional[str] = None):
+    def __init__(self, parent: Element, first_line: str | None = None):
         self.parent = parent
         self._uid = f'{self.__class__.__name__.lower()}-{next(self.id_source)}'
         self.first_line = first_line
-        self.source_lines = []
+        self._source_lines = []
+        self.dirty = True
+
+    @property
+    def source_lines(self) -> tuple:
+        """The source lines for this element."""
+        return tuple(self._source_lines)
+
+    @source_lines.setter
+    def source_lines(self, value):
+        self._source_lines = list(value)
+        self.dirty = True
 
     @property
     def root(self):
@@ -200,7 +211,7 @@ class Element:
 
     def neighbour(
             self, *, backwards: bool, within_group: bool,
-            predicate=lambda _el: True) -> Optional[Snippet]:
+            predicate=lambda _el: True) -> Snippet | None:
         """Get this element's immediate neighbour.
 
         :backwards:    If set then find preceding neighbour.
@@ -235,7 +246,7 @@ class TextualElement(Element):
 
     def add(self, line):
         """Add a line to this element."""
-        self.source_lines.append(line)
+        self._source_lines.append(line)
 
     @property
     def text(self) -> str:
@@ -288,7 +299,7 @@ class PreservedText(TextualElement):
         """Generate the text that should be written to a file."""
         return '\n'.join(self.source_lines) + '\n'
 
-    def clean(self) -> Optional[Element]:
+    def clean(self) -> Element | None:
         """Clean the source lines."""
         if self.first_line is not None:
             self.source_lines = [self.first_line,  *self.source_lines]
@@ -329,6 +340,7 @@ class Snippet(TextualElement):
     def reset(self):
         """Clear any cached state."""
         self._marked_lines = []
+        self.dirty = True
 
     def is_first(self) -> bool:
         """Test if a snippet is the first in its group."""
@@ -346,23 +358,21 @@ class Snippet(TextualElement):
         return esc_format(self.body).splitlines()
 
     def duplicate(self):
-        """Create a duplicate of this snippet."""
+        """Create a duplicate of this snippet, inserted after."""
         inst = self.__class__(self.parent)
         inst.source_lines = list(self.source_lines)
+        self.parent.add(inst, after=self)
         return inst
 
     def set_text(self, text):
-        """Set the text for this snippet.
-
-        This is only used when the source file is also updated. So the end line
-        index is updated along with the source lines.
-        """
+        """Set the text for this snippet."""
         self._marked_lines = []
-        self.source_lines = [f'   {line}' for line in text.splitlines()]
-        if self.source_lines[-1].strip():
-            self.source_lines.append('')
+        lines = [f'   {line}' for line in text.splitlines()]
+        if lines[-1].strip():
+            lines.append('')
+        self.source_lines = lines
 
-    def clean(self) -> Optional[Element]:
+    def clean(self) -> Element | None:
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
@@ -374,11 +384,11 @@ class Snippet(TextualElement):
             `PreservedText` instance.
         """
         super().clean()
-        lines = self.source_lines
+        lines = self._source_lines
         removed = []
         while lines and not lines[-1].strip():
             removed.append(lines.pop())
-        self.source_lines[:] = textwrap.dedent('\n'.join(lines)).splitlines()
+        self._source_lines[:] = textwrap.dedent('\n'.join(lines)).splitlines()
         if removed:
             p = PreservedText(parent=None)
             while removed:
@@ -442,6 +452,10 @@ class KeywordSet(TextualElement):
         """
         return f'{" ".join(sorted(self.words))}'
 
+    def is_empty(self):
+        """Detemine if this keyword set is empty."""
+        return not self.words
+
     @classmethod
     def combine(cls, parent, *keyword_sets):
         """Combine multiple KeywordSet instances into just one."""
@@ -502,7 +516,7 @@ class Group(GroupDebugMixin, Element):
     """A group of snippets and/or sub groups."""
 
     # pylint: disable=too-many-public-methods
-    all_tags = set()
+    all_tags: ClassVar[set[str]] = set()
 
     def __init__(self, name, parent=None, tag_text=''):
         super().__init__(parent)
@@ -529,8 +543,8 @@ class Group(GroupDebugMixin, Element):
 
     def add(
             self, child,
-            after: Optional[Element] = None,
-            before: Optional[Element] = None):
+            after: Element | None = None,
+            before: Element | None = None):
         """Add a new element as a child of this group."""
         children = self.children
         if after:
@@ -543,7 +557,7 @@ class Group(GroupDebugMixin, Element):
         child.parent = self
 
     def remove(self, child):
-        """Add a new element as a child of this group."""
+        """Remove a child element from this group."""
         with suppress(ValueError):
             self.children.remove(child)
         snippets = [el for el in self.children if isinstance(el, Snippet)]
@@ -574,7 +588,7 @@ class Group(GroupDebugMixin, Element):
         """Test whether this group has zero children."""
         return bool(self.children)
 
-    def snippets(self) -> List[Snippet]:
+    def snippets(self) -> list[Snippet]:
         """Provide this group's snippets."""
         return [c for c in self.children if isinstance(c, Snippet)]
 
@@ -645,14 +659,14 @@ class Group(GroupDebugMixin, Element):
         snippets = [el for el in self.children if isinstance(el, Snippet)]
         return snippets and snippets[-1] is snippet
 
-    def first_snippet(self) -> Optional[Snippet]:
+    def first_snippet(self) -> Snippet | None:
         """Get the first snippet, if any."""
         try:
             return next(self.walk_snippets(backwards=False))
         except StopIteration:
             return None
 
-    def find_element_by_uid(self, uid) -> Optional[Element]:
+    def find_element_by_uid(self, uid) -> Element | None:
         """Find an element with the given UID."""
         for el in self.walk(backwards=False):
             if el.uid() == uid:
@@ -707,35 +721,44 @@ class Group(GroupDebugMixin, Element):
                 return False
         return False
 
-    def keyword_set(self) -> Optional[KeywordSet]:
+    def keyword_set(self) -> KeywordSet | None:
         """Find the keyword set, if any, for this group."""
         return self.children[0]
 
-    def keywords(self) -> Set[str]:
+    def keywords(self) -> set[str]:
         """Provide all the keywords applicable to this group's snippets."""
         return self.keyword_set().words
 
+    @property
+    def full_name(self):
+        """The full name of this group."""
+        pfull_name = self.parent.full_name if self.parent else ''
+        if pfull_name:
+            return f'{pfull_name} : {self.name}'
+        elif self.name != '<ROOT>':
+            return self.name
+        else:
+            return ''
+
     def file_text(self):
         """Generate the text that should be written to a file."""
-        return f'{self.name}\n'
+        if self.tags:
+            return f'{self.full_name} [{" ".join(self.tags)}]\n'
+        else:
+            return f'{self.full_name}\n'
 
 
 def walk_group_tree(
         basic_walk, predicate=lambda _el: True, first_id: str = ''):
     """Perform a walk."""
-    #@print('START WALK', repr(first_id))
     it = basic_walk()
     if first_id:
         for el in it:
-            #@print('  A.NEXT', el.uid())
             if el.uid() == first_id:
-                #@print('    A.TEST', predicate(el))
                 if predicate(el):
-                    #@print('        A.YIELD FIRST')
                     yield el
                 break
     for el in it:
-        #@print('  B.NEXT', el.uid(), predicate(el))
         if predicate(el):
             yield el
 
@@ -835,28 +858,18 @@ class Loader:
 
 
 # Conveniant types.
-SnippetLike = Union[Snippet, PlaceHolder]
-
-
-def is_snippet(el: Element) -> bool:
-    """Test if an element is a snippet."""
-    return isinstance(el, Snippet)
+SnippetLike = Snippet | PlaceHolder
 
 
 def is_snippet_like(el: Element) -> bool:
     """Test if an element is like a snippet.
 
-    This treats a PlaceHolder as like a snippet.
+    A PlaceHolder as considered to be snippet-like.
     """
     return isinstance(el, SnippetLike)
 
 
-def is_snippet(el: Element) -> bool:
-    """Test if an element is a group."""
-    return isinstance(el, Group)
-
-
-def id_of_element(obj: Optional[Element]) -> Optional[str]:
+def id_of_element(obj: Element | None) -> str | None:
     """Get the unique ID of an Element."""
     return None if obj is None else obj.uid()
 
@@ -871,9 +884,11 @@ def save(path, root):
     """Save a snippet tree to a file."""
     with Path(path).open('wt', encoding='utf8') as f:
         for el in root.walk(backwards=False):
-            if isinstance(el, KeywordSet) and el.is_empty():
-                continue
             f.write(el.file_text())
+            if isinstance(el, Group):
+                kws = el.keyword_set()
+                if not kws.is_empty():
+                    f.write(kws.file_text())
 
 
 def backup_file(path):

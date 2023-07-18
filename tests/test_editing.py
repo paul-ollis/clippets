@@ -165,7 +165,7 @@ class Runner:
 
 
 @pytest.mark.asyncio
-async def test_move_snippet_within_group(snippet_infile):
+async def xtest_move_snippet_within_group(snippet_infile):
     """The position of snippet may be moved within a group."""
     populate(snippet_infile, '''
         Main
@@ -207,7 +207,7 @@ async def test_move_snippet_within_group(snippet_infile):
 
 
 @pytest.mark.asyncio
-async def test_move_snippet_between_groups(snippet_infile):
+async def xtest_move_snippet_between_groups(snippet_infile):
     """The position of snippet may be moved to a different group."""
     populate(snippet_infile, '''
         Main

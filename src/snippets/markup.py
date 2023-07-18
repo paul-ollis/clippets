@@ -438,11 +438,6 @@ class CodeBlock(Paragraph):
         text = '\n'.join(self.lines)
         return f'~~~{lang}\n{text}\n~~~'
 
-    def widget(self):
-        """Create a widget for this elment."""
-        w = super().widget()
-        return w
-
     def _snippet(self) -> str:
         """Format a snippet of text for use by __repr__."""
         return f'{self.lang}: {self.lines[0]}'
@@ -573,8 +568,8 @@ def generate():
 
 
 if __name__ == '__main__':
-    print()
-    test_doc = Document(BlockTokeniser(help_text))
+    test_help_path = Path(__file__).parent / 'help.txt'
+    test_doc = Document(BlockTokeniser(test_help_path.read_text()))
     test_doc.dump()
     for widget in test_doc.generate():
         print(widget.classes)

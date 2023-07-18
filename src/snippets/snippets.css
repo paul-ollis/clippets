@@ -43,6 +43,10 @@ Screen {
     margin: 0 1 0 4;
     outline-bottom: solid $accent;
 }
+.is_text {
+    height: auto;
+    padding: 0 0 1 0;
+}
 
 /* Markup when moving a snippet. */
 .dest_below {
@@ -67,10 +71,13 @@ Screen {
     outline-bottom: solid  $success;
 }
 
-/* Markup to highlight the selected snipet. */
+/* Markup to highlight the selected snippet. */
 .kb_focussed {
     outline: solid $secondary;
     padding: 1 1 0 1;
+}
+.is_text.kb_focussed {
+    padding: 1 1 1 1;
 }
 .input.kb_focussed {
     outline: solid $secondary;
@@ -97,9 +104,6 @@ MarkdownParagraph {
 /* Basic settings for group labels and snippets. */
 .is_group {
     background: $primary-lighten-2;
-}
-.is_text {
-    padding: 0 0 1 0;
 }
 
 #result {

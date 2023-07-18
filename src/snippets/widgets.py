@@ -31,7 +31,7 @@ re_keyword = re.compile('\u2e24([^\u2e25]*)\u2e25')
 class StdMixin:                        # pylint: disable=too-few-public-methods
     """Common code for various widgets."""
 
-    def on_enter(self, _ev):
+    def on_enter(self, _event):
         """Handle a mouse entering a widget."""
         self.app.update_hover(w=self)
 
@@ -39,38 +39,36 @@ class StdMixin:                        # pylint: disable=too-few-public-methods
 class MyMarkdown(Markdown, StdMixin):
     """Application specific Markdown widget."""
 
-    def on_click(self, ev):
+    def on_click(self, event):
         """Process a mouse click."""
         if 'is_snippet' in self.classes:
-            #@ print(f'CLICK[{self.__class__.__name__}]: {ev=}')
-            ev.snippet = self
+            event.snippet = self
 
 
 class MyText(Static, StdMixin):
     """Application specific Text widget."""
 
-    def on_click(self, ev):
+    def on_click(self, event):
         """Process a mouse click."""
         if 'is_snippet' in self.classes:
-            #@ print(f'CLICK[{self.__class__.__name__}]: {ev=}')
-            ev.snippet = self
+            event.snippet = self
 
 
 class MyLabel(Label, StdMixin):
     """Application specific Label widget."""
 
-    def on_click(self, ev):
+    def on_click(self, event):
         """Process a mouse click."""
         if 'is_group' in self.classes:
-            ev.group = self
+            event.group = self
 
 
 class MyTag(MyLabel):
     """A label indicating a snippet tag."""
 
-    def on_click(self, ev):
+    def on_click(self, event):
         """Process a mouse click."""
-        ev.tag = self
+        event.tag = self
 
 
 class MyVerticalScroll(VerticalScroll, StdMixin):
@@ -80,13 +78,13 @@ class MyVerticalScroll(VerticalScroll, StdMixin):
 class MyInput(Input):
     """Application specific Input widget."""
 
+    def on_blur(self, _event):
+        """Process a mouse click."""
+        self.app.handle_blur(self)
+
 
 class SnippetMenu(ModalScreen):
     """Menu providing snippet action choices."""
-
-    BINDINGS = [
-        Binding('q', 'request_quit', 'Exit help'),
-    ]
 
     def compose(self):
         """Build the widget hierarchy."""
