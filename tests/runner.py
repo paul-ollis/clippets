@@ -1,9 +1,9 @@
-"""Simple wrapper to run Snippets for snapshot tests."""
+"""Simple wrapper to run Clippets for snapshot tests."""
 
 import sys
 
 
-from snippets import core
+from clippets import core
 
 args = core.parse_args()
-app = core.Snippets(args)
+app = core.Clippets(args)

@@ -1,6 +1,6 @@
 [project]
-name = "snippets"
-version = "0.0.1"
+name = "clippets"
+version = "0.0.2pre"
 authors = [
   { name="Paul Ollis", email="paul@cleversheep.org" },
 ]
@@ -10,9 +10,10 @@ readme = "README.md"
 classifiers = [
     'Development Status :: 3 - Alpha',
     "License :: OSI Approved :: MIT License",
-    "Operating System :: Linux, Windows",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Environment :: Console :: UI",
+    "Environment :: Console",
 ]
 dependencies = [
     'markdown',
@@ -21,14 +22,15 @@ dependencies = [
 ]
 
 [tool.setuptools.package-data]
-snippets = ["help.txt", "snippets.css"]
+clippets = ["help.txt", "clippets.css"]
 
 [project.scripts]
-snippets = "snippets.core:main"
+clippets = "clippets.core:main"
+snippets = "clippets.core:main"
 
 [project.urls]
-"Homepage" = "https://github.com/paul-ollis/snippets"
-"Bug Tracker" = "https://github.com/paul-ollis/snippets/issues"
+"Homepage" = "https://github.com/paul-ollis/clippets"
+"Bug Tracker" = "https://github.com/paul-ollis/clippets/issues"
 
 [build-system]
 requires = ["setuptools>=61.0"]

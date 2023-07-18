@@ -2,5 +2,5 @@
 
 import sys
 
-from snippets import core
+from clippets import core
 sys.exit(core.main())

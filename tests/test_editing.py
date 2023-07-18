@@ -8,7 +8,7 @@ import pytest
 from fixtures import TestFile
 from support import Namespace, clean_text, populate
 
-from snippets import core
+from clippets import core
 
 msg_filter = set([
     'Callback',
@@ -35,7 +35,7 @@ def dump(*strings):
 
 
 class Runner:
-    """Runs the Snippets application in a controlled manner.
+    """Runs the Clippets application in a controlled manner.
 
     The app is run under the pytest asyncio loop.
     """
@@ -48,7 +48,7 @@ class Runner:
                 '/tmp/test.log', 'wt', buffering=1, encoding='utf8')
         print('\n\n\n', file=self.logf)
         print(actions, file=self.logf)
-        self.app = core.Snippets(
+        self.app = core.Clippets(
             Namespace(snippet_file=snippet_file.name), logf=self.logf)
         self.q = asyncio.Queue()
         self.actions = actions

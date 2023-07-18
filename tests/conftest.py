@@ -263,7 +263,7 @@ def snap_compare(
                 press=press,
                 terminal_size=terminal_size,
                 run_before=run_before,
-                app_path='/home/paul/np/sw/snippets/tests/runner.py',
+                app_path='/home/paul/np/sw/clippets/tests/runner.py',
             )
 
         result = snapshot == actual_screenshot

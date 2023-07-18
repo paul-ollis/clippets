@@ -1,6 +1,6 @@
-"""Loading and saving the snippets file.
+"""Loading and saving the clippets file
 
-The snippets file contains a mixture of the following:
+The clippets file contains a mixture of the following:
 
 Comments
     Any unindented line that starts with a hash ('#').
@@ -50,7 +50,7 @@ import pytest
 
 from support import clean_text, populate
 
-from snippets import snippets
+from clippets import snippets
 
 
 def dump(*strings):

@@ -1,4 +1,5 @@
-# snippets
+# Clippets
+
 Tool to quickly combine (rich) text snippets into the clipboard.
 
 https://github.com/paul-ollis/snippets/assets/6062510/acc93396-c7b8-429f-825e-cfd940959760

@@ -34,7 +34,6 @@ from textual._context import (
 from textual.app import App, Binding, ComposeResult
 from textual.containers import Horizontal
 from textual.css.query import NoMatches
-from textual.message import Message
 from textual.pilot import Pilot
 from textual.screen import Screen
 from textual.walk import walk_depth_first
@@ -54,6 +53,7 @@ from .widgets import (
 if TYPE_CHECKING:
     import io
 
+    from textual.message import Message
     from textual.widget import Widget
     from textual.events import Event
 
@@ -129,12 +129,12 @@ class Matcher:                         # pylint: disable=too-few-public-methods
 
 
 BANNER = r'''
-  ____        _                  _
- / ___| _ __ (_)_ __  _ __   ___| |_ ___
- \___ \| '_ \| | '_ \| '_ \ / _ \ __/ __|
-  ___) | | | | | |_) | |_) |  __/ |_\__ \
- |____/|_| |_|_| .__/| .__/ \___|\__|___/
-               |_|   |_|
+  ____ _ _                  _
+ / ___| (_)_ __  _ __   ___| |_ ___
+| |   | | | '_ \| '_ \ / _ \ __/ __|
+| |___| | | |_) | |_) |  __/ |_\__ \
+ \____|_|_| .__/| .__/ \___|\__|___/
+          |_|   |_|
 '''
 
 
@@ -163,7 +163,7 @@ class HelpScreen(Screen):
 
 
 class MainScreen(Screen):
-    """Main Snippets screen."""
+    """Main Clippets screen."""
 
     def __init__(self, groups: Group):
         super().__init__(name='main')
@@ -219,10 +219,6 @@ class MainScreen(Screen):
         """Perform idle processing."""
         w = self.query_one('.footer')
         w.check_context()
-
-    def on_mount(self):
-        """Yada."""
-        print(next(ts), 'MOUNT Screen')
 
 
 def make_snippet_widget(uid, snippet) -> Widget | None:
@@ -295,7 +291,7 @@ async def resolve(q, lookup, walk, query):
 
 
 class AppMixin:
-    """The main Snippets screen."""
+    """Mixin providing application logic."""
 
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-instance-attributes
@@ -625,7 +621,7 @@ class AppMixin:
         """Duplicate and the edit the current snippet."""
         snippet = self.groups.find_element_by_uid(id_str)
         new_snippet = snippet.duplicate()
-        text = run_editor(new_snippet)
+        text = run_editor(new_snippet.text)
         new_snippet.set_text(text)
         self.rebuild_after_edits()
 
@@ -791,12 +787,12 @@ class AppMixin:
             print(*args, file=self.logf)
 
 
-class Snippets(AppMixin, App):
+class Clippets(AppMixin, App):
     """The textual application object."""
 
     # pylint: disable=too-many-instance-attributes
     TITLE = 'Comment snippet wrangler'
-    CSS_PATH = 'snippets.css'
+    CSS_PATH = 'clippets.css'
     SCREENS: ClassVar[dict] = {'help': HelpScreen()}
     id_to_focus: ClassVar[dict] = {'input': 'filter'}
 
@@ -1079,11 +1075,11 @@ def run_editor(text) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    """Run the snippets application."""
+    """Run the clippets application."""
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--raw', action='store_true',
-        help='Parse snippets as raw text.')
+        help='Parse clippets as raw text.')
     parser.add_argument('snippet_file')
     return parser.parse_args()
 
@@ -1105,6 +1101,6 @@ is_group = partial(is_type, classinfo=Group)
 
 def main():
     """Run the application."""
-    app = Snippets(parse_args())
+    app = Clippets(parse_args())
     with terminal_title('Snippet-wrangler'):
         app.run()
