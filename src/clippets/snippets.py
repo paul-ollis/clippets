@@ -134,10 +134,15 @@ class Element:
     """An element in a tree of groups and snippets."""
 
     id_source = itertools.count()
+    has_uid: bool = True
 
     def __init__(self, parent: Element, first_line: str | None = None):
         self.parent = parent
-        self._uid = f'{self.__class__.__name__.lower()}-{next(self.id_source)}'
+        if self.has_uid:
+            n = next(self.id_source)
+            self._uid = f'{self.__class__.__name__.lower()}-{n}'
+        else:
+            self._uid = ''
         self.first_line = first_line
         self._source_lines = []
         self.dirty = True
@@ -177,9 +182,7 @@ class Element:
         """Calculete the number of line in this snippet."""
         return len(self.source_lines)
 
-    def full_repr(                            # pylint: disable=unused-argument
-            self,
-            end='\n'):                                           # noqa: ARG002
+    def full_repr(self, *, end='\n', debug: bool = False):
         """Format a simple representation of this element.
 
         This is intended for test support. The exact format may change between
@@ -187,7 +190,8 @@ class Element:
         """
         body = self.body_repr()
         spc = ' ' if body else ''
-        return f'{self.__class__.__name__}:{spc}{body}'
+        id_part = f' {self.uid()}' if debug else ''
+        return f'{self.__class__.__name__}{id_part}:{spc}{body}'
 
     def body_repr(self):                          # pylint: disable=no-self-use
         """Format a simple representation of this element's body.
@@ -294,6 +298,8 @@ class PreservedText(TextualElement):
     - Additional vertical space.
     = Comment blocks.
     """
+
+    has_uid: bool = False
 
     def file_text(self):
         """Generate the text that should be written to a file."""
@@ -498,17 +504,20 @@ class GroupDebugMixin:
             s.append(g.outline_repr(end=''))
         return '\n'.join(s) + end
 
-    def full_repr(self, end='\n'):
+    def full_repr(self, end='\n', *, debug: bool = False):
         """Format a simple outline representation of the tree.
 
         This is intended for test support. The exact format may change between
         releases.
         """
-        s = [f'Group: {self.name}']
+        if debug:
+            s = [f'Group: {self.name} {self.uid()}']
+        else:
+            s = [f'Group: {self.name}']
         for c in self.children:
-            s.append(c.full_repr(end=''))
+            s.append(c.full_repr(end='', debug=debug))
         for g in self.groups.values():
-            s.append(g.full_repr(end=''))
+            s.append(g.full_repr(end='', debug=debug))
         return '\n'.join(s) + end
 
 
@@ -909,5 +918,4 @@ def backup_file(path):
                 print('MOVE', src_path, dirpath / new_name)
                 shutil.move(src_path, dirpath / new_name)
     with suppress(OSError):
-        print('BACKUP', path, dirpath / names[0])
         shutil.copy(path, dirpath / names[0])

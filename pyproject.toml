@@ -65,7 +65,11 @@ ignore = [
     "ANN003",  # Missing return type for **kwargs.
     "ANN201",  # Missing return type for public method/function.
     "ANN202",  # Missing return type for private method/function.
+    "ANN205",  # Missing return type for static method.
     "ANN206",  # Missing return type for class method.
+    "ARG002",  # Unused argument.
+               # Also pylint:unused-argument. If I can prevent this when the
+               # API demands the (keyword) argument then I will re-enable.
     "TD002",   # Author missing for 'todo'
     "TD003",   # Issue ref missing for 'todo'
 ]

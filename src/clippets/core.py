@@ -21,7 +21,6 @@ import re
 import subprocess
 import sys
 import threading
-import time
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from functools import partial, wraps
@@ -61,19 +60,6 @@ HL_GROUP = ''
 
 LEFT_MOUSE_BUTTON = 1
 RIGHT_MOUSE_BUTTON = 3
-
-
-def timestamp():
-    """Provide textual timestamps to 3 decimal places."""
-    start = time.time()
-    now = time.time()
-    while True:
-        yield f'{now - start:6.3f}'
-        now = time.time()
-
-
-ts = timestamp()
-next(ts)
 
 
 @dataclass
@@ -248,7 +234,6 @@ async def populate(q, walk, query):
         if cmd is None:
             break
 
-        print(next(ts), 'START populate')
         n = 0
         for snippet in walk():
             if q.qsize() > 0:
@@ -261,7 +246,6 @@ async def populate(q, walk, query):
                     n += 1
                     if n % 30 == 0:
                         await asyncio.sleep(0.5)
-        print(next(ts), 'End populate', n)
 
 
 async def resolve(q, lookup, walk, query):
@@ -287,7 +271,6 @@ async def resolve(q, lookup, walk, query):
             if q.qsize() == 0:
                 lookup.clear()
                 lookup.update(new_lookup)
-                print('LOOKUP POPULATED')
 
 
 class AppMixin:
@@ -303,6 +286,9 @@ class AppMixin:
 
     def __init__(self, groups: Group):
         super().__init__()
+        for name in list(self.MODES):
+            if name != '_default':
+                self.MODES.pop(name)
         self.chosen = []
         self.collapsed = set()
         self.edited_text = ''
@@ -340,7 +326,15 @@ class AppMixin:
         """Find the widget for a given element."""
         uid = el.uid()
         if uid not in self.lookup:
-            self.lookup[uid] = self.query_one(f'#{el.uid()}')
+            try:
+                self.lookup[uid] = self.query_one(f'#{el.uid()}')
+            except NoMatches:
+                print('AAA', uid, el)
+                for elem in self.walk():
+                    print('   ', elem.uid(), elem)
+                for w in self.query():
+                    print('...', w.id, w)
+                raise
         return self.lookup[uid]
 
     ## Management of dynanmic display features.
@@ -485,7 +479,7 @@ class AppMixin:
         return k
 
     ## Ways to limit visible snippets.
-    def filter_view(self) -> None:
+    def filter_view(self) -> None:                                 # noqa: C901
         """Hide snippets that have been filtered out or folded away."""
         def st_opened():
             return all(ste.uid() not in self.collapsed for ste in stack)
@@ -603,9 +597,7 @@ class AppMixin:
         self.lookup.clear()
         self.screen.rebuild_tree_part()
         self.resolver_q.put_nowait('rebuild')
-        # self.populate()
         self.populater_q.put_nowait('pop')
-        # self.schedule_refresh()
         self.update_result()
         self.set_visuals()
 
@@ -835,7 +827,6 @@ class Clippets(AppMixin, App):
         """Set up the application bindings."""
         bind = partial(self.key_handler.bind, ('normal',), show=False)
         bind('f8', 'toggle_order', description='Toggle order')
-        bind('f9', 'toggle_collapse_all', description='Collapse/open all')
         bind('up', 'select_prev')
         bind('down', 'select_next')
         bind(
@@ -846,14 +837,15 @@ class Clippets(AppMixin, App):
         bind('e', 'edit_snippet')
         bind('d c', 'duplicate_snippet')
         bind('m', 'start_moving_snippet', description='Move snippet')
+        bind('f7', 'edit_keywords', description='Edit keywords')
 
         bind = partial(self.key_handler.bind, ('normal',), show=True)
         bind('f1', 'show_help', description='Help')
         bind('f2', 'edit_clipboard', description='Edit')
         bind('f3', 'clear_selection', description='Clear')
-        bind('f7', 'edit_keywords', description='Edit keywords')
-        bind('ctrl+q', 'quit', description='Quit', priority=True)
+        bind('f9', 'toggle_collapse_all', description='(Un)fold')
         bind('enter space', 'toggle_select', description='Toggle select')
+        bind('ctrl+q', 'quit', description='Quit', priority=True)
 
         bind = partial(self.key_handler.bind, ('moving',), show=True)
         bind(
@@ -878,7 +870,6 @@ class Clippets(AppMixin, App):
 
     def on_ready(self) -> None:
         """React to the DOM having been created."""
-        print(next(ts), 'APP READY')
         self.resolver = asyncio.create_task(
             resolve(self.resolver_q, self.lookup, self.walk, self.query_one))
         self.resolver_q.put_nowait('rebuild')
@@ -890,7 +881,6 @@ class Clippets(AppMixin, App):
         self.screen.set_focus(None)
         self.active = True
         self.set_visuals()
-        print(next(ts), 'Visuals set')
 
     def action_show_help(self) -> None:
         """Show the help screen."""
@@ -900,15 +890,14 @@ class Clippets(AppMixin, App):
         """Close the help screen."""
         self.pop_screen()
 
-    async def on_key(self, ev: Event) -> None:
+    async def on_key(self, event: Event) -> None:
         """Handle a top level key press."""
-        await self.key_handler.handle_key(ev)
+        await self.key_handler.handle_key(event)
+        event.stop()
 
     def on_mount(self) -> None:
         """Perform app start-up actions."""
         self.dark = True
-        print(next(ts), 'MOUNT App')
-        # self.populate()
         self.populater_q.put_nowait('pop')
 
     @asynccontextmanager
