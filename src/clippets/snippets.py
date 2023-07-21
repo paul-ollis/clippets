@@ -515,7 +515,8 @@ class GroupDebugMixin:
         else:
             s = [f'Group: {self.name}']
         for c in self.children:
-            s.append(c.full_repr(end='', debug=debug))
+            if not isinstance(c, PlaceHolder):
+                s.append(c.full_repr(end='', debug=debug))
         for g in self.groups.values():
             s.append(g.full_repr(end='', debug=debug))
         return '\n'.join(s) + end

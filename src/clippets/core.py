@@ -43,7 +43,7 @@ from .platform import (
     SharedTempFile, get_editor_command, get_winpos, put_to_clipboard,
     terminal_title)
 from .snippets import (
-    Group, Snippet, SnippetInsertionPointer, SnippetLike,
+    Group, Snippet, SnippetInsertionPointer, SnippetLike, PlaceHolder,
     id_of_element as id_of)
 from .widgets import (
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
@@ -216,7 +216,7 @@ def make_snippet_widget(uid, snippet) -> Widget | None:
     elif isinstance(snippet, Snippet):
         classes = f'{classes} is_text'
         w = MyText(id=uid, classes=classes)
-    elif isinstance(snippet, snippets.PlaceHolder):
+    elif isinstance(snippet, PlaceHolder):
         classes = f'{classes} is_placehoder'
         w = Static('-- place holder --', id=uid, classes=classes)
         w.display = False
@@ -342,41 +342,51 @@ class AppMixin:
         """Create a tuple of 'focussable' widgets."""
         return tuple(self.find_widget(s) for s in self.walk_snippets())
 
-    def insertion_widgets(self) -> tuple[Widget, ...]:
+    def insertion_widgets(self) -> tuple[tuple[Snippet, Widget], ...]:
         """Create a tuple of widgets involved in insetion operations."""
-        a = [self.query_one('#input')]
-        b = (
-            self.find_widget(s)
-            for s in self.walk_snippet_like())
-        return (*a, *b)
+        return tuple(
+            (s, self.find_widget(s)) for s in self.walk_snippet_like())
 
     @if_active
     def set_visuals(self) -> None:
         """Set and clear widget classes that control visual highlighting."""
+        self.set_snippet_visuals()
+        self.set_input_visuals()
+
+    @if_active
+    def set_snippet_visuals(self) -> None:
+        """Set and clear widget classes that control snippet highlighting."""
         filter_focussed = (fw := self.focused) and fw.id == 'filter'
-        for w in self.insertion_widgets():
+        for s, w in self.insertion_widgets():
             w.remove_class('kb_focussed')
             w.remove_class('mouse_hover')
-            w.remove_class('moving')
             w.remove_class('dest_above')
             w.remove_class('dest_below')
+            if isinstance(s, PlaceHolder):
+                w.display = False
             if self.move_info is not None:
-                info = self.move_info
-                source, dest = info.source, info.dest
-                if w.id == source.uid():
-                    w.add_class('moving')
-                else:
+                source, dest = self.move_info.source, self.move_info.dest
+                if w.id != source.uid():
                     uid, after = dest.addr
                     if uid != source.uid() and uid == w.id:
                         w.add_class('dest_below' if after else 'dest_above')
+                    if isinstance(dest.snippet, PlaceHolder):
+                        w.display = True
             else:
                 if w.id == self.focussed_snippet and not filter_focussed:
                     w.add_class('kb_focussed')
                 if w.id == self.hover_uid:
                     w.add_class('mouse_hover')
 
+    @if_active
+    def set_input_visuals(self) -> None:
+        """Set and clear widget classes that control input highlighting."""
+        filter_focussed = (fw := self.focused) and fw.id == 'filter'
+        w = self.query_one('#input')
         if filter_focussed:
-            self.query_one('#input').add_class('kb_focussed')
+            w.add_class('kb_focussed')
+        else:
+            w.remove_class('kb_focussed')
 
     @if_active
     def update_selected(self) -> None:
@@ -649,10 +659,11 @@ class AppMixin:
 
     def action_complete_move(self):
         """Complete a snippet move operation."""
-        if self.move_info and not self.move_info.unmoved():
-            self.move_info.dest.move_snippet(self.move_info.source)
-            self.rebuild_after_edits()
+        info = self.move_info
         self.action_stop_moving()
+        if info and not info.unmoved():
+            info.dest.move_snippet(info.source)
+            self.rebuild_after_edits()
 
     def action_do_redo(self) -> None:
         """Redor the last undo action."""
@@ -733,6 +744,9 @@ class AppMixin:
 
     def action_stop_moving(self) -> None:
         """Stop moving a snippet - cancelling the move operation."""
+        if self.move_info:
+            w = self.find_widget(self.move_info.source)
+            w.remove_class('moving')
         self.move_info = None
         self.set_visuals()
 

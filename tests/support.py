@@ -3,14 +3,17 @@
 import asyncio
 import contextlib
 import textwrap
+import time
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import List
 
-from textual.pilot import wait_for_idle
-
-from fixtures import TempTestFile
-
 from clippets import core, log
+
+try:
+    NativeEventLoop = asyncio.ProactorEventLoop
+except AttributeError:
+    NativeEventLoop = asyncio.SelectorEventLoop
 
 data_dir = Path('/tmp/girok')
 msg_filter = set([
@@ -86,6 +89,54 @@ def suspend_capture(cap_fix):
     getattr(cap_fix, '_resume')()
 
 
+class TempTestFile:
+    """A temporary file for testing.
+
+    The only difference is that the string representation is the file's current
+    contents.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self._f = NamedTemporaryFile(*args, **kwargs)
+
+    @property
+    def name(self):
+        """The name of the temporary file."""
+        return self._f.name
+
+    def write(self, *args, **kwargs):
+        """Write to the file."""
+        return self._f.write(*args, **kwargs)
+
+    def read(self, *args, **kwargs):
+        """Reaf from the file."""
+        return self._f.read(*args, **kwargs)
+
+    def flush(self):
+        """Flush the file."""
+        return self._f.flush()
+
+    def close(self):
+        """Close the file."""
+        return self._f.close()
+
+    def seek(self, *args, **kwargs):
+        """Seek within the file."""
+        return self._f.seek(*args, **kwargs)
+
+    def __str__(self):
+        self._f.seek(0)
+        return self._f.read()
+
+
+async def wait_for_idle():
+    loop = asyncio.get_running_loop()
+    for _ in range(100):
+        if loop.is_idle():
+            break
+        await asyncio.sleep(0)
+
+
 class AppRunner:
     """Runs the Clippets application in a controlled manner.
 
@@ -112,11 +163,14 @@ class AppRunner:
             headless=True, size=size, message_hook=self.on_msg)
         svg = ''
         try:
-            self.wait_for_message_name('Ready')
             async with coro as self.pilot:
+                await self.wait_for_message_name('Ready')
                 for action in self.actions:
                     await self.apply_action(action)
+                print("Actions complete")
                 await wait_for_idle()
+                print("Now idle")
+                self.app.screen._on_timer_update()
                 svg = self.app.export_screenshot()
                 await self.pilot.press('ctrl+c')
         except Exception as exc:       # pylint: disable=broad-exception-caught
@@ -151,3 +205,29 @@ class AppRunner:
             m = await self.msg_q.get()
             if m.__class__.__name__ == name:
                 break
+
+
+class AltEventLoop(NativeEventLoop):
+    """This wrapping of the event loop to allow idle detection."""
+
+    def is_idle(self):
+        end_time = self.time() + self._clock_resolution
+        if self._ready:
+            print(f'READY = {len(self._ready)}')
+            return False
+        elif self._scheduled:
+            idle = self._scheduled[0]._when > end_time
+            print(f'TIMED = {idle}, {self._scheduled[0]._when - end_time:.3f}')
+            return idle
+        else:
+            return True
+
+
+class AltEventLoopPolicy(asyncio.DefaultEventLoopPolicy):
+    """Event loop policy to use `AltEventLoop`."""
+
+    _loop_factory = AltEventLoop
+
+
+# Make our enhanced event loop available.
+asyncio.set_event_loop_policy(AltEventLoopPolicy())

@@ -62,6 +62,11 @@ Screen {
     padding: 1 1 0 1;
     outline-bottom: solid  $success;
 }
+.is_text.moving {
+    outline: solid $success;
+    padding: 1 1 1 1;
+    outline-bottom: solid  $success;
+}
 
 .is_placehoder.dest_above {
     height: 3;

@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from operator import attrgetter
 from os import PathLike
-from tempfile import NamedTemporaryFile
 from pathlib import Path
 
 from jinja2 import Template
@@ -13,51 +12,16 @@ from textual.app import App
 
 import pytest
 from _pytest.config import ExitCode
+from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
+from syrupy import SnapshotAssertion
+
+from support import AppRunner, TempTestFile
 
 TEXTUAL_SNAPSHOT_SVG_KEY = pytest.StashKey[str]()
 TEXTUAL_ACTUAL_SVG_KEY = pytest.StashKey[str]()
 TEXTUAL_SNAPSHOT_PASS = pytest.StashKey[bool]()
 TEXTUAL_APP_KEY = pytest.StashKey[App]()
-
-class TempTestFile:
-    """A temporary file for testing.
-
-    The only difference is that the string representation is the file's current
-    contents.
-    """
-
-    def __init__(self, *args, **kwargs):
-        self._f = NamedTemporaryFile(*args, **kwargs)
-
-    @property
-    def name(self):
-        """The name of the temporary file."""
-        return self._f.name
-
-    def write(self, *args, **kwargs):
-        """Write to the file."""
-        return self._f.write(*args, **kwargs)
-
-    def read(self, *args, **kwargs):
-        """Reaf from the file."""
-        return self._f.read(*args, **kwargs)
-
-    def flush(self):
-        """Flush the file."""
-        return self._f.flush()
-
-    def close(self):
-        """Close the file."""
-        return self._f.close()
-
-    def seek(self, *args, **kwargs):
-        """Seek within the file."""
-        return self._f.seek(*args, **kwargs)
-
-    def __str__(self):
-        self._f.seek(0)
-        return self._f.read()
 
 
 def temp_file(suffix: str, mode: str) -> TempTestFile:
@@ -94,6 +58,21 @@ def snippet_outfile() -> TempTestFile:
     yield from temp_file('in.txt', 'r+t')
 
 
+@pytest.fixture
+def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
+    """Provide a way to run the Clippets app anc capture a snapshot."""
+    async def run_app(infile: TempTestFile, actions: list, *, log=False):
+        runner = AppRunner(infile, actions)
+        if log:
+            with runner.logf:
+                svg = await runner.run()
+        else:
+            svg = await runner.run()
+        return runner, check_svg(snapshot, svg, request, runner.app)
+
+    return run_app
+
+
 class TempTestFileSource:
     """Fixture helper that can provide multiple test files."""
 
@@ -122,8 +101,6 @@ def gen_tempfile():
 
 def check_svg(expect, actual, request, app) -> bool:
     """Check expected against actual SVG screenshot."""
-    #@ actual = actual.replace('font-size: 20px;', 'font-size: 15px;')
-    #@ actual = actual.replace('font-size: 18px;', 'font-size: 13px;')
     result = expect == actual
     node = request.node
     if not result:

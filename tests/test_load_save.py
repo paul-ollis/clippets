@@ -89,8 +89,7 @@ def test_single_empty_group(snippet_infile):
         Group: <ROOT>
         KeywordSet:
         Group: Main
-        KeywordSet:
-        PlaceHolder:''')
+        KeywordSet:''')
     assert expect == root.full_repr()
 
 

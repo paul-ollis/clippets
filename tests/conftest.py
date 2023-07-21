@@ -15,10 +15,10 @@ from _pytest.terminal import TerminalReporter
 
 from rich.console import Console
 
-from fixtures import save_svg_diffs, snippet_infile, snippet_outfile
+from fixtures import (
+    save_svg_diffs, snapshot_run, snippet_infile, snippet_outfile)
 
 pytest_config = sys.modules['_pytest.config']
-
 
 __all__ = (
     'snippet_infile', 'snippet_outfile',
@@ -213,4 +213,3 @@ def pytest_terminal_summary(
             f'\n[b]View the [link=file://{snapshot_report_location}]'
             'failure report[/].\n'
         )
-        console.print(f'[bold]{snapshot_report_location}\n')
