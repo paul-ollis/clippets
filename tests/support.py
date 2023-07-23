@@ -9,7 +9,8 @@ from tempfile import NamedTemporaryFile
 from typing import List
 
 import log
-from clippets import core, log
+
+from clippets import core
 
 try:
     NativeEventLoop = asyncio.ProactorEventLoop

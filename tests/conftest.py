@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import difflib
+import os
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -16,12 +17,16 @@ from _pytest.terminal import TerminalReporter
 from rich.console import Console
 
 from fixtures import (
-    save_svg_diffs, snapshot_run, snippet_infile, snippet_outfile)
+    save_svg_diffs, snapshot_run, snippet_infile, snippet_outfile, tempdir,
+    work_file)
 
 pytest_config = sys.modules['_pytest.config']
 
 __all__ = (
-    'snippet_infile', 'snippet_outfile',
+    'snapshot_run',
+    'snippet_infile',
+    'snippet_outfile',
+    'work_file',
 )
 pytest_plugins = ('rich', 'asyncio')
 
@@ -190,7 +195,9 @@ def pytest_sessionfinish(
     After whole test run finished, right before returning the exit status to
     the system. Generates the snapshot report and writes it to disk.
     """
-    save_svg_diffs(session, exitstatus)
+    if os.environ.get('PYTEST_XDIST_WORKER') is None:
+        save_svg_diffs(session)
+        tempdir.cleanup()
 
 
 def pytest_terminal_summary(

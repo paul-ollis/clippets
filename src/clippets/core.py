@@ -725,7 +725,7 @@ class AppMixin:
         if self.focussed_snippet:
             self.edit_snippet(self.focussed_snippet)
 
-    def action_move_insertion_point(self, direction: str):
+    def action_move_insertion_point(self, direction: str) -> bool:
         """Move the snippet insertion up of down.
 
         :direction: Either 'up' or 'down'.
@@ -733,6 +733,9 @@ class AppMixin:
         snippet, dest = self.move_info.source, self.move_info.dest
         if dest.move(backwards=direction == 'up', skip=snippet):
             self.set_visuals()
+            return True
+        else:
+            return False
 
     def action_select_next(self) -> None:
         """Move the keyboard driven focus to the next widget."""

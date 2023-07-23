@@ -1,27 +1,59 @@
 """Common test fixtures."""
 
 import os
+import pickle
 from dataclasses import dataclass
 from datetime import datetime
 from operator import attrgetter
 from os import PathLike
 from pathlib import Path
+from tempfile import TemporaryDirectory, mkdtemp
 
 from jinja2 import Template
-from textual.app import App
+from rich.console import ConsoleDimensions
 
 import pytest
-from _pytest.config import ExitCode
 from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
 from syrupy import SnapshotAssertion
 
 from support import AppRunner, TempTestFile
 
-TEXTUAL_SNAPSHOT_SVG_KEY = pytest.StashKey[str]()
-TEXTUAL_ACTUAL_SVG_KEY = pytest.StashKey[str]()
-TEXTUAL_SNAPSHOT_PASS = pytest.StashKey[bool]()
-TEXTUAL_APP_KEY = pytest.StashKey[App]()
+HERE = Path(__file__).parent
+
+
+class MyTemporaryDirectory(TemporaryDirectory):
+    """A version of TemporaryDirectory that survives forking.
+
+    This version will not automatically clean up when the process exits.
+    """
+
+    # pylint: disable=too-few-public-methods
+
+    def __init__(self, name=None):      # pylint: disable=super-init-not-called
+        if name:
+            self.name = name
+        else:
+            self.name = mkdtemp(None, None, None)
+
+    def cleanup(self):
+        """Clean up the temporry directory."""
+        self._rmtree(self.name, ignore_errors=True)
+
+
+@dataclass
+class PseudoConsole:
+    """Something that looks enough like a Console to fill a Jinja2 template."""
+
+    legacy_windows: bool
+    size: ConsoleDimensions
+
+
+@dataclass
+class PseudoApp:
+    """Something that looks enough like an App to fill a Jinja2 template."""
+
+    console: PseudoConsole
 
 
 def temp_file(suffix: str, mode: str) -> TempTestFile:
@@ -74,7 +106,9 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
                 svg = await runner.run()
         else:
             svg = await runner.run()
-        return runner, check_svg(snapshot, svg, request, runner.app)
+        with runner.logf:
+            ret = runner, check_svg(snapshot, svg, request, runner.app)
+            return ret
 
     return run_app
 
@@ -105,20 +139,39 @@ def gen_tempfile():
     source.close()
 
 
+def node_to_report_path(node):
+    """Generate a reoirt file name for a test node."""
+    path, _, name = node.reportinfo()
+    temp = Path(path.parent)
+    base = []
+    while temp != temp.parent and temp.name != 'tests':
+        base.append(temp.name)
+        temp = temp.parent
+    parts = []
+    if base:
+        parts.append('_'.join(reversed(base)))
+    parts.append(path.name.replace('.', '_'))
+    parts.append(name.replace('[', '_').replace(']', '_'))
+    return Path(tempdir.name) / '_'.join(parts)
+
+
 def check_svg(expect, actual, request, app) -> bool:
     """Check expected against actual SVG screenshot."""
     result = expect == actual
-    node = request.node
+    svg_text = ''
+    expect_svg_text = ''
+    console = app.console
+    p_app = PseudoApp(PseudoConsole(console.legacy_windows, console.size))
     if not result:
         # The split and join below is a mad hack, sorry...
-        node.stash[TEXTUAL_SNAPSHOT_SVG_KEY] = "\n".join(
-            str(expect).splitlines()[1:-1]
-        )
-        node.stash[TEXTUAL_ACTUAL_SVG_KEY] = actual
-        node.stash[TEXTUAL_APP_KEY] = app
-    else:
-        node.stash[TEXTUAL_SNAPSHOT_PASS] = True
+        expect_svg_text = '\n'.join(str(expect).splitlines()[1:-1])
+        svg_text = actual
 
+    full_path, line_number, name = request.node.reportinfo()
+    data_path = node_to_report_path(request.node)
+    data = (
+        result, expect_svg_text, svg_text, p_app, full_path, line_number, name)
+    data_path.write_bytes(pickle.dumps(data))
     return result
 
 
@@ -135,60 +188,49 @@ class SvgSnapshotDiff:
     test_name: str
     path: PathLike
     line_number: int
-    app: App
+    app: PseudoApp
     environment: dict
 
 
-def save_svg_diffs(session: Session, exitstatus: int | ExitCode):
-    """Store SVG differences."""
-    # pylint: disable=too-many-locals
+def _get_svg_diffs(session: Session):
     diffs: list[SvgSnapshotDiff] = []
     pass_count = 0
-    for item in session.items:
-        # Grab the data our fixture attached to the pytest node
-        pass_count += int(
-            item.stash.get(TEXTUAL_SNAPSHOT_PASS, False))
-        snapshot_svg = item.stash.get(TEXTUAL_SNAPSHOT_SVG_KEY, None)
-        actual_svg = item.stash.get(TEXTUAL_ACTUAL_SVG_KEY, None)
-        app = item.stash.get(TEXTUAL_APP_KEY, None)
+    for data_path in Path(tempdir.name).iterdir():
+        (passed, expect_svg_text, svg_text, app, full_path, line_index, name
+            ) = pickle.loads(data_path.read_bytes())
+        pass_count += 1 if passed else 0
+        if not passed:
+            diffs.append(SvgSnapshotDiff(
+                snapshot=str(expect_svg_text),
+                actual=str(svg_text),
+                test_name=name,
+                path=full_path,
+                line_number=line_index + 1,
+                app=app,
+                environment=dict(os.environ)))
+    return diffs, pass_count
 
-        if app:
-            path, line_index, name = item.reportinfo()
-            diffs.append(
-                SvgSnapshotDiff(
-                    snapshot=str(snapshot_svg),
-                    actual=str(actual_svg),
-                    test_name=name,
-                    path=path,
-                    line_number=line_index + 1,
-                    app=app,
-                    environment=dict(os.environ),
-                )
-            )
 
+def save_svg_diffs(session: Session):
+    """Store SVG differences."""
+    diffs, pass_count = _get_svg_diffs(session)
     if diffs:
-        diff_sort_key = attrgetter("test_name")
-        diffs = sorted(diffs, key=diff_sort_key)
+        diffs = sorted(diffs, key=attrgetter("test_name"))
 
-        conftest_path = Path(__file__)
-        snapshot_template_path = (
-            conftest_path.parent / "snapshot_report_template.jinja2"
-        )
-        report_path_dir = conftest_path.parent / "output"
+        snapshot_template_path = HERE / "snapshot_report_template.jinja2"
+        report_path_dir = HERE / "output"
         report_path_dir.mkdir(parents=True, exist_ok=True)
         report_path = report_path_dir / "snapshot_report.html"
 
         template = Template(snapshot_template_path.read_text())
 
-        num_fails = len(diffs)
         num_snapshot_tests = len(diffs) + pass_count
-
         rendered_report = template.render(
             diffs=diffs,
             passes=pass_count,
-            fails=num_fails,
+            fails=len(diffs),
             pass_percentage=100 * (pass_count / max(num_snapshot_tests, 1)),
-            fail_percentage=100 * (num_fails / max(num_snapshot_tests, 1)),
+            fail_percentage=100 * (len(diffs) / max(num_snapshot_tests, 1)),
             num_snapshot_tests=num_snapshot_tests,
             now=datetime.utcnow(),
         )
@@ -197,3 +239,11 @@ def save_svg_diffs(session: Session, exitstatus: int | ExitCode):
 
         session.config._textual_snapshots = diffs
         session.config._textual_snapshot_html_report = report_path
+
+
+tempdir_name = os.environ.get('SNIPPET_TEST_TEMPDIR', '')
+if tempdir_name:
+    tempdir = MyTemporaryDirectory(tempdir_name)
+else:
+    tempdir = MyTemporaryDirectory()
+    os.environ['SNIPPET_TEST_TEMPDIR'] = tempdir.name
