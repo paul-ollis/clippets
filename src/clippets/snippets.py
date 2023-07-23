@@ -374,8 +374,6 @@ class Snippet(TextualElement):
         """Set the text for this snippet."""
         self._marked_lines = []
         lines = [f'   {line}' for line in text.splitlines()]
-        if lines[-1].strip():
-            lines.append('')
         self.source_lines = lines
 
     def clean(self) -> Element | None:

@@ -50,8 +50,6 @@ from .widgets import (
     SnippetMenu)
 
 if TYPE_CHECKING:
-    import io
-
     from textual.message import Message
     from textual.widget import Widget
     from textual.events import Event
@@ -648,7 +646,9 @@ class AppMixin:
         snippet = self.groups.find_element_by_uid(id_str)
         dest = SnippetInsertionPointer(snippet)
         self.move_info = MoveInfo(snippet, dest)
-        self.set_visuals()
+        if not (self.action_move_insertion_point('up')
+                or self.action_move_insertion_point('down')):
+            self.set_visuals()
 
     ## Binding handlers.
     def action_clear_selection(self) -> None:
@@ -787,11 +787,6 @@ class AppMixin:
                 self.collapsed.discard(group.uid())
         self.filter_view()
 
-    def debug(self, *args):
-        """Log a message, purely for debug purposes."""
-        if self.logf:
-            print(*args, file=self.logf)
-
 
 class Clippets(AppMixin, App):
     """The textual application object."""
@@ -802,8 +797,7 @@ class Clippets(AppMixin, App):
     SCREENS: ClassVar[dict] = {'help': HelpScreen()}
     id_to_focus: ClassVar[dict] = {'input': 'filter'}
 
-    def __init__(self, args, logf: io.TextIOWrapper | None = None):
-        self.logf = logf
+    def __init__(self, args):
         groups, title = snippets.load(args.snippet_file)
         if title:
             self.TITLE = title                   # pylint: disable=invalid-name
@@ -970,16 +964,13 @@ class Clippets(AppMixin, App):
         app_task = asyncio.create_task(run_app(app), name=f'run_test {app}')
 
         # Wait until the app has performed all startup routines.
-        self.debug('Wait for app_ready')
         await app_ready_event.wait()
-        self.debug('Done: Wait for app_ready')
 
         # Get the app in an active state.
         app._set_active()                                        # noqa: SLF001
 
         # Context manager returns pilot object to manipulate the app
         try:
-            self.debug('Create Pilot')
             pilot = Pilot(app)
             await pilot._wait_for_screen()                       # noqa: SLF001
             yield pilot
@@ -1045,11 +1036,11 @@ class KeyHandler:
 def run_editor(text) -> None:
     r"""Run the user's preferred editor on a textual element.
 
-    The user's chosen editor is found using the SNIPPETS_EDITOR environment
+    The user's chosen editor is found using the CLIPPETS_EDITOR environment
     variable. If that is not set then a simple, internal editor (future
     feature) is used.
 
-    At its simplest the SNIPPETS_EDITOR just provides the name/path of the
+    At its simplest the CLIPPETS_EDITOR just provides the name/path of the
     editor program, for example::
 
         C:\Windows\System32\notepad.exe
@@ -1065,12 +1056,19 @@ def run_editor(text) -> None:
     window position (in pixels). For example
 
         /usr/bin/gvim -f -geom {w}x{h}+{x}+{y}
+
+    The command is invoked with the name of a temporary file as its single
+    additional argument.
     """
-    edit_cmd = get_editor_command('SNIPPETS_EDITOR')
+    edit_cmd = get_editor_command('CLIPPETS_EDITOR')
+    uses_pos = '{x}' in edit_cmd and '{y}' in edit_cmd
     with SharedTempFile() as path:
         path.write_text(text, encoding='utf8')
-        x, y = get_winpos()
-        dims = {'w': 80, 'h': 25, 'x': x, 'y': y}
+        if uses_pos:
+            x, y = get_winpos()
+            dims = {'w': 80, 'h': 25, 'x': x, 'y': y}
+        else:
+            dims = {'w': 80, 'h': 25}
         edit_cmd += ' ' + str(path)
         cmd = edit_cmd.format(**dims).split()
         subprocess.run(cmd, stderr=subprocess.DEVNULL, check=False)

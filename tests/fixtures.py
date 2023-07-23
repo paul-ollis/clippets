@@ -59,8 +59,14 @@ def snippet_outfile() -> TempTestFile:
 
 
 @pytest.fixture
+def work_file() -> TempTestFile:
+    """Provide a temporary work file during test execution."""
+    yield from temp_file('work.txt', 'w+t')
+
+
+@pytest.fixture
 def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
-    """Provide a way to run the Clippets app anc capture a snapshot."""
+    """Provide a way to run the Clippets app and capture a snapshot."""
     async def run_app(infile: TempTestFile, actions: list, *, log=False):
         runner = AppRunner(infile, actions)
         if log:

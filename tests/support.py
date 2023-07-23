@@ -8,6 +8,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List
 
+import log
 from clippets import core, log
 
 try:
@@ -150,9 +151,8 @@ class AppRunner:
     def __init__(self, snippet_file: TempTestFile, actions: list):
         if self.__class__.logf is None:
             self.__class__.logf = log.Log('/tmp/test.log')
-        print('\n', file=self.logf)
         self.app = core.Clippets(
-            Namespace(snippet_file=snippet_file.name), logf=self.logf)
+            Namespace(snippet_file=snippet_file.name))
         self.msg_q = asyncio.Queue()
         self.actions = actions
         self.pilot = None
@@ -213,11 +213,9 @@ class AltEventLoop(NativeEventLoop):
     def is_idle(self):
         end_time = self.time() + self._clock_resolution
         if self._ready:
-            print(f'READY = {len(self._ready)}')
             return False
         elif self._scheduled:
             idle = self._scheduled[0]._when > end_time
-            print(f'TIMED = {idle}, {self._scheduled[0]._when - end_time:.3f}')
             return idle
         else:
             return True
