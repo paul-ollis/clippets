@@ -3,7 +3,7 @@
 import asyncio
 import contextlib
 import textwrap
-import time
+import traceback
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List
@@ -175,6 +175,7 @@ class AppRunner:
         coro =  self.app.run_test(
             headless=True, size=size, message_hook=self.on_msg)
         svg = ''
+        tb = ''
         try:
             async with coro as self.pilot:
                 await self.wait_for_message_name('Ready')
@@ -187,10 +188,12 @@ class AppRunner:
                 svg = self.app.export_screenshot()
                 await self.pilot.press('ctrl+c')
         except Exception as exc:       # pylint: disable=broad-exception-caught
+            tb = traceback.format_exception(exc)
             print("OOPS", exc, file=self.logf)
-        except SystemExit:
+        except SystemExit as exc:
+            tb = traceback.format_exception(exc)
             print("OOPS Exit", file=self.logf)
-        return svg
+        return svg, tb
 
     async def apply_action(self, action):
         """Apply an action."""

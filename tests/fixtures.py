@@ -103,9 +103,12 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
         runner = AppRunner(infile, actions)
         if log:
             with runner.logf:
-                svg = await runner.run()
+                svg, tb = await runner.run()
         else:
-            svg = await runner.run()
+            svg, tb = await runner.run()
+        if tb:
+            print(''.join(tb))
+        assert not tb
         with runner.logf:
             ret = runner, check_svg(snapshot, svg, request, runner.app)
             return ret

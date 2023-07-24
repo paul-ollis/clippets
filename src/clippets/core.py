@@ -482,7 +482,7 @@ class AppMixin:
     def action_select_move(
                 self, inc: int, *, dry_run: bool = False, push: bool = False,
             ) -> int:
-        """Move the keyboard driven focus to the next available widget."""
+        """Move the selection to the next available snippet."""
         widgets = self.focussable_widgets()
         valid_widgets = [w for w in widgets if w.display]
         valid_range = range(len(widgets))
@@ -505,7 +505,7 @@ class AppMixin:
             if push:
                 self._focussed_snippets.append(widgets[k].id)
             else:
-                self._focussed_snippets[-1] = widgets[k].id
+                self._focussed_snippets[:] = [widgets[k].id]
             self.set_visuals()
             self.screen.set_focus(None)
         return k

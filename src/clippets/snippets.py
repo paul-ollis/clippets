@@ -147,14 +147,6 @@ class Element:
         self._source_lines = []
         self.dirty = True
 
-    @classmethod
-    def reset_for_tests(cls):
-        """Reset class level data.
-
-        This is used for testing. It should not be used for any other purpose.
-        """
-        cls.id_source = itertools.count()
-
     @property
     def source_lines(self) -> tuple:
         """The source lines for this element."""
@@ -245,6 +237,8 @@ class Element:
 class PlaceHolder(Element):
     """A place holder used in empty groups."""
 
+    id_source = itertools.count()
+
     @staticmethod
     def is_last() -> bool:
         """Return false."""
@@ -254,6 +248,7 @@ class PlaceHolder(Element):
 class TextualElement(Element):
     """An `Element` that holds text."""
 
+    id_source = itertools.count()
     marker = None
 
     def add(self, line):
@@ -307,6 +302,7 @@ class PreservedText(TextualElement):
     = Comment blocks.
     """
 
+    id_source = itertools.count()
     has_uid: bool = False
 
     def file_text(self):
@@ -323,6 +319,7 @@ class PreservedText(TextualElement):
 class Snippet(TextualElement):
     """A plain text snippet."""
 
+    id_source = itertools.count()
     marker = '@text@'
 
     def __init__(self, *args, **kwargs):
@@ -413,6 +410,7 @@ class Snippet(TextualElement):
 class MarkdownSnippet(Snippet):
     """A snippet that is interpreted as Markdown text."""
 
+    id_source = itertools.count()
     marker = '@md@'
 
     def md_lines(self):
@@ -426,6 +424,7 @@ class MarkdownSnippet(Snippet):
 class KeywordSet(TextualElement):
     """An element holding a set of keywords."""
 
+    id_source = itertools.count()
     marker = '@keywords@'
 
     def __init__(self, *args, **kwargs):
@@ -532,6 +531,7 @@ class Group(GroupDebugMixin, Element):
     """A group of snippets and/or sub groups."""
 
     # pylint: disable=too-many-public-methods
+    id_source = itertools.count()
     all_tags: ClassVar[set[str]] = set()
 
     def __init__(self, name, parent=None, tag_text=''):
@@ -926,3 +926,18 @@ def backup_file(path):
                 shutil.move(src_path, dirpath / new_name)
     with suppress(OSError):
         shutil.copy(path, dirpath / names[0])
+
+
+def reset_for_tests():
+    """Perform a 'system' reset for test purposes.
+
+    This is not intended non-testing use.
+    """
+    Element.id_source = itertools.count()
+    PlaceHolder.id_source = itertools.count()
+    TextualElement.id_source = itertools.count()
+    PreservedText.id_source = itertools.count()
+    Snippet.id_source = itertools.count()
+    MarkdownSnippet.id_source = itertools.count()
+    KeywordSet.id_source = itertools.count()
+    Group.id_source = itertools.count()
