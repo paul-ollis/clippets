@@ -1,3 +1,5 @@
+dist/
+pytest-rich/
 .screenshot_cache
 src/clippets.egg-info
 tags

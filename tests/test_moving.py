@@ -347,3 +347,15 @@ async def test_insertion_point_is_visisble_for_empty_group(
     )
     _, snapshot_ok = await snapshot_run(infile_g0, actions)
     assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_escape_cancels_move(infile, snapshot_run):
+    """Pressing the ESC key cancels the move operation."""
+    actions = (
+        ['m']                    # Start moving
+        + ['down'] * 2           # Move a number of times.
+        + ['escape']             # Cancel moving
+    )
+    _, snapshot_ok = await snapshot_run(infile, actions)
+    assert snapshot_ok

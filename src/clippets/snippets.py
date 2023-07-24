@@ -147,6 +147,14 @@ class Element:
         self._source_lines = []
         self.dirty = True
 
+    @classmethod
+    def reset_for_tests(cls):
+        """Reset class level data.
+
+        This is used for testing. It should not be used for any other purpose.
+        """
+        cls.id_source = itertools.count()
+
     @property
     def source_lines(self) -> tuple:
         """The source lines for this element."""

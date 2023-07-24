@@ -145,6 +145,18 @@ class AppRunner:
     The app is run under the pytest asyncio loop.
 
     This 'steals' some code from Textual.
+
+    :actions:
+        A list of actions to perform. Each entry is a string that get
+        interpreted as described for the following examples:
+
+        left:group-1
+            Perform a left mouse button click on the widget with the ID
+            'group-1'. The word before the colon can be 'left'. In the futurs
+            , 'right', 'alt-left' or 'alt-right' may also be supported.
+        f1
+            Press the F1 key. Any action without a colon character is
+            interpreted as a key tp be pressed.
     """
 
     logf = None
@@ -182,7 +194,12 @@ class AppRunner:
 
     async def apply_action(self, action):
         """Apply an action."""
-        await self.pilot.press(action)
+        button_spec, _, wid = action.partition(':')
+        if wid:
+            assert button_spec == 'left', 'Only left click supported'
+            await self.pilot.click(f'#{wid}')
+        else:
+            await self.pilot.press(action)
 
     async def handle_error(self, name):
         """Handle an error during the app run."""
@@ -212,6 +229,13 @@ class AltEventLoop(NativeEventLoop):
     """This wrapping of the event loop to allow idle detection."""
 
     def is_idle(self):
+        """Determine if the event loop is idle.
+
+        The loop is considered idle if all of the following are true.
+
+        - There are no queued 'ready' actions.
+        - No scheduled actions are due.
+        """
         end_time = self.time() + self._clock_resolution
         if self._ready:
             return False

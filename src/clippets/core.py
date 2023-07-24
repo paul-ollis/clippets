@@ -294,7 +294,7 @@ class AppMixin:
         self.groups = groups
         self.hidden_bindings = set()
         self.hover_uid = None
-        self.focussed_snippet = id_of(self.groups.first_snippet())
+        self._focussed_snippets = [id_of(self.groups.first_snippet())]
         self.move_info = None
         self.redo_buffer = collections.deque(maxlen=20)
         self.sel_order = False
@@ -311,6 +311,11 @@ class AppMixin:
         await self.resolver
         self.populater_q.put_nowait(None)
         await self.populater
+
+    @property
+    def focussed_snippet(self):
+        """The currently focussed snippet."""
+        return self._focussed_snippets[-1]
 
     def handle_blur(self, w: Widget):
         """Handle loss of focus for a widget.
@@ -453,15 +458,30 @@ class AppMixin:
     ## Handling of keyboard operations.
     def fix_selection(self):
         """Update the keyboard selected focus when widgets get hidden."""
+        # If there is selection history (from previous fix-ups) try to reselect
+        # the oldest entry in the history.
+        for i, wid in enumerate(self._focussed_snippets):
+            if i > 0:
+                w = self.query_one(f'#{wid}')
+                if w.display:
+                    self._focussed_snippets[:] = self._focussed_snippets[:i]
+                    self.set_visuals()
+                    self.screen.set_focus(None)
+                    return
+
+        # The selection history could not be uused so find the best alternative
+        # snippet to select, saving the currently selection in the history.
         w = self.query_one(f'#{self.focussed_snippet}')
         if not w.display:
-            k = self.key_select_move(inc=-1, dry_run=True)
+            k = self.action_select_move(inc=-1, dry_run=True)
             if k == 0:
-                k = self.key_select_move(inc=1, dry_run=False)
+                k = self.action_select_move(inc=1, dry_run=False, push=True)
             else:
-                self.key_select_move(inc=-1, dry_run=False)
+                k = self.action_select_move(inc=-1, dry_run=False, push=True)
 
-    def key_select_move(self, inc: int, *, dry_run: bool) -> None:
+    def action_select_move(
+                self, inc: int, *, dry_run: bool = False, push: bool = False,
+            ) -> int:
         """Move the keyboard driven focus to the next available widget."""
         widgets = self.focussable_widgets()
         valid_widgets = [w for w in widgets if w.display]
@@ -481,9 +501,13 @@ class AppMixin:
         if dry_run:
             return k
 
-        self.focussed_snippet = widgets[k].id
-        self.set_visuals()
-        self.screen.set_focus(None)
+        if self.focussed_snippet != widgets[k].id:
+            if push:
+                self._focussed_snippets.append(widgets[k].id)
+            else:
+                self._focussed_snippets[-1] = widgets[k].id
+            self.set_visuals()
+            self.screen.set_focus(None)
         return k
 
     ## Ways to limit visible snippets.
@@ -737,14 +761,6 @@ class AppMixin:
         else:
             return False
 
-    def action_select_next(self) -> None:
-        """Move the keyboard driven focus to the next widget."""
-        self.key_select_move(inc=1, dry_run=False)
-
-    def action_select_prev(self) -> None:
-        """Move the keyboard driven focus to the next widget."""
-        self.key_select_move(inc=-1, dry_run=False)
-
     def action_stop_moving(self) -> None:
         """Stop moving a snippet - cancelling the move operation."""
         if self.move_info:
@@ -838,8 +854,8 @@ class Clippets(AppMixin, App):
         """Set up the application bindings."""
         bind = partial(self.key_handler.bind, ('normal',), show=False)
         bind('f8', 'toggle_order', description='Toggle order')
-        bind('up', 'select_prev')
-        bind('down', 'select_next')
+        bind('up', 'select_move(-1)')
+        bind('down', 'select_move(1)')
         bind(
             'ctrl+f', 'edit_filter', description='Toggle fileter input',
             priority=True)

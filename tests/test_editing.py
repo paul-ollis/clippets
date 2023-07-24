@@ -16,7 +16,7 @@ std_infile_text = '''
         Snippet 1
       @text@
         Snippet 2
-      @text@
+      @md@
         Snippet 3
 '''
 
@@ -56,7 +56,7 @@ async def test_a_snippet_can_be_edited(infile, new_text_file, snapshot_run):
         KeywordSet:
         Snippet: 'Snippet 1'
         Snippet: 'Snippet 2 - edited'
-        Snippet: 'Snippet 3'
+        MarkdownSnippet: 'Snippet 3'
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.groups.full_repr()
@@ -81,8 +81,8 @@ async def test_a_snippet_can_be_duplicated(
         KeywordSet:
         Snippet: 'Snippet 1'
         Snippet: 'Snippet 2'
-        Snippet: 'Snippet 3'
-        Snippet: 'Snippet 4'
+        MarkdownSnippet: 'Snippet 3'
+        MarkdownSnippet: 'Snippet 4'
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.groups.full_repr()
