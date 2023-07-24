@@ -931,7 +931,7 @@ def backup_file(path):
 def reset_for_tests():
     """Perform a 'system' reset for test purposes.
 
-    This is not intended non-testing use.
+    This is not intended for non-testing use.
     """
     Element.id_source = itertools.count()
     PlaceHolder.id_source = itertools.count()

@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import collections
+import itertools
 import re
 import subprocess
 import sys
@@ -43,7 +44,7 @@ from .platform import (
     SharedTempFile, get_editor_command, get_winpos, put_to_clipboard,
     terminal_title)
 from .snippets import (
-    Group, Snippet, SnippetInsertionPointer, SnippetLike, PlaceHolder,
+    Group, PlaceHolder, Snippet, SnippetInsertionPointer, SnippetLike,
     id_of_element as id_of)
 from .widgets import (
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
@@ -149,6 +150,8 @@ class HelpScreen(Screen):
 class MainScreen(Screen):
     """Main Clippets screen."""
 
+    tag_id_sources: ClassVar[dict[str, itertools.count]] = {}
+
     def __init__(self, groups: Group):
         super().__init__(name='main')
         self.groups = groups
@@ -183,8 +186,9 @@ class MainScreen(Screen):
                 fields = []
                 for tag in el.tags:
                     classes = f'tag_{all_tags[tag]}'
-                    fields.append(
-                        MyTag(f'{tag}', name=tag, classes=f'tag {classes}'))
+                    fields.append(MyTag(
+                        f'{tag}', id=self.gen_tag_id(tag), name=tag,
+                        classes=f'tag {classes}'))
                 w = Horizontal(label, *fields, classes='group_row')
                 w.styles.padding = (0, 0, 0, (el.depth() - 1) * 4)
                 yield w
@@ -203,6 +207,12 @@ class MainScreen(Screen):
         """Perform idle processing."""
         w = self.query_one('.footer')
         w.check_context()
+
+    def gen_tag_id(self, tag: str) -> str:
+        """Generate a unique widget ID for a tag."""
+        if tag not in self.tag_id_sources:
+            self.tag_id_sources[tag] = itertools.count()
+        return f'tag-{tag}-{next(self.tag_id_sources[tag])}'
 
 
 def make_snippet_widget(uid, snippet) -> Widget | None:
@@ -1124,3 +1134,11 @@ def main():
     app = Clippets(parse_args())
     with terminal_title('Snippet-wrangler'):
         app.run()
+
+
+def reset_for_tests():
+    """Perform a 'system' reset for test purposes.
+
+    This is not intended for non-testing use.
+    """
+    MainScreen.tag_id_sources = {}

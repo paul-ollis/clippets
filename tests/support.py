@@ -10,6 +10,11 @@ from typing import List
 
 import log
 
+from textual.events import Click, MouseDown, MouseMove, MouseUp
+from textual.geometry import Offset
+from textual.pilot import _get_mouse_message_arguments
+from textual.widget import Widget
+
 from clippets import core
 
 try:
@@ -50,6 +55,44 @@ class Namespace:                       # pylint: disable=too-few-public-methods
         self.raw = False
         self.logf = None
         self.__dict__.update(kwargs)
+
+
+async def click(
+    pilot,
+    selector: type[Widget] | str | None = None,
+    offset: Offset = Offset(),
+    shift: bool = False,
+    meta: bool = False,
+    control: bool = False,
+) -> None:
+    """Simulate clicking with the mouse.
+
+    Args:
+        selector: The widget that should be clicked. If None, then the click
+            will occur relative to the screen. Note that this simply causes
+            a click to occur at the location of the widget. If the widget is
+            currently hidden or obscured by another widget, then the click may
+            not land on it.
+        offset: The offset to click within the selected widget.
+        shift: Click with the shift key held down.
+        meta: Click with the meta key held down.
+        control: Click with the control key held down.
+    """
+    app = pilot.app
+    screen = app.screen
+    if selector is not None:
+        target_widget = screen.query_one(selector)
+    else:
+        target_widget = screen
+
+    message_arguments = _get_mouse_message_arguments(
+        target_widget, offset, button=1, shift=shift, meta=meta,
+        control=control
+    )
+    app.post_message(MouseDown(**message_arguments))
+    app.post_message(MouseUp(**message_arguments))
+    app.post_message(Click(**message_arguments))
+    await pilot.pause(0.01)
 
 
 def clean_text_lines(text: str) -> List[str]:
@@ -200,7 +243,7 @@ class AppRunner:
         button_spec, _, wid = action.partition(':')
         if wid:
             assert button_spec == 'left', 'Only left click supported'
-            await self.pilot.click(f'#{wid}')
+            await click(self.pilot, f'#{wid}')
         else:
             await self.pilot.press(action)
 

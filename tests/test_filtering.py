@@ -20,7 +20,7 @@ import pytest
 
 from support import populate
 
-from clippets import snippets
+from clippets import core, snippets
 
 HERE = Path(__file__).parent
 std_infile_text = '''
@@ -55,6 +55,7 @@ def reset_app_data():
     This ensures that snippet/widget IDs can be predicted.
     """
     snippets.reset_for_tests()
+    core.reset_for_tests()
 
 
 @pytest.fixture
@@ -144,6 +145,42 @@ class TestMouseControlled:
             ['left:group-3']              # Fold the third (nested) group
             + ['left:group-2']            # Fold the second (parent) group
             + ['left:group-2']            # Re-open the parent group
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "tag",
+        ['a-0', 'a-1', 'b-0', 'b-1', 'b-2', 'b-3', 'c-0', 'c-1', 'c-2', 'c-3'])
+    async def test_tags_can_be_used_to_fold(
+            self, infile, snapshot_run, tag):
+        """Clicking on a tag folds all groups with that tag."""
+        actions = (
+            [f'left:tag-tag-{tag}']     # Fold all tagged groups
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("tag", ['a-0', 'b-1', 'c-0'])
+    async def test_tags_reopen_closed_groups(
+            self, infile, snapshot_run, tag):
+        """Clicking on a tag re-opens all groups with that tag."""
+        actions = (
+            [f'left:tag-tag-{tag}']     # Fold all tagged groups
+            + [f'left:tag-tag-{tag}']   # Fold all tagged groups
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_tags_open_if_partially_closed(self, infile, snapshot_run):
+        """Clicking on a tag opens if any matching group is closed."""
+        actions = (
+            ['left:tag-tag-b-0']      # Fold all tag-b groups. This closes
+                                      # some tag-c group.
+            + ['left:tag-tag-c-3']    # Open all tag-c groups
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
