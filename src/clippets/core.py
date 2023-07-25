@@ -1,17 +1,13 @@
 """Program to allow efficient composition of text snippets."""
 # pylint: disable=too-many-lines
 
-# 2. A help page is needed.
 # 3. A user guide will be needed if this is to be made available to others.
-# 5. The keywords support needs a bigger, cleaner palette and the ability
-#    to edit a group's keywords.
+# 5. The keywords support needs a bigger, cleaner palette.
 # 6. Global keywords?
 # 8. Make it work on Macs.
 # 10. Genertae frozen versions for all platforms.
 # 11. Watch the input file(s) and be able to 're-start' in response to changes.
 
-# 12. Fix edit - copy/reuse move code.
-# 13. Fix duplicate - copy/reuse move code.
 from __future__ import annotations
 
 import argparse
@@ -234,7 +230,7 @@ def make_snippet_widget(uid, snippet) -> Widget | None:
 
 
 async def populate(q, walk, query):
-    """Background task to resolve widgets to element mapping."""
+    """Background task to populate widgets."""
     while True:
         while q.qsize() > 1:
             cmd = await q.get()
@@ -256,6 +252,16 @@ async def populate(q, walk, query):
                         await asyncio.sleep(0.5)
 
 
+def populate_fg(walk, query):
+    """Populate widgets."""
+    for snippet in walk():
+        if snippet.dirty:
+            w = query(snippet)
+            if w is not None:
+                w.update(snippet.marked_text)
+                snippet.dirty = False
+
+
 async def resolve(q, lookup, walk, query):
     """Background task to resolve widgets to element mapping."""
     while True:
@@ -271,7 +277,7 @@ async def resolve(q, lookup, walk, query):
             if q.qsize() > 0:
                 break
             uid = el.uid()
-            if uid not in new_lookup:
+            if uid and uid not in new_lookup:
                 with suppress(NoMatches):
                     new_lookup[uid] = query(f'#{uid}')
                     await asyncio.sleep(0.01)
@@ -317,10 +323,12 @@ class AppMixin:
 
     async def on_exit_app(self, _event):
         """Clean up when exiting the application."""
-        self.resolver_q.put_nowait(None)
-        await self.resolver
-        self.populater_q.put_nowait(None)
-        await self.populater
+        if self.resolver:
+            self.resolver_q.put_nowait(None)
+            await self.resolver
+        if self.populater:
+            self.populater_q.put_nowait(None)
+            await self.populater
 
     @property
     def focussed_snippet(self):
@@ -638,8 +646,13 @@ class AppMixin:
         self.backup_and_save()
         self.lookup.clear()
         self.screen.rebuild_tree_part()
-        self.resolver_q.put_nowait('rebuild')
-        self.populater_q.put_nowait('pop')
+        if self.resolver:
+            self.resolver_q.put_nowait('rebuild')
+        if self.populater:
+            self.populater_q.put_nowait('pop')
+        else:
+            populate_fg(self.walk_snippets, self.find_widget)
+
         self.update_result()
         self.set_visuals()
 
@@ -907,13 +920,15 @@ class Clippets(AppMixin, App):
 
     def on_ready(self) -> None:
         """React to the DOM having been created."""
-        self.resolver = asyncio.create_task(
-            resolve(self.resolver_q, self.lookup, self.walk, self.query_one))
-        self.resolver_q.put_nowait('rebuild')
-
-        self.populater = asyncio.create_task(
-            populate(self.populater_q, self.walk_snippets, self.find_widget))
-        self.resolver_q.put_nowait('pop')
+        if getattr(self.args, 'test_mode', False):
+            populate_fg(self.walk_snippets, self.find_widget)
+        else:
+            self.resolver = asyncio.create_task(resolve(
+                self.resolver_q, self.lookup, self.walk, self.query_one))
+            self.resolver_q.put_nowait('rebuild')
+            self.populater = asyncio.create_task(populate(
+                self.populater_q, self.walk_snippets, self.find_widget))
+            self.populater_q.put_nowait('pop')
 
         self.screen.set_focus(None)
         self.active = True
@@ -935,7 +950,7 @@ class Clippets(AppMixin, App):
     def on_mount(self) -> None:
         """Perform app start-up actions."""
         self.dark = True
-        self.populater_q.put_nowait('pop')
+        populate_fg(self.walk_snippets, self.find_widget)
 
     @asynccontextmanager
     async def run_test(

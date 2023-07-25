@@ -10,7 +10,8 @@ from typing import List
 
 import log
 
-from textual.events import Click, MouseDown, MouseMove, MouseUp
+from textual.events import (
+    Click, MouseDown, MouseScrollDown, MouseScrollUp, MouseUp)
 from textual.geometry import Offset
 from textual.pilot import _get_mouse_message_arguments
 from textual.widget import Widget
@@ -59,13 +60,14 @@ class Namespace:                       # pylint: disable=too-few-public-methods
 
 async def click(
     pilot,
+    button: str = 'left',
     selector: type[Widget] | str | None = None,
     offset: Offset = Offset(),
     shift: bool = False,
     meta: bool = False,
     control: bool = False,
 ) -> None:
-    """Simulate clicking with the mouse.
+    """Simulate clicking or scrolling with the mouse.
 
     Args:
         selector: The widget that should be clicked. If None, then the click
@@ -85,13 +87,28 @@ async def click(
     else:
         target_widget = screen
 
+    cls = MouseDown
+    bn = 0
+    if button in ('left', 'right'):
+        bn = 1 if button == 'left' else 3
+    elif button == 'up':
+        cls = MouseScrollUp
+    elif button == 'down':
+        cls = MouseScrollDown
+    else:
+        msg = f'Mouse button name {button!r} is invalid'
+        raise RuntimeError(msg)
     message_arguments = _get_mouse_message_arguments(
-        target_widget, offset, button=1, shift=shift, meta=meta,
+        target_widget, offset, button=bn, shift=shift, meta=meta,
         control=control
     )
-    app.post_message(MouseDown(**message_arguments))
-    app.post_message(MouseUp(**message_arguments))
-    app.post_message(Click(**message_arguments))
+    await wait_for_idle(pilot)
+    if cls is MouseDown:
+        app.post_message(MouseDown(**message_arguments))
+        app.post_message(MouseUp(**message_arguments))
+        app.post_message(Click(**message_arguments))
+    else:
+        app.post_message(cls(**message_arguments))
     await pilot.pause(0.01)
 
 
@@ -174,12 +191,17 @@ class TempTestFile:
         return self._f.read()
 
 
-async def wait_for_idle():
+async def wait_for_idle(pilot):
+    """Wait for the asyncio event loop to become idle."""
     loop = asyncio.get_running_loop()
-    for _ in range(100):
+    for i in range(100):
         if loop.is_idle():
             break
-        await asyncio.sleep(0)
+        delay = 0 if i < 30 else 0.01                           # noqa: PLR2004
+        await asyncio.sleep(delay)
+    else:
+        msg = 'Call to wait_for_idle: Never reached IDLE state'
+        raise RuntimeError(msg)
 
 
 class AppRunner:
@@ -195,8 +217,9 @@ class AppRunner:
 
         left:group-1
             Perform a left mouse button click on the widget with the ID
-            'group-1'. The word before the colon can be 'left'. In the futurs
-            , 'right', 'alt-left' or 'alt-right' may also be supported.
+            'group-1'. The word before the colon identifies the button and
+            any modifier keys. Button names are 'left', ;right', 'up' and
+            'down. Modifiers are not yet supported.
         f1
             Press the F1 key. Any action without a colon character is
             interpreted as a key tp be pressed.
@@ -208,7 +231,7 @@ class AppRunner:
         if self.__class__.logf is None:
             self.__class__.logf = log.Log('/tmp/test.log')
         self.app = core.Clippets(
-            Namespace(snippet_file=snippet_file.name))
+            Namespace(snippet_file=snippet_file.name, test_mode=True))
         self.msg_q = asyncio.Queue()
         self.actions = actions
         self.pilot = None
@@ -224,26 +247,21 @@ class AppRunner:
                 await self.wait_for_message_name('Ready')
                 for action in self.actions:
                     await self.apply_action(action)
-                print("Actions complete")
-                await wait_for_idle()
-                print("Now idle")
+                await wait_for_idle(self.pilot)
                 self.app.screen._on_timer_update()
                 svg = self.app.export_screenshot()
                 await self.pilot.press('ctrl+c')
         except Exception as exc:       # pylint: disable=broad-exception-caught
             tb = traceback.format_exception(exc)
-            print("OOPS", exc, file=self.logf)
         except SystemExit as exc:
             tb = traceback.format_exception(exc)
-            print("OOPS Exit", file=self.logf)
         return svg, tb
 
     async def apply_action(self, action):
         """Apply an action."""
-        button_spec, _, wid = action.partition(':')
+        button, _, wid = action.partition(':')
         if wid:
-            assert button_spec == 'left', 'Only left click supported'
-            await click(self.pilot, f'#{wid}')
+            await click(self.pilot, button=button, selector=f'#{wid}')
         else:
             await self.pilot.press(action)
 
@@ -286,8 +304,7 @@ class AltEventLoop(NativeEventLoop):
         if self._ready:
             return False
         elif self._scheduled:
-            idle = self._scheduled[0]._when > end_time
-            return idle
+            return self._scheduled[0]._when > end_time
         else:
             return True
 

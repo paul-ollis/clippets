@@ -140,7 +140,7 @@ class Element:
         self.parent = parent
         if self.has_uid:
             n = next(self.id_source)
-            self._uid = f'{self.__class__.__name__.lower()}-{n}'
+            self._uid = f'{self._uid_base_name()}-{n}'
         else:
             self._uid = ''
         self.first_line = first_line
@@ -232,6 +232,10 @@ class Element:
                 else:
                     return snippet
         return None
+
+    @classmethod
+    def _uid_base_name(cls):
+        return cls.__name__.lower()
 
 
 class PlaceHolder(Element):
@@ -410,7 +414,6 @@ class Snippet(TextualElement):
 class MarkdownSnippet(Snippet):
     """A snippet that is interpreted as Markdown text."""
 
-    id_source = itertools.count()
     marker = '@md@'
 
     def md_lines(self):
@@ -419,6 +422,10 @@ class MarkdownSnippet(Snippet):
         This simply provides unmodified lines.
         """
         return self.body.splitlines()
+
+    @classmethod
+    def _uid_base_name(cls):
+        return 'snippet'
 
 
 class KeywordSet(TextualElement):
@@ -938,6 +945,5 @@ def reset_for_tests():
     TextualElement.id_source = itertools.count()
     PreservedText.id_source = itertools.count()
     Snippet.id_source = itertools.count()
-    MarkdownSnippet.id_source = itertools.count()
     KeywordSet.id_source = itertools.count()
     Group.id_source = itertools.count()

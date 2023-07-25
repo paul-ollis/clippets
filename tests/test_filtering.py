@@ -185,9 +185,39 @@ class TestMouseControlled:
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
+    @pytest.mark.asyncio
+    async def test_f9_closes_unless_all_open(self, infile, snapshot_run):
+        """The F9 closes if any group is not closed, even if hidden."""
+        actions = (
+            ['left:group-1']      # Fold first group.
+            + ['left:group-3']    # Fold one (of two) child group.
+            + ['left:group-2']    # Fold parent gruop
+            + ['left:group-5']    # Fold laset gruop
+            + ['f9']              # Close all remaining folds
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_f9_opens_if_all_manually_closed(self, infile, snapshot_run):
+        """The F9 opens if all groups have been closes one-by-one."""
+        actions = (
+            ['left:group-1']      # Fold first group.
+            + ['left:group-3']    # Fold one (of two) child group.
+            + ['left:group-4']    # Fold one (of two) child group.
+            + ['left:group-2']    # Fold parent gruop
+            + ['left:group-5']    # Fold last gruop
+            + ['f9']              # Open all folds
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
 
 class TestKeyboardControlled:
-    """Using the keyboard (exclusively) to fold groups."""
+    """Using the keyboard (exclusively) to fold groups.
+
+    Currently keyboard control is very limited in this area.
+    """
 
     @pytest.mark.asyncio
     async def test_entire_tree_can_be_folded(self, infile, snapshot_run):
@@ -195,10 +225,7 @@ class TestKeyboardControlled:
         actions = (
             ['f9']              # Fold the entire tree
         )
-        runner, snapshot_ok = await snapshot_run(infile, actions)
-        for w in runner.app.walk():
-            print(w.uid())
-
+        _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
     @pytest.mark.asyncio
