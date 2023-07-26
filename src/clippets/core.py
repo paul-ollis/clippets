@@ -524,8 +524,9 @@ class AppMixin:
                 self._focussed_snippets.append(widgets[k].id)
             else:
                 self._focussed_snippets[:] = [widgets[k].id]
-            self.set_visuals()
             self.screen.set_focus(None)
+            self.set_visuals()
+            widgets[k].scroll_visible()
         return k
 
     ## Ways to limit visible snippets.
