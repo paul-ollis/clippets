@@ -159,7 +159,9 @@ class MainScreen(Screen):
 
         with Horizontal(id='input', classes='input oneline'):
             yield MyLabel('Filter: ')
-            yield MyInput(placeholder='Enter text to filter.', id='filter')
+            inp = MyInput(placeholder='Enter text to filter.', id='filter')
+            inp.cursor_blink = False
+            yield inp
         with MyVerticalScroll(id='view', classes='result'):
             yield MyMarkdown(id='result')
         with MyVerticalScroll(id='snippet-list', classes='bbb'):
@@ -954,12 +956,13 @@ class Clippets(AppMixin, App):
         populate_fg(self.walk_snippets, self.find_widget)
 
     @asynccontextmanager
-    async def run_test(
+    async def run_test(                                         # noqa: PLR0913
         self,
         *,
         headless: bool = True,
         size: tuple[int, int] | None = (80, 24),
         tooltips: bool = False,
+        notifications: bool = False,
         message_hook: Callable[[Message], None] | None = None,
     ) -> AsyncGenerator[Pilot, None]:
         """Run app under test conditions.

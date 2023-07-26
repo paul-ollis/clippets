@@ -361,8 +361,6 @@ class Paragraph(BlockElement):         # pylint: disable=too-few-public-methods
             while text:
                 ma = rc_inline_markup.match(text)
                 mb = rc_inline_class_markup.match(text)
-                if mb:
-                    print('XXX', mb.groupdict(), text)
                 if ma and mb:
                     m = ma if ma.group(1) < mb.group(1) else mb
                 else:

@@ -4,12 +4,13 @@ markdown_strings
 -e /home/paul/np/os/python/textual/
 -e /home/paul/np/os/python/textual-dev/
 
+-e pytest-rich/
 jinja2
 pycodestyle
 pylint
 pytest
 pytest-asyncio
--e pytest-rich/
+pytest-cov
 syrupy
 
 build

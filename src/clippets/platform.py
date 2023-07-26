@@ -12,7 +12,7 @@ __all__ = [
     'terminal_title',
 ]
 
-if platform.system() == 'Windows':
+if platform.system() == 'Windows':                           # pragma: no cover
     from .win import (
         get_editor_command, get_winpos, put_to_clipboard, terminal_title)
 elif platform.system() == 'Linux':

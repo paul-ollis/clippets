@@ -54,6 +54,22 @@ empty_group_text = '''
       @text@
         Snippet 5
 '''
+long_infile_text = std_infile_text + '''
+      @text@
+        Snippet 8
+      @text@
+        Snippet 9
+      @text@
+        Snippet 10
+      @text@
+        Snippet 11
+      @text@
+        Snippet 12
+      @text@
+        Snippet 13
+      @text@
+        Snippet 14
+'''
 
 
 @pytest.fixture
@@ -74,6 +90,13 @@ def infile_g1(snippet_infile):
 def infile_g0(snippet_infile):
     """Create a input file with an empty group."""
     populate(snippet_infile, empty_group_text)
+    return snippet_infile
+
+
+@pytest.fixture
+def longfile(snippet_infile):
+    """Create a standard input file for scrolling tests."""
+    populate(snippet_infile, long_infile_text)
     return snippet_infile
 
 
@@ -358,4 +381,15 @@ async def test_escape_cancels_move(infile, snapshot_run):
         + ['escape']             # Cancel moving
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def xtest_view_scrolls_for_insertion_point(longfile, snapshot_run):
+    """The view scrolls to ensure eht inserrtion point remains visible."""
+    actions = (
+        ['m']                    # Start moving
+        + ['down'] * 12          # Move a number of times.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok

@@ -1,0 +1,8 @@
+[run]
+source = src
+omit =
+    src/clippets/win.py
+
+[report]
+exclude_also =
+    if TYPE_CHECKING:

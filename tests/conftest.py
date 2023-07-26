@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import difflib
 import os
+import platform
+import subprocess
 import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
+from pathlib import Path
 from typing import List, Union
 
 import pytest
@@ -160,12 +163,19 @@ def pytest_assertrepr_compare(config, op, left, right):
 
 
 def pytest_addoption(parser, pluginmanager):
-    """Add my command line options."""
+    """Add my command line options and set up the platform envirinment."""
+    print("ADD OPTIONS")
     group = parser.getgroup(
         'cs', 'CleverSheep options.')
     group.addoption(
         '--gen-doc', action='store_true',
         help='Generate test documentation.')
+
+    if platform.system() == 'Windows':
+        os.environ['TEST_COVER_EXCLUDE'] = 'src/clippets/linux.py'
+    elif platform.system() == 'Linux':
+        os.environ['TEST_COVER_EXCLUDE'] = 'src/clippets/win.py'
+        print("EXCL", os.environ['TEST_COVER_EXCLUDE'])
 
 
 @pytest.fixture(autouse=True)
@@ -186,6 +196,11 @@ def temp_command_args(args: List[str]):
     sys.argv[:] = saved
 
 
+def pytest_sessionstart(session: Session) -> None:
+    """Perform post run processing."""
+    Path('coverage.json').unlink(missing_ok=True)
+
+
 def pytest_sessionfinish(
     session: Session,
     exitstatus: Union[int, ExitCode],
@@ -198,6 +213,12 @@ def pytest_sessionfinish(
     if os.environ.get('PYTEST_XDIST_WORKER') is None:
         save_svg_diffs(session)
         tempdir.cleanup()
+
+    # TODO: This should be in a separate plugin.
+    if Path('coverage.json').exists():
+        exe = Path.home() / 'bin/py-cov-combine'
+        if exe.exists():
+            subprocess.run([str(exe)], check=False)
 
 
 def pytest_terminal_summary(

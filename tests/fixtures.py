@@ -99,13 +99,15 @@ def work_file() -> TempTestFile:
 @pytest.fixture
 def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
     """Provide a way to run the Clippets app and capture a snapshot."""
-    async def run_app(infile: TempTestFile, actions: list, *, log=False):
+    async def run_app(
+            infile: TempTestFile, actions: list, *, log=False,
+            post_delay: float = 0.0):
         runner = AppRunner(infile, actions)
         if log:
             with runner.logf:
-                svg, tb = await runner.run()
+                svg, tb = await runner.run(post_delay=post_delay)
         else:
-            svg, tb = await runner.run()
+            svg, tb = await runner.run(post_delay=post_delay)
         if tb:
             print(''.join(tb))
         assert not tb
