@@ -783,6 +783,8 @@ class AppMixin:
         snippet, dest = self.move_info.source, self.move_info.dest
         if dest.move(backwards=direction == 'up', skip=snippet):
             self.set_visuals()
+            w = self.find_widget(dest.snippet)
+            w.scroll_visible()
             return True
         else:
             return False
@@ -1148,7 +1150,7 @@ is_snippet_like = partial(is_type, classinfo=SnippetLike)
 is_group = partial(is_type, classinfo=Group)
 
 
-def main():
+def main():                                                  # pragma: no cover
     """Run the application."""
     app = Clippets(parse_args())
     with terminal_title('Snippet-wrangler'):
