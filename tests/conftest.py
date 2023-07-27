@@ -21,7 +21,7 @@ from rich.console import Console
 
 from fixtures import (
     save_svg_diffs, snapshot_run, snippet_infile, snippet_outfile, tempdir,
-    work_file)
+    work_file, clean_data)
 
 pytest_config = sys.modules['_pytest.config']
 
@@ -176,11 +176,6 @@ def pytest_addoption(parser, pluginmanager):
     elif platform.system() == 'Linux':
         os.environ['TEST_COVER_EXCLUDE'] = 'src/clippets/win.py'
         print("EXCL", os.environ['TEST_COVER_EXCLUDE'])
-
-
-@pytest.fixture(autouse=True)
-def clean_data(pytestconfig, monkeypatch):
-    """Provide a common fixture for all tests."""
 
 
 def pytest_configure(config: pytest.Config) -> None:

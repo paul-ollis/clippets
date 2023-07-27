@@ -16,12 +16,10 @@ import collections
 import itertools
 import re
 import subprocess
-import sys
 import threading
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from functools import partial, wraps
-from pathlib import Path
 from typing import AsyncGenerator, Callable, ClassVar, Iterable, TYPE_CHECKING
 
 from rich.text import Text
@@ -858,16 +856,10 @@ class Clippets(AppMixin, App):
         self.resolver = None
         self.populater = None
 
-    def xrun(self, *args, **kwargs) -> int:
-        """Wrap the standar run method."""
-        # pylint: disable=unspecified-encoding
-        saved = sys.stdout, sys.stderr
-        sys.stdout = sys.stderr = Path('/tmp/snippets.log').open(  # noqa: S108
-            'wt', buffering=1)
-        try:
-            return super().run(*args, **kwargs)
-        finally:
-            sys.stdout, sys.stderr = saved
+    def run(self, *args, **kwargs) -> int:                   # pragma: no cover
+        """Wrap the standar run method, settin the terminal title."""
+        with terminal_title('Snippet-wrangler'):
+            return super().run()
 
     def context_name(self) -> str:
         """Provide a name identifying the current context."""
@@ -1021,9 +1013,10 @@ class Clippets(AppMixin, App):
 
         # Context manager returns pilot object to manipulate the app
         try:
-            pilot = Pilot(app)
-            await pilot._wait_for_screen()                       # noqa: SLF001
-            yield pilot
+            with terminal_title('Snippet-wrangler'):
+                pilot = Pilot(app)
+                await pilot._wait_for_screen()                   # noqa: SLF001
+                yield pilot
         finally:
             # Shutdown the app cleanly
             await app._shutdown()                                # noqa: SLF001
@@ -1153,8 +1146,7 @@ is_group = partial(is_type, classinfo=Group)
 def main():                                                  # pragma: no cover
     """Run the application."""
     app = Clippets(parse_args())
-    with terminal_title('Snippet-wrangler'):
-        app.run()
+    app.run()
 
 
 def reset_for_tests():

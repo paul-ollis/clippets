@@ -19,6 +19,8 @@ from syrupy import SnapshotAssertion
 
 from support import AppRunner, TempTestFile
 
+from clippets import core, snippets
+
 HERE = Path(__file__).parent
 
 
@@ -116,6 +118,16 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
             return ret
 
     return run_app
+
+
+@pytest.fixture(autouse=True)
+def clean_data(pytestconfig, monkeypatch):
+    """Reset some application data.
+
+    This ensures that snippet/widget IDs can be predicted.
+    """
+    snippets.reset_for_tests()
+    core.reset_for_tests()
 
 
 class TempTestFileSource:

@@ -32,14 +32,16 @@ def put_to_clipboard(text: str, mode: str = 'styled'):
     if mode == 'raw':
         subprocess.run(
             ['/usr/bin/xclip', '-selection', 'clipboard'],
-            input=text.encode())
+            input=text.encode(),
+            check=False)
     else:
         html = markdown.markdown(text)
         html = doc_template.format(html)
         subprocess.run(
             ['/usr/bin/xclip', '-t', 'text/html', '-selection',
                 'clipboard'],
-            input=html.encode())
+            input=html.encode(),
+            check=False)
 
 
 @contextlib.contextmanager
@@ -61,7 +63,7 @@ def get_editor_command(env_var_name: str) -> str:
     return os.getenv(env_var_name, 'gvim -f -geom {w}x{h}+{x}+{y}')
 
 
-def get_winpos() -> Tuple[int, int]:
+def get_winpos() -> Tuple[int, int]:                         # pragma: no cover
     """Get the screen position of the terminal."""
     res = subprocess.run(
         ['/usr/bin/xwininfo', '-name', 'Snippet-wrangler'],

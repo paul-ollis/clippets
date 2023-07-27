@@ -106,6 +106,16 @@ def n_moves(request) -> list:
     return request.param
 
 
+# TODO: Remove this when I am happy the code tests are stable.
+def gen_moves(move, n):
+    """Generate move and delay actions."""
+    fast_n = 6
+    moves_a = [move] * min(fast_n, n)
+    # moves_b = [move, 'pause:0.01'] * max(0, n - fast_n)
+    moves_b = [move] * max(0, n - fast_n)
+    return moves_a + moves_b
+
+
 @pytest.mark.asyncio
 async def test_move_snippet_within_group(infile, snapshot_run):
     """A snippet may be moved within a group."""
@@ -367,6 +377,7 @@ async def test_insertion_point_is_visisble_for_empty_group(
     actions = (
         ['m']                    # Start moving
         + ['down']  * 2          # Move to the empty group.
+        # + ['pause:0.1']
     )
     _, snapshot_ok = await snapshot_run(infile_g0, actions)
     assert snapshot_ok
@@ -377,7 +388,7 @@ async def test_escape_cancels_move(infile, snapshot_run):
     """Pressing the ESC key cancels the move operation."""
     actions = (
         ['m']                    # Start moving
-        + ['down'] * 2           # Move a number of times.
+        + ['down'] * 2           # Move down a number of times.
         + ['escape']             # Cancel moving
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
@@ -385,11 +396,36 @@ async def test_escape_cancels_move(infile, snapshot_run):
 
 
 @pytest.mark.asyncio
-async def xtest_view_scrolls_for_insertion_point(longfile, snapshot_run):
-    """The view scrolls to ensure eht inserrtion point remains visible."""
+async def test_view_scrolls_for_insertion_point(longfile, snapshot_run):
+    """The view scrolls to ensure the inserrtion point remains visible."""
     actions = (
         ['m']                    # Start moving
-        + ['down'] * 12          # Move a number of times.
+        + gen_moves('down', 6)   # Move down a number of times.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_view_scrolls_for_insertion_only_as_necessary(
+        longfile, snapshot_run):
+    """The view does not scroll unless necessary."""
+    actions = (
+        ['m']                    # Start moving
+        + gen_moves('down', 5)   # Move down a number of times.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_view_scrolls_for_insertion_point_up(longfile, snapshot_run):
+    """The view scrolls to ensure the inserrtion point remains visible."""
+    actions = (
+        gen_moves('down', 2)     # Move to snippet 3
+        + ['m']                  # Start moving
+        + gen_moves('down', 6)   # Move down a number of times.
+        + gen_moves('up', 6)     # Move to snippet 2.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
     assert snapshot_ok

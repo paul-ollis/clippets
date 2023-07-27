@@ -43,16 +43,6 @@ def set_env():
     os.environ['CLIPPETS_EDITOR'] = f'python {HERE / "edit_helper.py"}'
 
 
-@pytest.fixture(autouse=True)
-def reset_app_data():
-    """Reset some application data.
-
-    This ensures that snippet/widget IDs can be predicted.
-    """
-    snippets.reset_for_tests()
-    core.reset_for_tests()
-
-
 @pytest.fixture
 def infile(snippet_infile):
     """Create a standard input file for many of this module's tests."""
