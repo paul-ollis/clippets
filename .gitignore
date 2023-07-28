@@ -5,3 +5,6 @@ src/clippets.egg-info
 tags
 temp.txt
 temp.txt.bak*
+.coverage
+coverage.json
+ext-coverage.json

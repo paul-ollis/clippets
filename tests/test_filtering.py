@@ -68,8 +68,6 @@ def infile(snippet_infile):
 class TestMouseControlled:
     """Using the mouse (mostly) to fold groups."""
 
-    # pylint: disable=too-few-public-methods
-
     @pytest.mark.asyncio
     async def test_groups_can_be_folded(self, infile, snapshot_run):
         """Individual groups can be folded."""
@@ -234,6 +232,95 @@ class TestKeyboardControlled:
         actions = (
             ['f9']              # Fold the entire tree
             + ['f9']            # Expand the entire tree
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_field_down_slects_snippets(
+            self, infile, snapshot_run):
+        """The filter field provides a quick way to hide snippets."""
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + ['2']             # Select only snippets containting '2'.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_ctrl_f_drops_focus(
+            self, infile, snapshot_run):
+        """The Ctrl+F key is used to switch back to snippet selection.
+
+        The highlighted snippet will change if the previously highlighted
+        snippet was hidden.
+        """
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + ['2']             # Select only snippets containting '2'.
+            + ['ctrl+f']        # Switch away from the filter field.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_field_can_hide_everything(
+            self, infile, snapshot_run):
+        """All snippets will be hidden if nothing matches the filter."""
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + list('spam')      # Hide all the snippets.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_ctrl_f_drops_focus_when_all_hidden(
+            self, infile, snapshot_run):
+        """The Ctrl+F key drops focus even when no snippet is visible."""
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + list('spam')      # Hide all the snippets.
+            + ['ctrl+f']        # Switch away from the filter field.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_ctrl_b_clears_the_filter(
+            self, infile, snapshot_run):
+        """The Ctrl+B key clears any actiove filter."""
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + list('spam')      # Hide all the snippets.
+            + ['ctrl+f']        # Switch away from the filter field.
+            + ['ctrl+b']        # Clear the filter.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_uses_regular_expressions(
+            self, infile, snapshot_run):
+        """The filter is treated as a regular expression."""
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + list('[AB]')      # Select only snippets containting 'A' or 'B'.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_malformed_re_falls_back_to_plaintext_matching(
+            self, infile, snapshot_run):
+        """A malformed regular expression is gracefully handled.
+
+        It is actually treated as a simple strng match, allthough this will
+        often cause all snippets to be hidden.
+        """
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + list('[AB')       # Enter mal-formed expression.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok

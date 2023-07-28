@@ -14,7 +14,7 @@ from typing import ClassVar
 
 from markdown_strings import esc_format
 
-from . import colors
+from . import colors, widgets
 
 
 class SnippetInsertionPointer:
@@ -333,15 +333,25 @@ class Snippet(TextualElement):
     @property
     def marked_lines(self):
         """The snippet's lines, with keywords marked up."""
+        keywords = self.parent.keywords()
         if not self._marked_lines:
-            keywords = self.parent.keywords()
-            self._marked_lines = []
-            for line in self.body.splitlines():
-                newline = line
-                for w in keywords:
-                    rep = f'\u2e24{colors.keyword_code(w)}{w}\u2e25'
-                    newline = newline.replace(w, rep)
-                self._marked_lines.append(newline)
+            if keywords:
+                ored_words = '|'.join(keywords)
+                expr = rf'\b({ored_words})\b'
+                r_words = re.compile(expr)
+                self._marked_lines = []
+                for line in self.body.splitlines():
+                    parts = r_words.split(line)
+                    new_parts = []
+                    for i, part in enumerate(parts):
+                        if i & 1:
+                            rep = f'\u2e24{colors.keyword_code(part)}{part}\u2e25'
+                            new_parts.append(rep)
+                        else:
+                            new_parts.append(part)
+                    self._marked_lines.append(''.join(new_parts))
+            else:
+                self._marked_lines = self.body.splitlines()
         return self._marked_lines
 
     @property
@@ -350,7 +360,7 @@ class Snippet(TextualElement):
         lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
         while lines and not lines[-1].strip():
             lines.pop()
-        return '\n'.join(lines)
+        return widgets.render_text('\n'.join(lines))
 
     def reset(self):
         """Clear any cached state."""
@@ -422,6 +432,14 @@ class MarkdownSnippet(Snippet):
         This simply provides unmodified lines.
         """
         return self.body.splitlines()
+
+    @property
+    def marked_text(self):
+        """The snippet's text, with keywords marked up."""
+        lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
+        while lines and not lines[-1].strip():
+            lines.pop()
+        return '\n'.join(lines)
 
     @classmethod
     def _uid_base_name(cls):

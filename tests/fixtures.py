@@ -1,5 +1,6 @@
 """Common test fixtures."""
 
+import functools
 import os
 import pickle
 from dataclasses import dataclass
@@ -99,12 +100,19 @@ def work_file() -> TempTestFile:
 
 
 @pytest.fixture
+def new_text_file(work_file):
+    """Provide the file to hold the new text for a snippet edit."""
+    os.environ['CLIPPETS_TEST_PATH'] = work_file.name
+    return work_file
+
+
+@pytest.fixture
 def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
     """Provide a way to run the Clippets app and capture a snapshot."""
     async def run_app(
             infile: TempTestFile, actions: list, *, log=False,
-            post_delay: float = 0.0):
-        runner = AppRunner(infile, actions)
+            post_delay: float = 0.0, test_mode: bool = True):
+        runner = AppRunner(infile, actions, test_mode=test_mode)
         if log:
             with runner.logf:
                 svg, tb = await runner.run(post_delay=post_delay)
@@ -118,6 +126,16 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
             return ret
 
     return run_app
+
+
+@pytest.fixture
+def snapshot_run_dyn(snapshot_run):
+    """Provide a way to run the Clippets app and capture a snapshot.
+
+    This basically wraps snapshot_run to allow Clippets to run with its
+    background population and resolver tasks active.
+    """
+    return functools.partial(snapshot_run, test_mode=False)
 
 
 @pytest.fixture(autouse=True)

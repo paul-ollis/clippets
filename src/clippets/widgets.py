@@ -6,14 +6,14 @@ import re
 import unicodedata
 from collections import defaultdict
 from contextlib import suppress
-from typing import Iterable, Optional
+from typing import Iterable
 
 import rich.repr
 from rich.style import Style
 from rich.text import Span, Text
 from textual import events
 from textual._wait import wait_for_idle
-from textual.app import App, Binding
+from textual.app import App
 from textual.containers import Grid, VerticalScroll
 from textual.keys import (
     REPLACED_KEYS, _character_to_key, _get_unicode_name_from_key)
@@ -24,9 +24,10 @@ from textual.widgets._markdown import MarkdownBlock
 from .colors import keyword_colors
 
 # We 'smuggle' keyword information by surrounding them with specific Unicode
-# low quotes. These look quite like commas, making is extremely unlikely that
+# low quotes. These look quite like commas, making it extremely unlikely that
 # anyone would would use them a snippet text.
 re_keyword = re.compile('\u2e24([^\u2e25]*)\u2e25')
+re_keyword_start = re.compile('\u2e24[^\u2e25]*')
 
 
 class StdMixin:                        # pylint: disable=too-few-public-methods
@@ -93,6 +94,7 @@ class SnippetMenu(ModalScreen):
             Label('Choose action', id='question'),
             Button('Edit', variant='primary', id='edit'),
             Button('Duplicate', variant='primary', id='duplicate'),
+            Button('Move', variant='primary', id='move'),
             Button('Cancel', variant='primary', id='cancel'),
             id='dialog',
         )
@@ -139,7 +141,7 @@ class MyFooter(Footer):
         for binding in bindings:
             action_to_bindings[binding.action].append(binding)
 
-        for _, bindings in action_to_bindings.items():
+        for bindings in action_to_bindings.values():
             binding = bindings[0]
             if binding.key_display is None:
                 key_display = self.app.get_key_display(binding.key)
@@ -166,6 +168,51 @@ class MyFooter(Footer):
         return text
 
 
+def gen_highlight_spans(
+        text: str, base_style: Style, off: int) -> tuple[list[Span], str]:
+    """Split text into spans based on highlighting."""
+    parts = re_keyword.split(text)
+    spans = []
+    new_parts = []
+    for i, p in enumerate(parts):
+        if i & 1:
+            substr = p[1:]
+            cc = p[0]
+            color = keyword_colors.get(cc, 'green')
+            style = base_style + Style(color=color)
+        else:
+            substr = re_keyword_start.sub('', p)
+            substr = substr.replace('\u2e25(', '')
+            style = base_style
+        if substr:
+            new_parts.append(substr)
+            spans.append(Span(off, off + len(substr), style))
+            off += len(substr)
+
+    return spans, ''.join(new_parts)
+
+
+def render_text(text: Text | str) -> Text:
+    """Render specially marked up text."""
+    if isinstance(text, str):
+        text = Text(text, spans=[Span(0, len(text), Style())])
+    raw_text = text.plain
+    if '\u2e24' in raw_text:
+        new_spans = []
+        new_parts = []
+        off = 0
+        for span in text.spans:
+            substr = raw_text[span.start:span.end]
+            new_subspans, new_substr = gen_highlight_spans(
+                substr, span.style, off)
+            new_spans.extend(new_subspans)
+            new_parts.append(new_substr)
+            off += len(new_parts[-1])
+        return Text(''.join(new_parts), spans=new_spans)
+    else:
+        return text
+
+
 class ExtendMixin:
     """Namespace to hold ``textual`` extension methods."""
 
@@ -176,38 +223,8 @@ class ExtendMixin:
 
     def set_content(self, text: Text) -> None:
         """Over-ride set_content to highlight keywords."""
-        def trim_spans(off, n):
-            for i, span in enumerate(spans):
-                a, b, style = span
-                if a > off:
-                    a -= n
-                if b > off:
-                    b -= n
-                spans[i] = Span(a, b, style)
-
-        if '\u2e24' in text.plain:
-            text = text.copy()
-            parts = re_keyword.split(text.plain)
-            new_parts = []
-            off = 0
-            spans = text.spans
-            for i, p in enumerate(parts):
-                if i & 1:
-                    new_parts.append(p[1:])
-                    cc = p[0]
-                    trim_spans(off, 2)
-                    off += len(p) - 1
-                    trim_spans(off, 1)
-                    spans.append(Span(
-                        off - len(p) + 1, off,
-                        Style(color=keyword_colors.get(cc, 'green'))))
-                else:
-                    new_parts.append(p)
-                    off += len(p)
-            text._text = [''.join(new_parts)]                    # noqa: SLF001
-            text.spans = spans
-        self._text = text
-        self.update(text)
+        self._text = render_text(text)
+        self.update(self._text)
 
     async def _press_keys(self, keys: Iterable[str]) -> None:
         """Simulate a key press.

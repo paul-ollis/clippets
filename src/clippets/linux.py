@@ -67,7 +67,7 @@ def get_winpos() -> Tuple[int, int]:                         # pragma: no cover
     """Get the screen position of the terminal."""
     res = subprocess.run(
         ['/usr/bin/xwininfo', '-name', 'Snippet-wrangler'],
-        capture_output=True)
+        capture_output=True, check=False)
     for rawline in res.stdout.decode().splitlines():
         line = rawline.strip()
         if line.startswith('Absolute upper-left X:'):

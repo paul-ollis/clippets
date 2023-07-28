@@ -20,13 +20,16 @@ from _pytest.terminal import TerminalReporter
 from rich.console import Console
 
 from fixtures import (
-    save_svg_diffs, snapshot_run, snippet_infile, snippet_outfile, tempdir,
-    work_file, clean_data)
+    clean_data, new_text_file, save_svg_diffs, snapshot_run, snapshot_run_dyn,
+    snippet_infile, snippet_outfile, tempdir, work_file)
 
 pytest_config = sys.modules['_pytest.config']
 
 __all__ = (
+    'clean_data',
+    'new_text_file',
     'snapshot_run',
+    'snapshot_run_dyn',
     'snippet_infile',
     'snippet_outfile',
     'work_file',

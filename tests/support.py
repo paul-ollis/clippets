@@ -51,15 +51,6 @@ msg_filter = set([
 ])
 
 
-class Namespace:                       # pylint: disable=too-few-public-methods
-    """Simple emulation of the argparse.Namespace for the Clippets app."""
-
-    def __init__(self, **kwargs):
-        self.raw = False
-        self.logf = None
-        self.__dict__.update(kwargs)
-
-
 def all_pumps(app: App):
     """Iterate over all (active) message pumps."""
     yield app
@@ -111,7 +102,6 @@ async def click(                                                # noqa: PLR0913
         target_widget, offset, button=bn, shift=shift, meta=meta,
         control=control
     )
-    print("MOUSE", message_arguments)
     await wait_for_idle(pilot)
     if cls is MouseDown:
         app.post_message(MouseDown(**message_arguments))
@@ -203,28 +193,23 @@ class TempTestFile:
 
 async def wait_for_idle(pilot, app: App | None = None):
     """Wait for the asyncio event loop to become idle."""
-    def message_queue_is_empty(p):
-        return p._message_queue.empty() and not p._pending_message
+    def pump_is_idle(p):
+        return not (
+            not p._message_queue.empty() or p._pending_message
+            or getattr(p, '_callbacks', None)
+            or getattr(p, '_next_callbacks', None))
 
     loop = asyncio.get_running_loop()
     for i in range(100):
         pumps_are_idle = True
-        screen_is_idle = True
         if app:
             for p in all_pumps(app):
-                if not message_queue_is_empty(p):
+                if not pump_is_idle(p):
                     pumps_are_idle = False
                     break
-            screen = app.screen
-            if screen:
-                a = screen._callbacks
-                b = screen._next_callbacks
-                c = not screen._message_queue.empty()
-                d = screen._pending_message
-                screen_is_idle = not any((a, b, c, d))
         if loop.is_idle() and pumps_are_idle:
             break
-        delay = 0 if i < 30 else 0.01
+        delay = 0 if i < 30 else 0.01                           # noqa: PLR2004
         await asyncio.sleep(delay)
     else:
         msg = 'Call to wait_for_idle: Never reached IDLE state'
@@ -249,6 +234,8 @@ class AppRunner:
             'group-1'. The word before the colon identifies the button and
             any modifier keys. Button names are 'left', ;right', 'up' and
             'down. Modifiers are not yet supported.
+        hover:group-1
+            Simluate the mouse hovering over a widgget.
         f1
             Press the F1 key. Any action without a colon character is
             interpreted as a key tp be pressed.
@@ -256,11 +243,15 @@ class AppRunner:
 
     logf = None
 
-    def __init__(self, snippet_file: TempTestFile, actions: list):
+    def __init__(
+            self, snippet_file: TempTestFile, actions: list,
+            *, test_mode: bool = True):
         if self.__class__.logf is None:
             self.__class__.logf = log.Log('/tmp/test.log')
-        self.app = core.Clippets(
-            Namespace(snippet_file=snippet_file.name, test_mode=True))
+        args = [snippet_file.name]
+        if test_mode:
+            args.append('--sync-mode')
+        self.app = core.Clippets(core.parse_args(args))
         self.msg_q = asyncio.Queue()
         self.actions = actions
         self.pilot = None
@@ -274,9 +265,11 @@ class AppRunner:
         tb = ''
         try:
             async with coro as self.pilot:
-                await self.wait_for_message_name('Ready')
-                for action in self.actions:
-                    await self.apply_action(action)
+                with self.logf:
+                    print('Start')
+                    await self.wait_for_message_name('Ready')
+                    for action in self.actions:
+                        await self.apply_action(action)
                 self.app.refresh()
                 self.pilot._wait_for_screen()
                 self.app.screen._on_timer_update()
@@ -309,8 +302,17 @@ class AppRunner:
                             names.append(w.uid())
                     msg = f'Bad widget ID: {arg}, simliar names = {names}'
                     raise RuntimeError(msg)
-                await click(self.pilot, button=cmd, selector=selector)
+
+                kw = {}
+                while '-' in cmd:
+                    mod, _, cmd = cmd.partition('-')
+                    kw[mod] = True
+                if cmd == 'hover':
+                    await self.pilot.hover(selector=selector)
+                else:
+                    await click(self.pilot, button=cmd, selector=selector, **kw)
                 await wait_for_idle(self.pilot, self.app)
+
         else:
             await self.pilot.press(action)
             await wait_for_idle(self.pilot, self.app)
