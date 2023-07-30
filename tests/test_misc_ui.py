@@ -14,6 +14,7 @@ from clippets import core, snippets
 
 HERE = Path(__file__).parent
 std_infile_text = '''
+    @title: Just testing.
     Main [tag-a tag-b]
       @text@
         Snippet 1
@@ -21,7 +22,7 @@ std_infile_text = '''
       @text@
         Snippet 2
     Second : Child A [tag-b]
-      @text@
+      @md@
         Snippet A2
     Second : Child B [tag-b]
       @text@

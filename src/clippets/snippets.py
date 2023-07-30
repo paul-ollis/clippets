@@ -116,7 +116,7 @@ class SnippetInsertionPointer:
     def move_snippet(self, snippet) -> bool:
         """Move a given snippet to this insertion point."""
         if self.is_next_to(snippet):
-            return False
+            return False                                     # pragma: no cover
         snippet.parent.remove(snippet)
         snippet.parent.clean()
         if self.after:
@@ -136,14 +136,13 @@ class Element:
     id_source = itertools.count()
     has_uid: bool = True
 
-    def __init__(self, parent: Element, first_line: str | None = None):
+    def __init__(self, parent: Element):
         self.parent = parent
         if self.has_uid:
             n = next(self.id_source)
             self._uid = f'{self._uid_base_name()}-{n}'
         else:
             self._uid = ''
-        self.first_line = first_line
         self._source_lines = []
         self.dirty = True
 
@@ -159,9 +158,7 @@ class Element:
 
     @property
     def root(self):
-        """The root group of the tree containin this group."""
-        if self.parent is None:
-            return self
+        """The root group of the tree containing this element."""
         return self.parent.root
 
     def uid(self):
@@ -177,10 +174,6 @@ class Element:
     def is_empty(self):
         """Detemine if this snippet is empty."""
         return len(self.source_lines) == 0
-
-    def source_len(self):
-        """Calculete the number of line in this snippet."""
-        return len(self.source_lines)
 
     def full_repr(self, *, end='\n', debug: bool = False):
         """Format a simple representation of this element.
@@ -199,19 +192,20 @@ class Element:
         This is intended for test support. The exact format may change between
         releases.
         """
-        return ''
+        return ''                                            # pragma: no cover
 
     def file_text(self):                          # pylint: disable=no-self-use
         """Generate the text that should be written to a file."""
         return ''
 
-    def clean(self):
+    def clean(self) -> Element | None:
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
         """
         self.source_lines = [
             line.expandtabs().rstrip() for line in self.source_lines]
+        return None
 
     def neighbour(
             self, *, backwards: bool, within_group: bool,
@@ -246,7 +240,7 @@ class PlaceHolder(Element):
     @staticmethod
     def is_last() -> bool:
         """Return false."""
-        return False
+        return False                                         # pragma: no cover
 
 
 class TextualElement(Element):
@@ -263,12 +257,6 @@ class TextualElement(Element):
     def text(self) -> str:
         """Build the plain text for this snippet."""
         return '\n'.join(self.source_lines)
-
-    def as_lines(self):
-        """Build the file content lines for this snippet."""
-        lines = [f'  {self.marker}\n'] if self.marker else []
-        lines.extend(f'{line}\n' for line in self.source_lines)
-        return lines
 
     @property
     def body(self) -> str:
@@ -313,12 +301,6 @@ class PreservedText(TextualElement):
         """Generate the text that should be written to a file."""
         return '\n'.join(self.source_lines) + '\n'
 
-    def clean(self) -> Element | None:
-        """Clean the source lines."""
-        if self.first_line is not None:
-            self.source_lines = [self.first_line,  *self.source_lines]
-        return super().clean()
-
 
 class Snippet(TextualElement):
     """A plain text snippet."""
@@ -345,7 +327,8 @@ class Snippet(TextualElement):
                     new_parts = []
                     for i, part in enumerate(parts):
                         if i & 1:
-                            rep = f'\u2e24{colors.keyword_code(part)}{part}\u2e25'
+                            code = colors.keyword_code(part)
+                            rep = f'\u2e24{code}{part}\u2e25'
                             new_parts.append(rep)
                         else:
                             new_parts.append(part)
@@ -358,18 +341,12 @@ class Snippet(TextualElement):
     def marked_text(self):
         """The snippet's text, with keywords marked up."""
         lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
-        while lines and not lines[-1].strip():
-            lines.pop()
         return widgets.render_text('\n'.join(lines))
 
     def reset(self):
         """Clear any cached state."""
         self._marked_lines = []
         self.dirty = True
-
-    def is_first(self) -> bool:
-        """Test if a snippet is the first in its group."""
-        return self.parent.is_first_snippet(self)
 
     def is_last(self) -> bool:
         """Test if a snippet is the last in its group."""
@@ -392,8 +369,7 @@ class Snippet(TextualElement):
     def set_text(self, text):
         """Set the text for this snippet."""
         self._marked_lines = []
-        lines = [f'   {line}' for line in text.splitlines()]
-        self.source_lines = lines
+        self.source_lines = text.splitlines()
 
     def clean(self) -> Element | None:
         """Clean the source lines.
@@ -437,8 +413,6 @@ class MarkdownSnippet(Snippet):
     def marked_text(self):
         """The snippet's text, with keywords marked up."""
         lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
-        while lines and not lines[-1].strip():
-            lines.pop()
         return '\n'.join(lines)
 
     @classmethod
@@ -511,18 +485,6 @@ class Title(TextualElement):
 class GroupDebugMixin:
     """Support for test and debug of the `Group`` class."""
 
-    def indexed_group(self, idx):
-        """Get a group using an index.
-
-        :idx: The group index. Negative indices are not supported.
-        """
-        for i, group in enumerate(self.groups.values()):
-            if i == idx:
-                return group
-
-        message = f'Subgroup index ({idx}) out of range'
-        raise IndexError(message)
-
     def outline_repr(self, end='\n'):
         """Format a simple group-only outline representation of the tree.
 
@@ -541,7 +503,7 @@ class GroupDebugMixin:
         releases.
         """
         if debug:
-            s = [f'Group: {self.name} {self.uid()}']
+            s = [f'Group: {self.name} {self.uid()}']         # pragma: no cover
         else:
             s = [f'Group: {self.name}']
         for c in self.children:
@@ -562,6 +524,7 @@ class Group(GroupDebugMixin, Element):
     def __init__(self, name, parent=None, tag_text=''):
         super().__init__(parent)
         self.name = name
+        self.title = ''
         self.groups = {}
         tags = {t.strip() for t in tag_text.split()}
         self.tags = sorted(tags)
@@ -625,14 +588,6 @@ class Group(GroupDebugMixin, Element):
             if not snippets:
                 self.children.append(PlaceHolder(parent=self))
 
-    def is_empty(self):
-        """Test whether this group has zero children."""
-        return bool(self.children)
-
-    def snippets(self) -> list[Snippet]:
-        """Provide this group's snippets."""
-        return [c for c in self.children if isinstance(c, Snippet)]
-
     def basic_walk(self, *, backwards: bool):
         """Iterate over the entire tree of groups and snippets.
 
@@ -684,17 +639,6 @@ class Group(GroupDebugMixin, Element):
             first_id=first_id,
             backwards=backwards)
 
-    def walk_groups(self, *, backwards: bool):
-        """Iterate over all groups."""
-        yield from self.walk(
-            predicate=lambda el: isinstance(el, Group),
-            backwards=backwards)
-
-    def is_first_snippet(self, snippet: Snippet) -> bool:
-        """Test if a snippet is the first in this gruop."""
-        snippets = [el for el in self.children if isinstance(el, Snippet)]
-        return snippets and snippets[0] is snippet
-
     def is_last_snippet(self, snippet: Snippet) -> bool:
         """Test if a snippet is the last in this gruop."""
         snippets = [el for el in self.children if isinstance(el, Snippet)]
@@ -713,54 +657,6 @@ class Group(GroupDebugMixin, Element):
             if el.uid() == uid:
                 return el
         return None
-
-    def find_snippet_before_id(self, uid):
-        """Find the snippet before the one with the given UID."""
-        def is_textual(el):
-            return isinstance(el, Snippet)
-
-        prev = None
-        for el in self.walk(backwards=False):
-            if is_textual(el):
-                if el.uid() == uid:
-                    return prev
-                else:
-                    prev = el
-        return None
-
-    def find_snippet_after_id(self, uid):
-        """Find the snippet after the one with the given UID."""
-        for i, el in enumerate(
-                self.walk_snippets(first_id=uid, backwards=False)):
-            if i == 1:
-                return el
-        return None
-
-    # TODO: Should soon lose this.
-    def iter_from_to(self, first, second):
-        """Iterate iver a subset of elements."""
-        def is_textual(el):
-            return isinstance(el, Snippet)
-
-        in_range = False
-        for el in self.walk(backwards=False):
-            if is_textual(el):
-                if in_range:
-                    yield el
-                if el.uid() == first:
-                    in_range = True
-                    yield el
-            if el.uid() == second:
-                break
-
-    def correctly_ordered(self, first, second):
-        """Test whether first is after second."""
-        for el in self.walk(backwards=False):
-            if el.uid() == first:
-                return True
-            elif el.uid() == second:
-                return False
-        return False
 
     def keyword_set(self) -> KeywordSet | None:
         """Find the keyword set, if any, for this group."""
@@ -838,7 +734,8 @@ class Loader:
         """Handle a title line."""
         if line.startswith('@title:'):
             self.store()
-            self.cur_group.add(Title(parent=self.cur_group))
+            _, _, title = line.partition(':')
+            self.root.title = title.strip()
             self.el = PreservedText(parent=None)
             return True
         else:
@@ -895,7 +792,7 @@ class Loader:
 
         for el in self.root.walk_snippets(backwards=False):
             el.reset()
-        return self.root, self.title
+        return self.root, self.root.title
 
 
 # Conveniant types.
@@ -924,6 +821,8 @@ def load(path):
 def save(path, root):
     """Save a snippet tree to a file."""
     with Path(path).open('wt', encoding='utf8') as f:
+        if root.title:
+            f.write(f'@title: {root.title}\n')
         for el in root.walk(backwards=False):
             f.write(el.file_text())
             if isinstance(el, Group):

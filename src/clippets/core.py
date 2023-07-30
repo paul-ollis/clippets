@@ -8,6 +8,16 @@
 # 10. Genertae frozen versions for all platforms.
 # 11. Watch the input file(s) and be able to 're-start' in response to changes.
 
+# TODO: Make terminology consistent as follows.
+#       Added
+#           A snippet that has been added to the clipboard.
+#       Selected
+#           The snippet that has the box around. Many actions operate on this
+#           snippet. This is stored as the snippet ID and can be ``None`` when
+#           no snippet is present or visible.
+#       Focussed
+#           This should only relate to the filter input.
+
 from __future__ import annotations
 
 import argparse
@@ -75,18 +85,6 @@ class MoveInfo:
     dest: SnippetInsertionPointer
 
 
-def if_active(method):
-    """Wrap Smippets method to only run when fully active."""
-    @wraps(method)
-    def invoke(self, *args, **kwargs):
-        if self.active:
-            return method(self, *args, **kwargs)
-        else:
-            return None
-
-    return invoke
-
-
 def only_for_mode(name: str):
     """Wrap Smippets method to only run when in a given mode."""
     def decor(method):
@@ -95,7 +93,7 @@ def only_for_mode(name: str):
             if self.context_name() == name:
                 return method(self, *args, **kwargs)
             else:
-                return None
+                return None                                  # pragma: no cover
         return invoke
 
     return decor
@@ -121,7 +119,7 @@ class HelpScreen(Screen):
 
     def compose(self) -> ComposeResult:
         """Tada."""
-        yield Header()
+        yield Header(id='header')
         yield Static(BANNER, classes='banner')
         yield from markup.generate()
         yield MyFooter()
@@ -156,7 +154,10 @@ class MainScreen(Screen):
             inp.cursor_blink = False
             yield inp
         with MyVerticalScroll(id='view', classes='result'):
-            yield MyMarkdown(id='result')
+            if self.app.args.raw:
+                yield Static(id='result')
+            else:
+                yield MyMarkdown(id='result')
         with MyVerticalScroll(id='snippet-list', classes='bbb'):
             yield from self.build_tree_part()
         footer = MyFooter()
@@ -305,7 +306,7 @@ class AppMixin:
         self.groups = groups
         self.hidden_bindings = set()
         self.hover_uid = None
-        self._focussed_snippets = [id_of(self.groups.first_snippet())]
+        self._selected_snippets = [id_of(self.groups.first_snippet())]
         self.move_info = None
         self.redo_buffer = collections.deque(maxlen=20)
         self.sel_order = False
@@ -326,9 +327,9 @@ class AppMixin:
             await self.populater
 
     @property
-    def focussed_snippet(self):
+    def selected_snippet(self):
         """The currently focussed snippet."""
-        return self._focussed_snippets[-1]
+        return self._selected_snippets[-1]
 
     def handle_blur(self, w: Widget):
         """Handle loss of focus for a widget.
@@ -346,22 +347,24 @@ class AppMixin:
         return self.lookup[uid]
 
     ## Management of dynanmic display features.
-    def focussable_widgets(self) -> tuple[Widget, ...]:
-        """Create a tuple of 'focussable' widgets."""
-        return tuple(self.find_widget(s) for s in self.walk_snippets())
+    def selectable_widgets(self) -> list[Widget, ...]:
+        """Create a list of selectable widgets.
+
+        To be selectable, a snippet's widget must be visible.
+        """
+        widgets = (self.find_widget(s) for s in self.walk_snippets())
+        return [w for w in widgets if w.display]
 
     def insertion_widgets(self) -> tuple[tuple[Snippet, Widget], ...]:
         """Create a tuple of widgets involved in insetion operations."""
         return tuple(
             (s, self.find_widget(s)) for s in self.walk_snippet_like())
 
-    @if_active
     def set_visuals(self) -> None:
         """Set and clear widget classes that control visual highlighting."""
         self.set_snippet_visuals()
         self.set_input_visuals()
 
-    @if_active
     def set_snippet_visuals(self) -> None:
         """Set and clear widget classes that control snippet highlighting."""
         filter_focussed = (fw := self.focused) and fw.id == 'filter'
@@ -381,12 +384,11 @@ class AppMixin:
                     if isinstance(dest.snippet, PlaceHolder):
                         w.display = True
             else:
-                if w.id == self.focussed_snippet and not filter_focussed:
+                if w.id == self.selected_snippet and not filter_focussed:
                     w.add_class('kb_focussed')
                 if w.id == self.hover_uid:
                     w.add_class('mouse_hover')
 
-    @if_active
     def set_input_visuals(self) -> None:
         """Set and clear widget classes that control input highlighting."""
         filter_focussed = (fw := self.focused) and fw.id == 'filter'
@@ -396,7 +398,6 @@ class AppMixin:
         else:
             w.remove_class('kb_focussed')
 
-    @if_active
     def update_selected(self) -> None:
         """Update the 'selected' flag following mouse movement."""
         for snippet in self.walk_snippets():
@@ -466,25 +467,38 @@ class AppMixin:
     ## Handling of keyboard operations.
     def fix_selection(self, *, kill_filter: bool = False):
         """Update the keyboard selected focus when widgets get hidden."""
-        if not kill_filter and self._focussed_snippets[-1] == 'filter':
-            return
+        # Do nothing is the filter input is focusses and should remain so.
+        if self._selected_snippets[-1] == 'filter':
+            if kill_filter:
+                self._selected_snippets.pop()
+            else:
+                return
+
+        # If the current selection is ``None`` then we cannot fix the
+        # selection.
+        if self.selected_snippet is None:
+            if not self.selectable_widgets():
+                return
+            self._selected_snippets.pop()
 
         # If there is selection history (from previous fix-ups) try to reselect
         # the oldest entry in the history.
-        if self._focussed_snippets[-1] == 'filter':
-            self._focussed_snippets.pop()
-        for i, wid in enumerate(self._focussed_snippets):
-            if i > 0:
+        for i, wid in enumerate(self._selected_snippets):
+            if i > 0 and wid is not None:
                 w = self.query_one(f'#{wid}')
                 if w.display:
-                    self._focussed_snippets[:] = self._focussed_snippets[:i]
+                    self._selected_snippets[:] = self._selected_snippets[:i]
                     self.set_visuals()
                     self.screen.set_focus(None)
                     return
 
         # The selection history could not be used so find the best alternative
         # snippet to select, saving the currently selection in the history.
-        w = self.query_one(f'#{self.focussed_snippet}')
+        self.fix_to_next_nearest_snippet()
+
+    def fix_to_next_nearest_snippet(self):
+        """Move the snippet selection to the next nearest, if necessary."""
+        w = self.query_one(f'#{self.selected_snippet}')
         if not w.display:
             k = self.action_select_move(inc=-1, dry_run=True)
             if k == 0:
@@ -492,17 +506,22 @@ class AppMixin:
             else:
                 k = self.action_select_move(inc=-1, dry_run=False, push=True)
 
+            # It is possible that no snippet could be selected.
+            if k < 0 and self._selected_snippets[-1] is not None:
+                self._selected_snippets.append(None)
+
     def action_select_move(
                 self, inc: int, *, dry_run: bool = False, push: bool = False,
             ) -> int:
         """Move the selection to the next available snippet."""
-        widgets = self.focussable_widgets()
+        # Collect snippet widgets and those that are visible.
+        widgets = [self.find_widget(s) for s in self.walk_snippets()]
         valid_widgets = [w for w in widgets if w.display]
         valid_range = range(len(widgets))
 
         k = -1
         for i, w in enumerate(widgets):
-            if w.id == self.focussed_snippet:
+            if w.id == self.selected_snippet:
                 k = i + inc
                 while k in valid_range and not widgets[k].display:
                     k += inc
@@ -514,11 +533,11 @@ class AppMixin:
         if dry_run:
             return k
 
-        if self.focussed_snippet != widgets[k].id:
+        if self.selected_snippet != widgets[k].id:
             if push:
-                self._focussed_snippets.append(widgets[k].id)
+                self._selected_snippets.append(widgets[k].id)
             else:
-                self._focussed_snippets[:] = [widgets[k].id]
+                self._selected_snippets[:] = [widgets[k].id]
             self.screen.set_focus(None)
             self.set_visuals()
             widgets[k].scroll_visible()
@@ -564,11 +583,9 @@ class AppMixin:
         self.fix_selection()
 
     ## UNCLASSIFIED
-    def is_fully_collapsed(self, tag: str = ''):
+    def is_fully_collapsed(self):
         """Test whether all groups are collapsed."""
         groups = self.walk_groups()
-        if tag:
-            groups = (g for g in groups if tag in g.tags)
         return all(group.uid() in self.collapsed for group in groups)
 
     def is_fully_open(self, tag: str = ''):
@@ -606,7 +623,6 @@ class AppMixin:
         self.edited_text = ''
 
     ## Clipboard representaion widget management.
-    @if_active
     def update_result(self) -> None:
         """Update the contents of the results display widget."""
         text = self.build_result_text()
@@ -666,7 +682,10 @@ class AppMixin:
         new_snippet = snippet.duplicate()
         text = run_editor(new_snippet.text)
         new_snippet.set_text(text)
+        self._selected_snippets[:] = [new_snippet.uid()]
         self.rebuild_after_edits()
+        w = self.find_widget(new_snippet)
+        w.scroll_visible()
 
     def backup_and_save(self):
         """Create a new snippet file backup and then save."""
@@ -684,7 +703,7 @@ class AppMixin:
             # TODO: What about when groups are collapsed?
             return
 
-        id_str = id_str or self.focussed_snippet
+        id_str = id_str or self.selected_snippet
         w = self.query_one(f'#{id_str}')
         w.add_class('moving')
 
@@ -708,7 +727,7 @@ class AppMixin:
         self.action_stop_moving()
         if info and info.dest.move_snippet(info.source):
             self.rebuild_after_edits()
-            self._focussed_snippets[:] = [info.source.uid()]
+            self._selected_snippets[:] = [info.source.uid()]
             self.set_visuals()
 
     def action_do_redo(self) -> None:
@@ -729,8 +748,8 @@ class AppMixin:
 
     def action_duplicate_snippet(self) -> None:
         """Duplicate and edit the currently selected snippet."""
-        if self.focussed_snippet:
-            self.duplicate_snippet(self.focussed_snippet)
+        if self.selected_snippet:
+            self.duplicate_snippet(self.selected_snippet)
 
     def action_edit_clipboard(self) -> None:
         """Run the user's editor on the current clipboard contents."""
@@ -743,7 +762,7 @@ class AppMixin:
 
     def action_edit_keywords(self) -> None:
         """Invoke the user's editor on the current group's keyword list."""
-        snippet = self.groups.find_element_by_uid(self.focussed_snippet)
+        snippet = self.groups.find_element_by_uid(self.selected_snippet)
         if snippet is None:
             return
 
@@ -764,7 +783,7 @@ class AppMixin:
         """Move focus to the filter input field."""
         w = self.query_one('#filter')
         self.screen.set_focus(w)
-        self._focussed_snippets.append('filter')
+        self._selected_snippets.append('filter')
         self.set_visuals()
 
     def action_leave_filter(self) -> None:
@@ -781,8 +800,8 @@ class AppMixin:
 
     def action_edit_snippet(self) -> None:
         """Edit the currently selected snippet."""
-        if self.focussed_snippet:
-            self.edit_snippet(self.focussed_snippet)
+        if self.selected_snippet:
+            self.edit_snippet(self.selected_snippet)
 
     def action_move_insertion_point(self, direction: str) -> bool:
         """Move the snippet insertion up of down.
@@ -822,9 +841,9 @@ class AppMixin:
 
     def action_toggle_select(self):
         """Handle any key that is used to select a snippet."""
-        if self.groups.find_element_by_uid(self.focussed_snippet) is not None:
+        if self.groups.find_element_by_uid(self.selected_snippet) is not None:
             self.push_undo()
-            id_str = self.focussed_snippet
+            id_str = self.selected_snippet
             if id_str in self.chosen:
                 self.chosen.remove(id_str)
             else:
@@ -859,7 +878,6 @@ class Clippets(AppMixin, App):
             self.TITLE = title                   # pylint: disable=invalid-name
         super().__init__(groups)
         self.args = args
-        self.active = False
         self.key_handler = KeyHandler(self)
         self.init_bindings()
         self.walk_snippets = partial(self.walk, is_snippet)
@@ -877,7 +895,7 @@ class Clippets(AppMixin, App):
         if self.screen.id == 'main':
             if self.move_info is not None:
                 return 'moving'
-            elif self.focussed_snippet == 'filter':
+            elif self.selected_snippet == 'filter':
                 return 'filter'
             else:
                 return 'normal'
@@ -944,16 +962,11 @@ class Clippets(AppMixin, App):
             self.populater_q.put_nowait('pop')
 
         self.screen.set_focus(None)
-        self.active = True
         self.set_visuals()
 
     def action_show_help(self) -> None:
         """Show the help screen."""
         self.push_screen(HelpScreen(id='help'))
-
-    def action_close_help(self) -> None:
-        """Close the help screen."""
-        self.pop_screen()
 
     async def on_key(self, event: Event) -> None:
         """Handle a top level key press."""

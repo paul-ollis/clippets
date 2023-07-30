@@ -6,3 +6,5 @@ omit =
 [report]
 exclude_also =
     if TYPE_CHECKING:
+    def __repr__\(self\):
+    if __name__ == '__main__':

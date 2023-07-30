@@ -18,7 +18,7 @@ from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
 from syrupy import SnapshotAssertion
 
-from support import AppRunner, TempTestFile
+from support import AppRunner, TempTestFile, EditTempFile
 
 from clippets import core, snippets
 
@@ -73,6 +73,21 @@ def temp_file(suffix: str, mode: str) -> TempTestFile:
     f.close()
 
 
+def temp_edit_file(suffix: str, mode: str) -> EditTempFile:
+    """Provide a temporary editor emulation file during test execution.
+
+    :suffix:
+        Text appended to the end of the file name. Typically just the extension
+        (for example '.txt').
+    :mode:
+        The file's mode.
+    """
+    f = EditTempFile(suffix=suffix, mode=mode)
+    os.environ['CLIPPETS_TEST_PATH'] = f.name
+    yield f
+    f.close()
+
+
 @pytest.fixture
 def snippet_infile() -> TempTestFile:
     """Provide a temporary input file during test execution.
@@ -100,19 +115,20 @@ def work_file() -> TempTestFile:
 
 
 @pytest.fixture
-def new_text_file(work_file):
-    """Provide the file to hold the new text for a snippet edit."""
-    os.environ['CLIPPETS_TEST_PATH'] = work_file.name
-    return work_file
+def edit_text_file() -> EditTempFile:
+    """Provide a temporary work file during test execution."""
+    yield from temp_edit_file('work.txt', 'w+t')
 
 
 @pytest.fixture
 def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
     """Provide a way to run the Clippets app and capture a snapshot."""
-    async def run_app(
+    async def run_app(                                          # noqa: PLR0913
             infile: TempTestFile, actions: list, *, log=False,
-            post_delay: float = 0.0, test_mode: bool = True):
-        runner = AppRunner(infile, actions, test_mode=test_mode)
+            post_delay: float = 0.0, test_mode: bool = True,
+            options: list[str] | None = None):
+        runner = AppRunner(
+            infile, actions, test_mode=test_mode, options=options)
         if log:
             with runner.logf:
                 svg, tb = await runner.run(post_delay=post_delay)
@@ -129,7 +145,7 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
 
 
 @pytest.fixture
-def snapshot_run_dyn(snapshot_run):
+def snapshot_run_dyn(snapshot_run):      # pylint: disable=redefined-outer-name
     """Provide a way to run the Clippets app and capture a snapshot.
 
     This basically wraps snapshot_run to allow Clippets to run with its

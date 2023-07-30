@@ -101,6 +101,17 @@ class TestMouseControlled:
         assert snapshot_ok
 
     @pytest.mark.asyncio
+    async def test_fold_can_move_selection_up(self, infile, snapshot_run):
+        """The selection is moved up if a fold leaves no snippets below."""
+        actions = (
+            ['down'] * 4                  # Move to Snippet 3.
+            + ['left:group-5']            # Fold the last group, forcing the
+                                          # selection to move.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
     async def test_open_can_move_selection(self, infile, snapshot_run):
         """The selection can be restored if its group is re-opened."""
         actions = (

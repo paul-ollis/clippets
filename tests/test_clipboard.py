@@ -89,6 +89,30 @@ class TestMouseControlled:
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
+    @pytest.mark.asyncio
+    async def test_snippets_can_be_removed(
+            self, infile, snapshot_run):
+        """The mouse can also remove snippets rom the clipboard."""
+        actions = (
+            ['left:snippet-1']            # Add snippet 2
+            + ['left:snippet-0']          # Then snippet 1
+            + ['left:snippet-1']          # Add remove snippet 2
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_snippets_can_be_used_as_plaintext(
+            self, infile, snapshot_run):
+        """The '--raw option puts plaintext intot he clipboard."""
+        actions = (
+            ['left:snippet-1']            # Add snippet 2
+            + ['left:snippet-0']          # Then snippet 1
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions, options=['--raw'])
+        assert snapshot_ok
+
+
 
 class TestKeyboardControlled:
     """Using the keyboard (mostly) to populate the clipboard."""
@@ -131,6 +155,34 @@ class TestKeyboardControlled:
             + ['enter']
             + ['f8']                      # Then toggle the order
             + ['f8']                      # Then toggle it back
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_snippets_can_be_removed(
+            self, infile, snapshot_run):
+        """Already added snippets will be removed by the enter key."""
+        actions = (
+            ['down']                      # Add snippet 2
+            + ['enter']
+            + ['up']                      # Add snippet 1
+            + ['enter']
+            + ['down']                    # Remove snippet 2
+            + ['enter']
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_f3_clears_the_clipboard(self, infile, snapshot_run):
+        """The F3 removes all clippets from the clipboard."""
+        actions = (
+            ['down']                      # Add snippet 2
+            + ['enter']
+            + ['up']                      # Add snippet 1
+            + ['enter']
+            + ['f3']                      # The remove all snippets.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok

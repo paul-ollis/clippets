@@ -4,9 +4,10 @@ import asyncio
 import contextlib
 import textwrap
 import traceback
+from contextlib import suppress
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List
+from typing import Callable
 
 import log
 
@@ -112,8 +113,12 @@ async def click(                                                # noqa: PLR0913
     await pilot.pause(0.01)
 
 
-def clean_text_lines(text: str) -> List[str]:
-    """Dedent and remove unwanted blank lines from text."""
+def clean_text_lines(text: str) -> list[str]:
+    """Dedent and remove unwanted blank lines from text.
+
+    A line consisting of a single '|' character is treated as a blank line and
+    may be used to add leading or tailing blank lines.
+    """
     lines = [line.rstrip() for line in text.splitlines()]
     while lines and not lines[0]:
         lines.pop(0)
@@ -138,6 +143,8 @@ def clean_text(text):
 def populate(f, text):
     """Populate a snippet file using given text."""
     cleaned_text = clean_text(text)
+    f.seek(0)
+    f.truncate()
     f.write(cleaned_text)
     f.flush()
     return cleaned_text
@@ -160,26 +167,46 @@ class TempTestFile:
 
     def __init__(self, *args, **kwargs):
         self._f = NamedTemporaryFile(*args, **kwargs)
+        self._name = self._f.name
 
     @property
     def name(self):
-        """The name of the temporary file."""
-        return self._f.name
+        """Get the name of the temporary file."""
+        return self._name
 
     def write(self, *args, **kwargs):
         """Write to the file."""
         return self._f.write(*args, **kwargs)
 
     def read(self, *args, **kwargs):
-        """Reaf from the file."""
+        """Read from the file."""
         return self._f.read(*args, **kwargs)
+
+    def truncate(self, *args):
+        """Truncate the file."""
+        return self._f.truncate(*args)
 
     def flush(self):
         """Flush the file."""
         return self._f.flush()
 
+    def backup_paths(self) -> list[Path]:
+        """Get Path instances for any backup files."""
+        paths = []
+        for i in range(1, 10):
+            bak_path = Path(f'{self._name}.bak{i}')
+            if bak_path.exists():
+                paths.append(bak_path)
+        return sorted(paths)
+
+    def _cleanup(self):
+        for bak_path in self.backup_paths():
+            with suppress(OSError):
+                bak_path.unlink()
+
     def close(self):
         """Close the file."""
+        self._cleanup()
         return self._f.close()
 
     def seek(self, *args, **kwargs):
@@ -189,6 +216,34 @@ class TempTestFile:
     def __str__(self):
         self._f.seek(0)
         return self._f.read()
+
+
+class EditTempFile(TempTestFile):
+    """A version of TempTestFile with special Clippet editing support."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._output = None
+        self._has_run = False
+        self._prev_text = ''
+
+    def _load(self):
+        text = str(self)
+        lines = text.splitlines()
+        self._has_run = lines and lines[0] == '::action occurred::'
+        self._prev_text = '\n'.join(lines[1:])
+
+    @property
+    def has_run(self):
+        """Whether the emulated edit session ran."""
+        self._load()
+        return self._has_run
+
+    @property
+    def prev_text(self):
+        """The text that was replaced by the last edit."""
+        self._load()
+        return self._prev_text
 
 
 async def wait_for_idle(pilot, app: App | None = None):
@@ -224,8 +279,8 @@ class AppRunner:
     This 'steals' some code from Textual.
 
     :actions:
-        A list of actions to perform. Each entry is a string that get
-        interpreted as described for the following examples:
+        A list of actions to perform. Each entry is a callable or a string that
+        gets interpreted as described for the following examples:
 
         pause:0.2
             Pause for a short time.
@@ -239,16 +294,21 @@ class AppRunner:
         f1
             Press the F1 key. Any action without a colon character is
             interpreted as a key tp be pressed.
+
+        Callable actions are simply invoked without arguments and any return
+        value is ignored. To allow for future extension, the retrun value
+        should be ``None``.
     """
 
     logf = None
 
     def __init__(
-            self, snippet_file: TempTestFile, actions: list,
-            *, test_mode: bool = True):
+            self, snippet_file: TempTestFile, actions: list[str | Callable],
+            *, test_mode: bool = True, options: list[str] | None = None):
         if self.__class__.logf is None:
             self.__class__.logf = log.Log('/tmp/test.log')
-        args = [snippet_file.name]
+        options = options or []
+        args = [snippet_file.name, *options]
         if test_mode:
             args.append('--sync-mode')
         self.app = core.Clippets(core.parse_args(args))
@@ -265,11 +325,9 @@ class AppRunner:
         tb = ''
         try:
             async with coro as self.pilot:
-                with self.logf:
-                    print('Start')
-                    await self.wait_for_message_name('Ready')
-                    for action in self.actions:
-                        await self.apply_action(action)
+                await self.wait_for_message_name('Ready')
+                for action in self.actions:
+                    await self.apply_action(action)
                 self.app.refresh()
                 self.pilot._wait_for_screen()
                 self.app.screen._on_timer_update()
@@ -287,6 +345,10 @@ class AppRunner:
 
     async def apply_action(self, action):
         """Apply an action."""
+        if callable(action):
+            action()
+            return
+
         cmd, _, arg = action.partition(':')
         if arg:
             if cmd == 'pause':
@@ -310,7 +372,8 @@ class AppRunner:
                 if cmd == 'hover':
                     await self.pilot.hover(selector=selector)
                 else:
-                    await click(self.pilot, button=cmd, selector=selector, **kw)
+                    await click(
+                        self.pilot, button=cmd, selector=selector, **kw)
                 await wait_for_idle(self.pilot, self.app)
 
         else:

@@ -89,20 +89,34 @@ async def test_keywords_augment_md_highlighting(infile, snapshot_run_dyn):
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
     assert snapshot_ok
 
+
 @pytest.mark.asyncio
 async def test_keywords_can_be_edited(
-        infile, snapshot_run_dyn, new_text_file):
+        infile, snapshot_run_dyn, edit_text_file):
     """Keyword highlighting adds to existing markdown highlighting.
 
     For example, a bold keyword reamins bold, but is also coloured.
     """
-    populate(new_text_file, 'Markdown\ntext\n')
+    populate(edit_text_file, 'Markdown\ntext\n')
     actions = (
         ['f7']                # Edit the first group's keywords.
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
-    old_text = str(new_text_file)
-    print('OLD', repr(old_text))
-    assert 'highlighting\ntext' == old_text
+    assert 'highlighting\ntext' == edit_text_file.prev_text
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_keywords_cannot_be_edited_if_no_snippet_selected(
+        infile, snapshot_run_dyn, edit_text_file):
+    """If no snippet is showns as selected, keywords cannot be edited."""
+    populate(edit_text_file, 'Markdown\ntext\n')
+    actions = (
+        ['f9']                  # Close all groups.
+        + ['f7']                # Edit the first group's keywords.
+    )
+    kw = 'highlighting text'
+    _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
+    assert not edit_text_file.has_run
     assert snapshot_ok

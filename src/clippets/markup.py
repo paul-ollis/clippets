@@ -75,6 +75,7 @@ formatted input text is likely to result in a run-time error or garbage out.
 
 import re
 import textwrap
+from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar, Iterable, List, Tuple
 
@@ -205,9 +206,9 @@ class BlockTokeniser:                  # pylint: disable=too-few-public-methods
     def __init__(self, text):
         lines = text.splitlines()
         while lines and not lines[0].strip():
-            lines.pop(0)
+            lines.pop(0)                                     # pragma: no cover
         while lines and not lines[-1].strip():
-            lines.pop()
+            lines.pop()                                      # pragma: no cover
 
         self.it = PushbackIter(iter(lines))
         self.state = 'idle'
@@ -243,19 +244,19 @@ class Element:                         # pylint: disable=too-few-public-methods
         self.children = []
         self.classes = set(classes)
 
-    def dump(self):
+    def dump(self):                                          # pragma: no cover
         """Dump tree."""
         for el in self.children:
             print(el)
             el.dump()
 
 
+@dataclass
 class TextElement:
     """A text string with styling information."""
 
-    def __init__(self, text, style=''):
-        self.text = text
-        self.style = style
+    text: str
+    style: str = ''
 
 
 class BlockElement(Element):
@@ -269,7 +270,7 @@ class BlockElement(Element):
         self.ind_level, self.lines = dedent_lines(lines)
 
     @property
-    def level(self):
+    def level(self):                                         # pragma: no cover
         """The level of this element."""
         if self.parent:
             return self.parent.level + 1
@@ -282,7 +283,7 @@ class BlockElement(Element):
         if self.parent:
             return self.parent.margin_level + 1 + self.margin_adjust
         else:
-            return 0
+            return 0                                         # pragma: no cover
 
     @classmethod
     def consume_block(cls, blocks):
@@ -302,7 +303,7 @@ class BlockElement(Element):
     @classmethod
     def match(cls, _lines):
         """See if a block of lines is a match for this type of element."""
-        return True
+        return True                                          # pragma: no cover
 
     def gather_children(self, blocks):
         """Consume any child paragraphs."""
@@ -328,7 +329,7 @@ class BlockElement(Element):
 
     def _snippet(self) -> str:                    # pylint: disable=no-self-use
         """Format a snippet of text for use by __repr__."""
-        return ''
+        return ''                                            # pragma: no cover
 
     def __repr__(self):
         ret = f'{self.__class__.__name__}({self.level}/{self.ind_level}'
@@ -350,7 +351,7 @@ class Paragraph(BlockElement):         # pylint: disable=too-few-public-methods
 
     def _snippet(self) -> str:
         """Format a snippet of text for use by __repr__."""
-        return self.lines[0]
+        return self.lines[0]                                 # pragma: no cover
 
     @property
     def elements(self):
@@ -385,7 +386,7 @@ class Paragraph(BlockElement):         # pylint: disable=too-few-public-methods
         """Match a block of lines as a paragraph."""
         if len(lines) > 0:
             return ind_level(lines[0])
-        return None
+        return None                                          # pragma: no cover
 
     def widget_text(self):
         """Form the text used to populate this element's widget."""
@@ -424,7 +425,7 @@ class CodeBlock(Paragraph):
 
     def __init__(self, blocks, parent, lang):
         lines = list(blocks[0])
-        for block in blocks[1:]:
+        for block in blocks[1:]:                             # pragma: no cover
             lines.append('')
             lines.extend(block)
         super().__init__(lines, parent, ['code'])
@@ -438,7 +439,7 @@ class CodeBlock(Paragraph):
 
     def _snippet(self) -> str:
         """Format a snippet of text for use by __repr__."""
-        return f'{self.lang}: {self.lines[0]}'
+        return f'{self.lang}: {self.lines[0]}'               # pragma: no cover
 
 
 class Definition(Paragraph):

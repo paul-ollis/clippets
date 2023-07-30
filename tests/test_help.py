@@ -50,7 +50,7 @@ def infile(snippet_infile):
 async def test_help_can_be_displayed(infile, snapshot_run):
     """The F1 key brings up a help page."""
     actions = (
-        ['f1']            # Bring the help
+        ['f1']            # Open the help
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
     assert snapshot_ok
@@ -60,7 +60,7 @@ async def test_help_can_be_displayed(infile, snapshot_run):
 async def test_help_can_be_hidden(infile, snapshot_run):
     """The F1 is also used to close the help page."""
     actions = (
-        ['f1'] * 2        # Bring the helpm then close it.
+        ['f1'] * 2        # Open the help then close it.
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
     assert snapshot_ok

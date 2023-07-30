@@ -1,4 +1,4 @@
-"""Loading and saving the clippets file
+"""Loading and saving the clippets file.
 
 The clippets file contains a mixture of the following:
 
@@ -176,6 +176,7 @@ def test_keywords(snippet_infile):
             one two
           @text@
             Snippet 1
+
         Second
           @md@
             Snippet 2
@@ -197,6 +198,7 @@ def test_keywords(snippet_infile):
         Group: Main
         KeywordSet: one two
         Snippet: 'Snippet 1'
+        PreservedText: ''
         Group: Second
         KeywordSet: five four three
         MarkdownSnippet: 'Snippet 2'
@@ -230,6 +232,38 @@ def test_two_snippets_are_preserved(snippet_infile, snippet_outfile):
     root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
+
+
+def test_nested_groups_are_handled(snippet_infile, snippet_outfile):
+    """Nested sub-groups are correcttly saved."""
+    expected = clean_text('''
+        Main
+          @md@
+            Snippet 1
+        Main : Subgroup
+          @md@
+            Snippet 2
+    ''')
+    populate(snippet_infile, expected)
+    root, _ = snippets.load(snippet_infile.name)
+    snippets.save(snippet_outfile.name, root)
+    assert str(snippet_outfile) == expected
+
+
+def test_nested_groups_with_tags_are_handled(snippet_infile, snippet_outfile):
+    """Nested sub-groups with tags are correcttly saved."""
+    expected = clean_text('''
+        Main
+          @md@
+            Snippet 1
+        Main : Subgroup [tag-a tag-b]
+          @md@
+            Snippet 2
+    ''')
+    populate(snippet_infile, expected)
+    root, _ = snippets.load(snippet_infile.name)
+    snippets.save(snippet_outfile.name, root)
+    assert expected == str(snippet_outfile)
 
 
 def test_leading_comment_block_is_preserved(snippet_infile, snippet_outfile):
@@ -311,4 +345,24 @@ def test_keywords_are_saved(snippet_infile, snippet_outfile):
     ''')
     root, _ = snippets.load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
+    assert expected == str(snippet_outfile)
+
+
+def test_title_is_preserved(snippet_infile, snippet_outfile):
+    """An user supplied title is saved."""
+    expected = populate(snippet_infile, '''
+        @title: User supplied title
+        Main
+          @keywords@
+            one
+            two
+          @md@
+            Snippet 1
+
+        # Comment
+        |
+    ''')
+    root, title = snippets.load(snippet_infile.name)
+    snippets.save(snippet_outfile.name, root)
+    assert 'User supplied title' == title
     assert expected == str(snippet_outfile)

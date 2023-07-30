@@ -1,7 +1,6 @@
 """Application specific widgets."""
 from __future__ import annotations
 
-import asyncio
 import re
 import unicodedata
 from collections import defaultdict
@@ -12,7 +11,6 @@ import rich.repr
 from rich.style import Style
 from rich.text import Span, Text
 from textual import events
-from textual._wait import wait_for_idle
 from textual.app import App
 from textual.containers import Grid, VerticalScroll
 from textual.keys import (
@@ -146,9 +144,9 @@ class MyFooter(Footer):
             if binding.key_display is None:
                 key_display = self.app.get_key_display(binding.key)
                 if key_display is None:
-                    key_display = binding.key.upper()
+                    key_display = binding.key.upper()        # pragma: no cover
             else:
-                key_display = binding.key_display
+                key_display = binding.key_display            # pragma: no cover
             hovered = self.highlight_key == binding.key
             key_text = Text.assemble(
                 (
@@ -231,30 +229,27 @@ class ExtendMixin:
 
         This is a copy of the standrard Textual code except:
 
+        - the 'wait:...' form of key is not handled; my test runner handles
+          delays.
         - print calls have been removed.
         - assertions have been removed.
+        - some wait calls have been removed.
         """
         app = self
         driver = app._driver                                     # noqa: SLF001
         for key in keys:
-            if key.startswith('wait:'):
-                _, wait_ms = key.split(':')
-                await asyncio.sleep(float(wait_ms) / 1000)
-                await app._animator.wait_until_complete()        # noqa: SLF001
-                await wait_for_idle(0)
-            else:
-                if len(key) == 1 and not key.isalnum():
-                    key = _character_to_key(key)                # noqa: PLW2901
-                original_key = REPLACED_KEYS.get(key, key)
-                char: str | None = None
-                try:
-                    char = unicodedata.lookup(
-                        _get_unicode_name_from_key(original_key))
-                except KeyError:
-                    char = key if len(key) == 1 else None
-                key_event = events.Key(key, char)
-                key_event._set_sender(app)                       # noqa: SLF001
-                driver.send_event(key_event)
+            if len(key) == 1 and not key.isalnum():
+                key = _character_to_key(key)                    # noqa: PLW2901
+            original_key = REPLACED_KEYS.get(key, key)
+            char: str | None = None
+            try:
+                char = unicodedata.lookup(
+                    _get_unicode_name_from_key(original_key))
+            except KeyError:
+                char = key if len(key) == 1 else None
+            key_event = events.Key(key, char)
+            key_event._set_sender(app)                           # noqa: SLF001
+            driver.send_event(key_event)
 
         await app._animator.wait_until_complete()                # noqa: SLF001
 
