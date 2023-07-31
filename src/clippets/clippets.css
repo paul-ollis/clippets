@@ -132,9 +132,9 @@ MarkdownParagraph {
     grid-gutter: 1 2;
     grid-rows: 1 4;
     padding: 0 1;
-    width: auto;
     height: auto;
-    border: thick $background 80%;
+    border: solid $primary-lighten-3;
+    margin: 0 8 0 8;
     background: $surface;
 }
 

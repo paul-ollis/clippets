@@ -12,6 +12,7 @@ from rich.style import Style
 from rich.text import Span, Text
 from textual import events
 from textual.app import App
+from textual.color import Color
 from textual.containers import Grid, VerticalScroll
 from textual.keys import (
     REPLACED_KEYS, _character_to_key, _get_unicode_name_from_key)
@@ -96,6 +97,8 @@ class SnippetMenu(ModalScreen):
             Button('Cancel', variant='primary', id='cancel'),
             id='dialog',
         )
+        bg = self.styles.background
+        self.styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Process a mouse click on a button."""

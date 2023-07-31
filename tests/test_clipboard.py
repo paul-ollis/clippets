@@ -113,7 +113,6 @@ class TestMouseControlled:
         assert snapshot_ok
 
 
-
 class TestKeyboardControlled:
     """Using the keyboard (mostly) to populate the clipboard."""
 
