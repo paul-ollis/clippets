@@ -17,9 +17,8 @@ form:
 However:
 
 - It still needs more tests.
-- There are areas of mouse and keyboard support that beg imrpovement.
+- There are areas of mouse and keyboard support that beg improvement.
 - Some desirable features are obviously missing, such as:
 
   - There is no proper documentation beyound the built-in help.
   - It does not yet work on MacOS.
-  - It should monitor the input file for changes.
