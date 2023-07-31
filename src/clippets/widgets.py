@@ -84,21 +84,85 @@ class MyInput(Input):
         self.app.handle_blur(self)
 
 
-class SnippetMenu(ModalScreen):
+class PopupDialog(ModalScreen):
+    """Base for 'popup' dialogues."""
+
+    DEFAULT_CSS = '''
+    #dialog {
+        grid-rows: 1 3;
+        grid-gutter: 1 2;
+        padding: 0 1;
+        height: auto;
+        border: solid $primary-lighten-3;
+        margin: 0 8 0 8;
+        background: $surface;
+    }
+    #question {
+        height: 1;
+        width: 1fr;
+        content-align: center middle;
+    }
+    '''
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_class('popup')
+
+
+class SnippetMenu(PopupDialog):
     """Menu providing snippet action choices."""
+
+    DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
+    .popup {
+        grid-size: 4;
+    }
+    .question {
+        column-span: 4;
+    }
+    '''
 
     def compose(self):
         """Build the widget hierarchy."""
+        styles = self.styles
+        bg = styles.background
+        styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
+
         yield Grid(
-            Label('Choose action', id='question'),
+            Label('Choose action', id='question', classes='question'),
             Button('Edit', variant='primary', id='edit'),
             Button('Duplicate', variant='primary', id='duplicate'),
             Button('Move', variant='primary', id='move'),
             Button('Cancel', variant='primary', id='cancel'),
-            id='dialog',
+            id='dialog', classes='popup',
         )
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Process a mouse click on a button."""
+        self.dismiss(event.button.id)
+
+
+class FileChangedMenu(PopupDialog):
+    """Popup for when the snippets file has been changed."""
+
+    DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
+    .popup {
+        grid-size: 2;
+    }
+    .question {
+        column-span: 2;
+    }
+    '''
+
+    def compose(self):
+        """Build the widget hierarchy."""
         bg = self.styles.background
-        self.styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
+        styles = self.styles
+        styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
+        yield Grid(
+            Label('Input file has changed.', id='question'),
+            Button('Load changes', variant='primary', id='load'),
+            Button('Ignore', variant='primary', id='cancel'),
+            id='dialog', classes='popup')
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Process a mouse click on a button."""
@@ -248,7 +312,7 @@ class ExtendMixin:
             try:
                 char = unicodedata.lookup(
                     _get_unicode_name_from_key(original_key))
-            except KeyError:
+            except KeyError:                                    # noqa: PERF203
                 char = key if len(key) == 1 else None
             key_event = events.Key(key, char)
             key_event._set_sender(app)                           # noqa: SLF001

@@ -50,7 +50,40 @@ msg_filter = set([
 
     'Load',
 ])
-
+long_infile_text = '''
+    Main
+      @text@
+        Snippet 1
+      @text@
+        Snippet 2
+      @text@
+        Snippet 3
+    Second
+      @text@
+        Snippet 4
+      @text@
+        Snippet 5
+    Third
+      @text@
+        Snippet 6
+      @text@
+        Snippet 7
+      @text@
+        Snippet 8
+      @text@
+        Snippet 9
+    Fourth
+      @text@
+        Snippet 10
+      @text@
+        Snippet 11
+      @text@
+        Snippet 12
+      @text@
+        Snippet 13
+      @text@
+        Snippet 14
+'''
 
 def all_pumps(app: App):
     """Iterate over all (active) message pumps."""
@@ -362,7 +395,7 @@ class AppRunner:
                     for w in self.app.walk():
                         if w.uid().startswith(root):
                             names.append(w.uid())
-                    msg = f'Bad widget ID: {arg}, simliar names = {names}'
+                    msg = f'Bad widget ID: {arg}, similar names = {names}'
                     raise RuntimeError(msg)
 
                 kw = {}

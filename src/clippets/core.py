@@ -54,7 +54,7 @@ from .snippets import (
     id_of_element as id_of)
 from .widgets import (
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
-    SnippetMenu)
+    SnippetMenu, FileChangedMenu)
 
 if TYPE_CHECKING:
     from textual.message import Message
@@ -308,7 +308,6 @@ class AppMixin:
         self.edited_text = ''
         self.filter = Matcher('')
         self.groups = groups
-        self.hidden_bindings = set()
         self.hover_uid = None
         self._selected_snippets = [id_of(self.groups.first_snippet())]
         self.move_info = None
@@ -323,6 +322,7 @@ class AppMixin:
 
     async def on_exit_app(self, _event):
         """Clean up when exiting the application."""
+        await self.loader.stop_monitoring()
         if self.resolver:
             self.resolver_q.put_nowait(None)
             await self.resolver
@@ -351,13 +351,13 @@ class AppMixin:
         return self.lookup[uid]
 
     ## Management of dynanmic display features.
-    def selectable_widgets(self) -> list[Widget, ...]:
-        """Create a list of selectable widgets.
+    def selectable_widgets(self) -> tuple[list[Widget], list[Widget]]:
+        """Create a lists of postential and currently selectable widgets.
 
-        To be selectable, a snippet's widget must be visible.
+        To be currently selectable, a snippet's widget must be visible.
         """
-        widgets = (self.find_widget(s) for s in self.walk_snippets())
-        return [w for w in widgets if w.display]
+        widgets = [self.find_widget(s) for s in self.walk_snippets()]
+        return [w for w in widgets if w.display], widgets
 
     def insertion_widgets(self) -> tuple[tuple[Snippet, Widget], ...]:
         """Create a tuple of widgets involved in insetion operations."""
@@ -425,8 +425,14 @@ class AppMixin:
                         self.action_start_moving_snippet(snippet.uid())
             elif not ev.meta:
                 self.on_left_click(ev)
-        elif ev.button == RIGHT_MOUSE_BUTTON and not ev.meta:
-            self.on_right_click(ev)
+        elif ev.button == RIGHT_MOUSE_BUTTON:
+            if ev.meta:                                      # pragma: no cover
+                # This can be useful for debugging.
+                w = getattr(ev, 'snippet', getattr(ev, 'group', None))
+                if w:
+                    print('CLICK ON', w.id)
+            else:
+                self.on_right_click(ev)
 
     def on_left_click(self, ev) -> None:
         """Process a mouse left-click."""
@@ -471,7 +477,11 @@ class AppMixin:
     ## Handling of keyboard operations.
     def fix_selection(self, *, kill_filter: bool = False):
         """Update the keyboard selected focus when widgets get hidden."""
-        # Do nothing is the filter input is focusses and should remain so.
+        valid_widgets, widgets = self.selectable_widgets()
+        if self.handle_no_snippets_for_selection(widgets):
+            return
+
+        # Do nothing if the filter input is focusses and should remain so.
         if self._selected_snippets[-1] == 'filter':
             if kill_filter:
                 self._selected_snippets.pop()
@@ -481,7 +491,7 @@ class AppMixin:
         # If the current selection is ``None`` then we cannot fix the
         # selection.
         if self.selected_snippet is None:
-            if not self.selectable_widgets():
+            if not valid_widgets:
                 return
             self._selected_snippets.pop()
 
@@ -500,9 +510,30 @@ class AppMixin:
         # snippet to select, saving the currently selection in the history.
         self.fix_to_next_nearest_snippet()
 
+    def handle_no_snippets_for_selection(
+            self, potential_widgets: list[Widget]) -> bool:
+        """Handle selction for the special case of no snippets all."""
+        if not potential_widgets:
+            self._selected_snippets[:] = [None]
+        return not potential_widgets
+
     def fix_to_next_nearest_snippet(self):
-        """Move the snippet selection to the next nearest, if necessary."""
-        w = self.query_one(f'#{self.selected_snippet}')
+        """Move the snippet selection to the next nearest, if necessary.
+
+        This also handles the case when the selected snippet no longer exists;
+        for example after a file reload. In this case the first snippet is
+        selected.
+
+        Note that this *must not* be invoked when there are no snippets. Use
+        `handle_no_snippets_for_selection` appropriately.
+        """
+        try:
+            w = self.query_one(f'#{self.selected_snippet}')
+        except NoMatches:
+            w = self.find_widget(self.groups.first_snippet())
+            self._selected_snippets[:] = [w.id]
+            w.scroll_visible()
+
         if not w.display:
             k = self.action_select_move(inc=-1, dry_run=True)
             if k == 0:
@@ -518,11 +549,11 @@ class AppMixin:
                 self, inc: int, *, dry_run: bool = False, push: bool = False,
             ) -> int:
         """Move the selection to the next available snippet."""
-        # Collect snippet widgets and those that are visible.
-        widgets = [self.find_widget(s) for s in self.walk_snippets()]
-        valid_widgets = [w for w in widgets if w.display]
-        valid_range = range(len(widgets))
+        valid_widgets, widgets = self.selectable_widgets()
+        if self.handle_no_snippets_for_selection(widgets):
+            return -1
 
+        valid_range = range(len(widgets))
         k = -1
         for i, w in enumerate(widgets):
             if w.id == self.selected_snippet:
@@ -657,9 +688,8 @@ class AppMixin:
         return '\n'.join(s)
 
     ## Editing and duplicating snippets.
-    def rebuild_after_edits(self):
+    def rebuild(self):
         """Rebuild, refresh, *etc*. after changes to the snippets tree."""
-        self.backup_and_save()
         self.lookup.clear()
         self.screen.rebuild_tree_part()
         if self.resolver:
@@ -671,6 +701,11 @@ class AppMixin:
 
         self.update_result()
         self.set_visuals()
+
+    def rebuild_after_edits(self):
+        """Rebuild, refresh, *etc*. after changes to the snippets tree."""
+        self.backup_and_save()
+        self.rebuild()
 
     def edit_snippet(self, id_str) -> None:
         """Invoke the user's editor on a snippet."""
@@ -694,7 +729,7 @@ class AppMixin:
     def backup_and_save(self):
         """Create a new snippet file backup and then save."""
         snippets.backup_file(self.args.snippet_file)
-        snippets.save(self.args.snippet_file, self.groups)
+        self.loader.save(self.groups)
 
     ## Snippet position movement.
     def action_start_moving_snippet(self, id_str: str | None = None) -> None:
@@ -877,7 +912,8 @@ class Clippets(AppMixin, App):
     id_to_focus: ClassVar[dict] = {'input': 'filter'}
 
     def __init__(self, args):
-        groups, title = snippets.load(args.snippet_file)
+        self.loader = snippets.Loader(args.snippet_file)
+        groups, title = self.loader.load()
         if title:
             self.TITLE = title                   # pylint: disable=invalid-name
         super().__init__(groups)
@@ -893,6 +929,17 @@ class Clippets(AppMixin, App):
         """Wrap the standar run method, settin the terminal title."""
         with terminal_title('Snippet-wrangler'):
             return super().run()
+
+    def handle_file_changed(self):
+        """Handle when the current loaded file has changed."""
+        def on_close(v):
+            self.screen.set_focus(None)
+            if  v == 'load':
+                self.loader.load()
+                self.rebuild()
+                self.fix_selection()
+
+        self.push_screen(FileChangedMenu(id='file-changed-menu'), on_close)
 
     def context_name(self) -> str:
         """Provide a name identifying the current context."""
@@ -958,6 +1005,7 @@ class Clippets(AppMixin, App):
         self.start_population()
         self.screen.set_focus(None)
         self.set_visuals()
+        self.loader.start_monitoring(self.handle_file_changed)
 
     def action_show_help(self) -> None:
         """Show the help screen."""

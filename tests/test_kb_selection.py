@@ -7,42 +7,7 @@ from __future__ import annotations
 
 import pytest
 
-from support import populate
-
-long_infile_text = '''
-    Main
-      @text@
-        Snippet 1
-      @text@
-        Snippet 2
-      @text@
-        Snippet 3
-    Second
-      @text@
-        Snippet 4
-      @text@
-        Snippet 5
-    Third
-      @text@
-        Snippet 6
-      @text@
-        Snippet 7
-      @text@
-        Snippet 8
-      @text@
-        Snippet 9
-    Fourth
-      @text@
-        Snippet 10
-      @text@
-        Snippet 11
-      @text@
-        Snippet 12
-      @text@
-        Snippet 13
-      @text@
-        Snippet 14
-'''
+from support import long_infile_text, populate
 
 
 @pytest.fixture
@@ -118,6 +83,19 @@ async def test_move_up_skips_closed_groups(longfile, snapshot_run):
         ['down'] * 5                       # Move down to snippet 6.
         + ['left:group-2']                 # Close the second group.
         + ['up']                           # Move down to snippet 3.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_no_snippets_is_handled(longfile, snapshot_run):
+    """An input with no snippets is gracefully handled."""
+    populate(longfile, '''
+        Main
+    ''')
+    actions = (
+        ['down']                           # Try to move down.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok

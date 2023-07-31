@@ -127,16 +127,6 @@ MarkdownParagraph {
     border: tall $accent;
 }
 
-#dialog {
-    grid-size: 4;
-    grid-gutter: 1 2;
-    grid-rows: 1 4;
-    padding: 0 1;
-    height: auto;
-    border: solid $primary-lighten-3;
-    margin: 0 8 0 8;
-    background: $surface;
-}
 
 #question {
     height: 1;
@@ -149,7 +139,7 @@ Button {
     width: 100%;
 }
 
-SnippetMenu {
+.popup {
     align: center middle;
 }
 

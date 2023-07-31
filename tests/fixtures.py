@@ -88,6 +88,12 @@ def temp_edit_file(suffix: str, mode: str) -> EditTempFile:
     f.close()
 
 
+@pytest.fixture(autouse=True)
+def set_env():
+    """Set up the environment for these tests."""
+    os.environ['CLIPPETS_EDITOR'] = f'python {HERE / "edit_helper.py"}'
+
+
 @pytest.fixture
 def snippet_infile() -> TempTestFile:
     """Provide a temporary input file during test execution.

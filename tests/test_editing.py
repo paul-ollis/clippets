@@ -1,6 +1,7 @@
 """Editing the snippets."""
 from __future__ import annotations
 # pylint: disable=redefined-outer-name
+# pylint: disable=no-self-use
 
 import os
 from pathlib import Path
@@ -11,6 +12,7 @@ from support import clean_text, populate
 
 HERE = Path(__file__).parent
 std_infile_text = '''
+    @title: User supplied title
     Main
       @text@
         Snippet 1
@@ -19,13 +21,6 @@ std_infile_text = '''
       @md@
         Snippet 3
 '''
-
-
-# TODO: Move to conftest. This is duplicated.
-@pytest.fixture(autouse=True)
-def set_env():
-    """Set up the environment for these tests."""
-    os.environ['CLIPPETS_EDITOR'] = f'python {HERE / "edit_helper.py"}'
 
 
 @pytest.fixture

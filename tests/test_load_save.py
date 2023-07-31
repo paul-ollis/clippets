@@ -62,11 +62,17 @@ def dump(*strings):
         print('--------')
 
 
+def load(path_name: str):
+    """Load snippets from a file."""
+    loader = snippets.Loader(path_name)
+    return loader.load()
+
+
 # TODO: Support empty or non-existant file.
 def test_load_empty_file(snippet_infile):
     """An empty snippet file is considered an error."""
     with pytest.raises(SystemExit) as info:
-        snippets.load(snippet_infile.name)
+        load(snippet_infile.name)
     expected = f'File {snippet_infile.name} contains no groups'
     assert str(info.value) == expected
 
@@ -79,7 +85,7 @@ def test_single_empty_group(snippet_infile):
     populate(snippet_infile, '''
         Main
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, title = load(snippet_infile.name)
     assert title == ''
     expect = clean_text('''
         <ROOT>
@@ -100,7 +106,7 @@ def test_single_entry_group(snippet_infile):
           @text@
             Snippet 1
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, title = load(snippet_infile.name)
     assert title == ''
     expect = clean_text('''
         <ROOT>
@@ -123,7 +129,7 @@ def test_single_markdown_snipper(snippet_infile):
           @md@
             Snippet 1
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, title = load(snippet_infile.name)
     assert title == ''
     expect = clean_text('''
         <ROOT>
@@ -147,7 +153,7 @@ def test_leading_blank_line(snippet_infile):
           @md@
             Snippet 1
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, title = load(snippet_infile.name)
     assert title == ''
     expect = clean_text('''
         <ROOT>
@@ -185,7 +191,7 @@ def test_keywords(snippet_infile):
           @keywords@
             five three
     ''')
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     expect = clean_text('''
         <ROOT>
         Main
@@ -214,7 +220,7 @@ def test_simple_single_snippet_is_preserved(snippet_infile, snippet_outfile):
             Snippet 1
     ''')
     populate(snippet_infile, expected)
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -229,7 +235,7 @@ def test_two_snippets_are_preserved(snippet_infile, snippet_outfile):
             Snippet 2
     ''')
     populate(snippet_infile, expected)
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -245,7 +251,7 @@ def test_nested_groups_are_handled(snippet_infile, snippet_outfile):
             Snippet 2
     ''')
     populate(snippet_infile, expected)
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -261,7 +267,7 @@ def test_nested_groups_with_tags_are_handled(snippet_infile, snippet_outfile):
             Snippet 2
     ''')
     populate(snippet_infile, expected)
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert expected == str(snippet_outfile)
 
@@ -275,7 +281,7 @@ def test_leading_comment_block_is_preserved(snippet_infile, snippet_outfile):
           @md@
             Snippet 1
     ''')
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -293,7 +299,7 @@ def test_leading_blank_lines_are_preserved(snippet_infile, snippet_outfile):
           @md@
             Snippet 1
     ''')
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -310,7 +316,7 @@ def test_interspersed_text_is_preserved(snippet_infile, snippet_outfile):
           @md@
             Snippet 2
     ''')
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -325,7 +331,7 @@ def test_trailing_text_is_preserved(snippet_infile, snippet_outfile):
         # Comment
         |
     ''')
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert str(snippet_outfile) == expected
 
@@ -343,7 +349,7 @@ def test_keywords_are_saved(snippet_infile, snippet_outfile):
         # Comment
         |
     ''')
-    root, _ = snippets.load(snippet_infile.name)
+    root, _ = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert expected == str(snippet_outfile)
 
@@ -362,7 +368,7 @@ def test_title_is_preserved(snippet_infile, snippet_outfile):
         # Comment
         |
     ''')
-    root, title = snippets.load(snippet_infile.name)
+    root, title = load(snippet_infile.name)
     snippets.save(snippet_outfile.name, root)
     assert 'User supplied title' == title
     assert expected == str(snippet_outfile)

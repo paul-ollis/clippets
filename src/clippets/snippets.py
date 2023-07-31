@@ -1,16 +1,17 @@
 """Data structure used to store the snippet text."""
 from __future__ import annotations
 
+import asyncio
 import itertools
 import re
 import shutil
 import sys
 import textwrap
 import weakref
-from  contextlib import suppress
+from contextlib import suppress
 from functools import partial
 from pathlib import Path
-from typing import ClassVar
+from typing import Callable, ClassVar
 
 from markdown_strings import esc_format
 
@@ -205,7 +206,6 @@ class Element:
         """
         self.source_lines = [
             line.expandtabs().rstrip() for line in self.source_lines]
-        return None
 
     def neighbour(
             self, *, backwards: bool, within_group: bool,
@@ -568,7 +568,7 @@ class Group(GroupDebugMixin, Element):
         if not snippets:
             self.children.append(PlaceHolder(parent=self))
 
-    def clean(self):
+    def clean(self) -> Element | None:
         """Clean up this and any child groups.
 
         Empty children and groups are removed.
@@ -685,6 +685,17 @@ class Group(GroupDebugMixin, Element):
             return f'{self.full_name}\n'
 
 
+class Root(Group):
+    """A group that acts as  the root of the snippet tree."""
+
+    def reset(self):
+        """Reset to initialised state.
+
+        This is used proir to a complet relead.
+        """
+        self.groups = {}
+
+
 def walk_group_tree(
         basic_walk, predicate=lambda _el: True, first_id: str = ''):
     """Perform a walk."""
@@ -704,13 +715,44 @@ class Loader:
     """Encapsulation of snippet loading machinery."""
 
     def __init__(self, path):
-        self.path = path
+        self.path = Path(path)
         self.el: Element = PreservedText(parent=None)
-        self.root = self.cur_group = Group('<ROOT>')
-        self.title = ''
+        self.root = Root('<ROOT>')
+        self.cur_group = None
+        self.monitor_task: asyncio.Task | None = None
+        self.load_time = 0
+        self.stop_event = asyncio.Event()
+
+    def start_monitoring(self, on_change_callback: Callable):
+        """Start a task that monitors for change to the loaded file."""
+        self.monitor_task = asyncio.create_task(
+            self.monitor(on_change_callback), name='monitor_file')
+
+    async def stop_monitoring(self):
+        """Stop monitoring for changes to the loaded file."""
+        self.stop_event.set()
+        await self.monitor_task
+
+    async def monitor(self, on_change_callback: Callable):
+        """Task that monitors for change to the loaded file."""
+        async def pause(delay) -> bool:
+            await asyncio.wait([stop_waiter], timeout=delay)
+            return not self.stop_event.is_set()
+
+        stop_waiter = asyncio.create_task(
+            self.stop_event.wait(), name='monitor_stopper')
+        while True:
+            if not await pause(0.2):
+                break
+            if self.mtime > self.load_time:
+                self.load_time = self.mtime
+                on_change_callback()
+                if not await pause(2.0):
+                    break
 
     def store(self):
         """Store the current element if not empty."""
+        # pylint: disable=assignment-from-no-return
         el = self.el
         preserved_text = el.clean()
         if not el.is_empty():
@@ -775,7 +817,11 @@ class Loader:
 
     def load(self):
         """Load a tree of snippets from a file."""
-        with Path(self.path).open(mode='rt', encoding='utf8') as f:
+        self.load_time = self.mtime
+        reset_for_reload()
+        self.root.reset()
+        self.cur_group = self.root
+        with self.path.open(mode='rt', encoding='utf8') as f:
             self.el = PreservedText(parent=None)
             for rawline in f:
                 line = rawline.rstrip()
@@ -794,6 +840,29 @@ class Loader:
             el.reset()
         return self.root, self.root.title
 
+    def save(self, root):
+        """Save a snippet tree to the file."""
+        with self.path.open('wt', encoding='utf8') as f:
+            if root.title:
+                f.write(f'@title: {root.title}\n')
+            for el in root.walk(backwards=False):
+                f.write(el.file_text())
+                if isinstance(el, Group):
+                    kws = el.keyword_set()
+                    if not kws.is_empty():
+                        f.write(kws.file_text())
+        self.load_time = self.mtime
+
+    @property
+    def mtime(self) -> float | int:
+        """The modification time of the loaded file."""
+        try:
+            st = self.path.stat()
+        except OSError:
+            return -1.0
+        else:
+            return st.st_mtime
+
 
 # Conveniant types.
 SnippetLike = Snippet | PlaceHolder
@@ -810,12 +879,6 @@ def is_snippet_like(el: Element) -> bool:
 def id_of_element(obj: Element | None) -> str | None:
     """Get the unique ID of an Element."""
     return None if obj is None else obj.uid()
-
-
-def load(path):
-    """Load a tree of snippets from a file."""
-    loader = Loader(path)
-    return loader.load()
 
 
 def save(path, root):
@@ -852,10 +915,10 @@ def backup_file(path):
         shutil.copy(path, dirpath / names[0])
 
 
-def reset_for_tests():
-    """Perform a 'system' reset for test purposes.
+def reset_for_reload():
+    """Perform a 'system' reset.
 
-    This is not intended for non-testing use.
+    This is used when the entire snippet tree is be being reloaded.
     """
     Element.id_source = itertools.count()
     PlaceHolder.id_source = itertools.count()
@@ -863,4 +926,12 @@ def reset_for_tests():
     PreservedText.id_source = itertools.count()
     Snippet.id_source = itertools.count()
     KeywordSet.id_source = itertools.count()
-    Group.id_source = itertools.count()
+    Group.id_source = itertools.count(1)
+
+
+def reset_for_tests():
+    """Perform a 'system' reset for test purposes.
+
+    This is not intended for non-testing use.
+    """
+    reset_for_reload()

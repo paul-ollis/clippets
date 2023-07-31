@@ -43,12 +43,6 @@ std_infile_text = '''
 
 
 @pytest.fixture(autouse=True)
-def set_env():
-    """Set up the environment for these tests."""
-    os.environ['CLIPPETS_EDITOR'] = f'python {HERE / "edit_helper.py"}'
-
-
-@pytest.fixture(autouse=True)
 def reset_app_data():
     """Reset some application data.
 

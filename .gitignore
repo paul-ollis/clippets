@@ -1,5 +1,6 @@
 dist/
 pytest-rich/
+textual-textarea/
 .screenshot_cache
 src/clippets.egg-info
 tags
