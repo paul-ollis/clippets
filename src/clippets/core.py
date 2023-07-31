@@ -25,9 +25,10 @@ import asyncio
 import collections
 import itertools
 import re
-import sys
 import subprocess
+import sys
 import threading
+import time
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from functools import partial, wraps
@@ -227,6 +228,9 @@ def make_snippet_widget(uid, snippet) -> Widget | None:
 
 async def populate(q, walk, query):
     """Background task to populate widgets."""
+    yield_period = 0.01
+    sleep_period = 0.01
+
     while True:
         while q.qsize() > 1:
             cmd = await q.get()                              # pragma: no cover
@@ -234,7 +238,7 @@ async def populate(q, walk, query):
         if cmd is None:
             break
 
-        n = 0
+        a = time.time()
         for snippet in walk():
             if q.qsize() > 0:
                 break                                        # pragma: no cover
@@ -243,9 +247,9 @@ async def populate(q, walk, query):
                 if w is not None:
                     w.update(snippet.marked_text)
                     snippet.dirty = False
-                    n += 1
-                    if n % 30 == 0:
-                        await asyncio.sleep(0.5)             # pragma: no cover
+                    if (time.time() - a) >= yield_period:
+                        await asyncio.sleep(sleep_period)
+                        a = time.time()
 
 
 def populate_fg(walk, query):
@@ -951,16 +955,7 @@ class Clippets(AppMixin, App):
 
     def on_ready(self) -> None:
         """React to the DOM having been created."""
-        if self.args.sync_mode:
-            populate_fg(self.walk_snippets, self.find_widget)
-        else:
-            self.resolver = asyncio.create_task(resolve(
-                self.resolver_q, self.lookup, self.walk, self.query_one))
-            self.resolver_q.put_nowait('rebuild')
-            self.populater = asyncio.create_task(populate(
-                self.populater_q, self.walk_snippets, self.find_widget))
-            self.populater_q.put_nowait('pop')
-
+        self.start_population()
         self.screen.set_focus(None)
         self.set_visuals()
 
@@ -976,7 +971,20 @@ class Clippets(AppMixin, App):
     def on_mount(self) -> None:
         """Perform app start-up actions."""
         self.dark = True
-        populate_fg(self.walk_snippets, self.find_widget)
+        self.start_population()
+
+    def start_population(self):
+        """Start the process of populating the snippet widgets."""
+        if self.args.sync_mode:
+            populate_fg(self.walk_snippets, self.find_widget)
+        else:
+            if not self.resolver:
+                self.resolver = asyncio.create_task(resolve(
+                    self.resolver_q, self.lookup, self.walk, self.query_one))
+                self.populater = asyncio.create_task(populate(
+                    self.populater_q, self.walk_snippets, self.find_widget))
+            self.resolver_q.put_nowait('rebuild')
+            self.populater_q.put_nowait('pop')
 
     @asynccontextmanager
     async def run_test(                                         # noqa: PLR0913

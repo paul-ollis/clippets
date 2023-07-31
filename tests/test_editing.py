@@ -61,7 +61,6 @@ class TestKeyboardControlled:
         assert 'Snippet 2' == edit_text_file.prev_text
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_a_snippet_can_be_duplicated(
             self, infile, edit_text_file, snapshot_run):
@@ -85,7 +84,6 @@ class TestKeyboardControlled:
         assert expect == runner.app.groups.full_repr()
         assert 'Snippet 3' == edit_text_file.prev_text
         assert snapshot_ok
-
 
     @pytest.mark.asyncio
     async def test_clipboard_can_be_edited(
