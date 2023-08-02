@@ -6,6 +6,8 @@ clipboard.
 
 https://github.com/paul-ollis/snippets/assets/6062510/acc93396-c7b8-429f-825e-cfd940959760
 
+Clippets s a Textual (https://textual.textualize.io/) framework based application.
+
 
 Status
 ======

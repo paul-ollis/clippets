@@ -1,10 +1,10 @@
 """Common test support code."""
 
 import asyncio
-import contextlib
 import textwrap
 import traceback
-from contextlib import suppress
+from contextlib import suppress, contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Callable
@@ -176,14 +176,11 @@ def clean_text(text):
 def populate(f, text):
     """Populate a snippet file using given text."""
     cleaned_text = clean_text(text)
-    f.seek(0)
-    f.truncate()
-    f.write(cleaned_text)
-    f.flush()
+    f.write_text(cleaned_text)
     return cleaned_text
 
 
-@contextlib.contextmanager
+@contextmanager
 def suspend_capture(cap_fix):
     """Temporarily stop output capture."""
     getattr(cap_fix, '_suspend')()
@@ -191,10 +188,39 @@ def suspend_capture(cap_fix):
     getattr(cap_fix, '_resume')()
 
 
+@contextmanager
+def fix_named_temp_file(name: str):
+    """Provide a temporary non-existant, named file."""
+    p = Path(name)
+    if p.exists():
+        tf = TempTestFile()
+        tf.write(p.read_bytes())
+    else:
+        tf = None
+
+    yield FixNamedTestFile(name)
+    if tf:
+        p.write_bytes(str(tf))
+        tf.close()
+
+
+@dataclass
+class FixNamedTestFile:
+    """A very simple emulation of a TempTestFile.
+
+    Used when:
+
+    - the name must be the same for every test run.
+    - the file must not exist.
+    """
+
+    name: str
+
+
 class TempTestFile:
     """A temporary file for testing.
 
-    The only difference is that the string representation is the file's current
+    The main difference is that the string representation is the file's current
     contents.
     """
 
@@ -245,6 +271,18 @@ class TempTestFile:
     def seek(self, *args, **kwargs):
         """Seek within the file."""
         return self._f.seek(*args, **kwargs)
+
+    def write_text(self, text):
+        """Write given text as the entire file's content."""
+        try:
+            self._f.seek(0)
+        except (OSError, ValueError):
+            f = open(self.name, 'wt', encoding='utf-8')
+        else:
+            self._f.truncate()
+            f = self._f
+        f.write(text)
+        f.flush()
 
     def __str__(self):
         self._f.seek(0)
@@ -348,6 +386,7 @@ class AppRunner:
         self.msg_q = asyncio.Queue()
         self.actions = actions
         self.pilot = None
+        self.exited = False
 
     async def run(
             self, *, size: tuple = (80, 35), post_delay: float= 0.0) -> str:
@@ -362,19 +401,20 @@ class AppRunner:
                 for action in self.actions:
                     await self.apply_action(action)
                 self.app.refresh()
-                self.pilot._wait_for_screen()
+                await self.pilot._wait_for_screen()
                 self.app.screen._on_timer_update()
                 await wait_for_idle(self.pilot, self.app)
                 # TODO: I would like to remove this delay.
                 if post_delay:
                     await asyncio.sleep(post_delay)
                 svg = self.app.export_screenshot()
+                self.exited = self.app._exit
                 await self.pilot.press('ctrl+c')
         except Exception as exc:       # pylint: disable=broad-exception-caught
             tb = traceback.format_exception(exc)
         except SystemExit as exc:
             tb = traceback.format_exception(exc)
-        return svg, tb
+        return svg, tb, self.app._exit
 
     async def apply_action(self, action):
         """Apply an action."""

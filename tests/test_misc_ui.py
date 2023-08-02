@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from support import populate
+from support import populate, fix_named_temp_file, clean_text
 
 from clippets import core, snippets
 
@@ -80,4 +80,84 @@ class TestMouseControlled:
             ['hover:group-3']            # Hover over Child A
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+
+class TestBootstrapping:
+    """When a user runs Clippets for the first time."""
+
+    @pytest.mark.asyncio
+    async def test_nonexistant_file_offers_basic_template(
+            self, snapshot_run):
+        """If started with a non-existant file, a simple template is offered.
+
+        The template has 2 groups and 3 snippets.
+        """
+        actions = (
+        )
+        with fix_named_temp_file('test-snippets.txt') as infile:
+            _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_user_can_quit_for_nonexistant_file(
+            self, infile, simple_run):
+        """If started with a non-existant file, the user can choose to quit."""
+        actions = (
+            ['tab']
+            + ['enter']
+        )
+        infile.close()
+        exited = await simple_run(infile, actions, expect_exit=True)
+        assert exited
+
+    @pytest.mark.asyncio
+    async def test_user_can_accept_template_for_new_file(
+            self, infile, edit_text_file, snapshot_run):
+        """The user can opt to continue with the new template file."""
+        populate(edit_text_file, 'Snippet 1 - edited')
+        actions = (
+            ['enter']              # Accept the template.
+            + ['e']                # Edit a snippet.
+        )
+        infile.close()
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert not runner.exited
+        assert 'My first snippet.' == edit_text_file.prev_text
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_defaulted_file_is_monitored_for_changes(
+            self, infile, edit_text_file, snapshot_run):
+        """A created default file is monitored for changes."""
+
+        def update_file():
+            text = std_infile_text.replace(
+                'My second snipper', 'Snippet 2.')
+            populate(infile, text)
+
+        populate(edit_text_file, 'Snippet 1 - edited')
+        actions = (
+            ['enter']              # Accept the template.
+            + ['e']                # Edit a snippet.
+            + ['pause:0.1']
+            + [update_file]        # Change the file.
+            + ['pause:0.22']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 1 - edited'
+            MarkdownSnippet: 'My second snippet.'
+            Group: Second
+            KeywordSet:
+            MarkdownSnippet: 'My third snippet.'
+        ''')
+        infile.close()
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert not runner.exited
+        assert 'My first snippet.' == edit_text_file.prev_text
+        assert expect == runner.app.groups.full_repr()
         assert snapshot_ok

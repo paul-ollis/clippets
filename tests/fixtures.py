@@ -127,25 +127,49 @@ def edit_text_file() -> EditTempFile:
 
 
 @pytest.fixture
+def simple_run():
+    """Provide a way to run the Clippets app."""
+    async def run_app(                                          # noqa: PLR0913
+            infile: TempTestFile, actions: list, *, log=False,
+            post_delay: float = 0.0, test_mode: bool = True,
+            options: list[str] | None = None,
+            expect_exit: bool = False):
+        runner = AppRunner(
+            infile, actions, test_mode=test_mode, options=options)
+        if log:
+            with runner.logf:
+                svg, tb, exited = await runner.run(post_delay=post_delay)
+        else:
+            svg, tb, exited = await runner.run(post_delay=post_delay)
+        if tb:
+            if not (exited and expect_exit):
+                print(''.join(tb))
+                assert not tb
+        return exited
+
+    return run_app
+
+
+@pytest.fixture
 def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
     """Provide a way to run the Clippets app and capture a snapshot."""
     async def run_app(                                          # noqa: PLR0913
             infile: TempTestFile, actions: list, *, log=False,
             post_delay: float = 0.0, test_mode: bool = True,
-            options: list[str] | None = None):
+            options: list[str] | None = None,
+            expect_exit: bool = False):
         runner = AppRunner(
             infile, actions, test_mode=test_mode, options=options)
         if log:
             with runner.logf:
-                svg, tb = await runner.run(post_delay=post_delay)
+                svg, tb, exited = await runner.run(post_delay=post_delay)
         else:
-            svg, tb = await runner.run(post_delay=post_delay)
+            svg, tb, exited = await runner.run(post_delay=post_delay)
         if tb:
-            print(''.join(tb))
-        assert not tb
-        with runner.logf:
-            ret = runner, check_svg(snapshot, svg, request, runner.app)
-            return ret
+            if not (exited and expect_exit):
+                print(''.join(tb))
+                assert not tb
+        return runner, check_svg(snapshot, svg, request, runner.app)
 
     return run_app
 

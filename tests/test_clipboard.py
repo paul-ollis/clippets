@@ -169,13 +169,13 @@ class TestKeyboardControlled:
 
     @pytest.mark.asyncio
     async def test_f3_clears_the_clipboard(self, infile, snapshot_run):
-        """The F3 removes all clippets from the clipboard."""
+        """The F3 key removes all clippets from the clipboard."""
         actions = (
             ['down']                      # Add snippet 2
             + ['enter']
             + ['up']                      # Add snippet 1
             + ['enter']
-            + ['f3']                      # The remove all snippets.
+            + ['f3']                      # Then remove all snippets.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok

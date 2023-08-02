@@ -6,7 +6,6 @@
 # 6. Global keywords?
 # 8. Make it work on Macs.
 # 10. Genertae frozen versions for all platforms.
-# 11. Watch the input file(s) and be able to 're-start' in response to changes.
 
 # TODO: Make terminology consistent as follows.
 #       Added
@@ -32,6 +31,7 @@ import time
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from functools import partial, wraps
+from pathlib import Path
 from typing import AsyncGenerator, Callable, ClassVar, Iterable, TYPE_CHECKING
 
 from rich.text import Text
@@ -40,6 +40,7 @@ from textual._context import (
 from textual.app import App, Binding, ComposeResult
 from textual.containers import Horizontal
 from textual.css.query import NoMatches
+from textual.message import Message
 from textual.pilot import Pilot
 from textual.screen import Screen
 from textual.walk import walk_depth_first
@@ -53,11 +54,10 @@ from .snippets import (
     Group, PlaceHolder, Snippet, SnippetInsertionPointer, SnippetLike,
     id_of_element as id_of)
 from .widgets import (
-    MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
-    SnippetMenu, FileChangedMenu)
+    DefaulFileMenu, FileChangedMenu, MyFooter, MyInput, MyLabel, MyMarkdown,
+    MyTag, MyText, MyVerticalScroll, SnippetMenu)
 
 if TYPE_CHECKING:
-    from textual.message import Message
     from textual.widget import Widget
     from textual.events import Event
 
@@ -72,6 +72,16 @@ BANNER = r'''
  \____|_|_| .__/| .__/ \___|\__|___/
           |_|   |_|
 '''
+DEFAULT_CONTENTS = '''
+Main
+  @md@
+    My first snippet.
+  @md@
+    My second snippet.
+Second
+  @md@
+    My third snippet.
+'''.strip()
 
 
 @dataclass
@@ -98,6 +108,10 @@ def only_for_mode(name: str):
         return invoke
 
     return decor
+
+
+class SetupDefaultFile(Message):
+    """An inidication that we need to create a default file."""
 
 
 class Matcher:                         # pylint: disable=too-few-public-methods
@@ -144,6 +158,7 @@ class MainScreen(Screen):
         super().__init__(name='main', id=uid)
         self.groups = groups
         self.walk = partial(groups.walk, backwards=False)
+        self.widgets = {}
 
     def compose(self) -> ComposeResult:
         """Build the widget hierarchy."""
@@ -167,6 +182,7 @@ class MainScreen(Screen):
 
     def build_tree_part(self):
         """Yield widgets for the tree part of the UI."""
+        self.widgets = {}
         all_tags = {
             t: i for i, t in enumerate(sorted(Group.all_tags))}
         for el in self.walk():
@@ -184,10 +200,12 @@ class MainScreen(Screen):
                         classes=f'tag {classes}'))
                 w = Horizontal(label, *fields, classes='group_row')
                 w.styles.padding = (0, 0, 0, (el.depth() - 1) * 4)
+                self.widgets[uid] = w
                 yield w
             else:
                 snippet = make_snippet_widget(uid, el)
                 if snippet:
+                    self.widgets[uid] = snippet
                     yield snippet
 
     def rebuild_tree_part(self):
@@ -206,6 +224,13 @@ class MainScreen(Screen):
         if tag not in self.tag_id_sources:
             self.tag_id_sources[tag] = itertools.count()
         return f'tag-{tag}-{next(self.tag_id_sources[tag])}'
+
+    def lookup_widget(self, el):
+        """Find the widget for a given element.
+
+        This is only valid for the MainScreen widgets.
+        """
+        return self.widgets.get(el.uid())
 
 
 def make_snippet_widget(uid, snippet) -> Widget | None:
@@ -294,7 +319,6 @@ class AppMixin:
     # pylint: disable=too-many-instance-attributes
     args: argparse.Namespace
     mount: Callable
-    post_message: Callable
     push_screen: Callable
     screen: Screen
 
@@ -335,6 +359,7 @@ class AppMixin:
         """The currently focussed snippet."""
         return self._selected_snippets[-1]
 
+    @only_for_mode('normal')
     def handle_blur(self, w: Widget):
         """Handle loss of focus for a widget.
 
@@ -757,7 +782,7 @@ class AppMixin:
     def action_clear_selection(self) -> None:
         """Clear all snippets from the selection."""
         self.chosen[:] = []
-        #@ self.update_result()
+        self.update_result()
         self.update_selected()
 
     def action_complete_move(self):
@@ -912,7 +937,12 @@ class Clippets(AppMixin, App):
     id_to_focus: ClassVar[dict] = {'input': 'filter'}
 
     def __init__(self, args):
-        self.loader = snippets.Loader(args.snippet_file)
+        p = Path(args.snippet_file)
+        if p.exists():
+            self.loader = snippets.Loader(args.snippet_file)
+        else:
+            self.loader = snippets.DefaultLoader(
+                DEFAULT_CONTENTS, args.snippet_file)
         groups, title = self.loader.load()
         if title:
             self.TITLE = title                   # pylint: disable=invalid-name
@@ -924,6 +954,11 @@ class Clippets(AppMixin, App):
         self.walk_snippet_like = partial(self.walk, is_snippet_like)
         self.resolver = None
         self.populater = None
+
+    @property
+    def no_file_yet(self):
+        """True if we do not yet have a snippets file."""
+        return isinstance(self.loader, snippets.DefaultLoader)
 
     def run(self, *args, **kwargs) -> int:                   # pragma: no cover
         """Wrap the standar run method, settin the terminal title."""
@@ -996,6 +1031,20 @@ class Clippets(AppMixin, App):
         self.add_mode('main', MainScreen(self.groups, uid='main'))
         self.switch_mode('main')
 
+    def on_setup_default_file(self):
+        """Allow user to set up with default file contents."""
+        async def on_close(v):
+            self.screen.set_focus(None)
+            if  v == 'create':
+                self.loader = await self.loader.become_manifest()
+                self.rebuild()
+                self.fix_selection()
+            elif  v == 'quit':
+                self.exit()
+
+        self.push_screen(DefaulFileMenu(
+            self.args.snippet_file, id='default-file-menu'), on_close)
+
     def active_shown_bindings(self):
         """Provide a list of bindings used for the application Footer."""
         return self.key_handler.active_shown_bindings()
@@ -1006,6 +1055,8 @@ class Clippets(AppMixin, App):
         self.screen.set_focus(None)
         self.set_visuals()
         self.loader.start_monitoring(self.handle_file_changed)
+        if self.no_file_yet:
+            self.post_message(SetupDefaultFile())
 
     def action_show_help(self) -> None:
         """Show the help screen."""
@@ -1024,13 +1075,14 @@ class Clippets(AppMixin, App):
     def start_population(self):
         """Start the process of populating the snippet widgets."""
         if self.args.sync_mode:
-            populate_fg(self.walk_snippets, self.find_widget)
+            populate_fg(self.walk_snippets, self.MODES['main'].lookup_widget)
         else:
             if not self.resolver:
                 self.resolver = asyncio.create_task(resolve(
                     self.resolver_q, self.lookup, self.walk, self.query_one))
                 self.populater = asyncio.create_task(populate(
-                    self.populater_q, self.walk_snippets, self.find_widget))
+                    self.populater_q, self.walk_snippets,
+                    self.MODES['main'].lookup_widget))
             self.resolver_q.put_nowait('rebuild')
             self.populater_q.put_nowait('pop')
 

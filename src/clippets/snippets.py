@@ -8,6 +8,7 @@ import shutil
 import sys
 import textwrap
 import weakref
+from io import StringIO
 from contextlib import suppress
 from functools import partial
 from pathlib import Path
@@ -711,15 +712,15 @@ def walk_group_tree(
             yield el
 
 
-class Loader:
+class Loader:                    # pylint: disable=too-many-instance-attributes
     """Encapsulation of snippet loading machinery."""
 
-    def __init__(self, path):
+    def __init__(self, path: str, *, root: Root | None = None):
         self.path = Path(path)
         self.el: Element = PreservedText(parent=None)
-        self.root = Root('<ROOT>')
+        self.root = root or Root('<ROOT>')
         self.cur_group = None
-        self.monitor_task: asyncio.Task | None = None
+        self.monitor_task: asyncio.Task = None
         self.load_time = 0
         self.stop_event = asyncio.Event()
 
@@ -730,11 +731,12 @@ class Loader:
 
     async def stop_monitoring(self):
         """Stop monitoring for changes to the loaded file."""
-        self.stop_event.set()
-        await self.monitor_task
+        if self.monitor_task:
+            self.stop_event.set()
+            await self.monitor_task
 
     async def monitor(self, on_change_callback: Callable):
-        """Task that monitors for change to the loaded file."""
+        """Task that monitors for changes to the loaded file."""
         async def pause(delay) -> bool:
             await asyncio.wait([stop_waiter], timeout=delay)
             return not self.stop_event.is_set()
@@ -817,11 +819,18 @@ class Loader:
 
     def load(self):
         """Load a tree of snippets from a file."""
+        try:
+            f = self.path.open(mode='rt', encoding='utf8')
+        except OSError as exc:
+            sys.exit(f'Could not open {self.path}: {exc}')
+        return self._do_load(f)
+
+    def _do_load(self, f):
         self.load_time = self.mtime
         reset_for_reload()
         self.root.reset()
         self.cur_group = self.root
-        with self.path.open(mode='rt', encoding='utf8') as f:
+        with f:
             self.el = PreservedText(parent=None)
             for rawline in f:
                 line = rawline.rstrip()
@@ -856,12 +865,44 @@ class Loader:
     @property
     def mtime(self) -> float | int:
         """The modification time of the loaded file."""
-        try:
-            st = self.path.stat()
-        except OSError:
-            return -1.0
+        if isinstance(self.path, Path):
+            try:
+                st = self.path.stat()
+            except OSError:
+                return -1.0
+            else:
+                return st.st_mtime
         else:
-            return st.st_mtime
+            return -1.0
+
+
+class DefaultLoader(Loader):
+    """A loader that reads from a text string."""
+
+    def __init__(self, content: str, path: str):
+        super().__init__(path)
+        self.f = StringIO(content)
+        self.on_change_callback: Callable = None
+
+    def load(self):
+        """Load a tree of snippets from a file."""
+        return self._do_load(self.f)
+
+    async def become_manifest(self):
+        """Create a Loader from a default loader."""
+        loader = Loader(str(self.path), root=self.root)
+        loader.save(self.root)
+        loader.load()
+        if self.on_change_callback:
+            loader.start_monitoring(self.on_change_callback)
+        return loader
+
+    def start_monitoring(self, on_change_callback: Callable):
+        """Just store the callback.."""
+        self.on_change_callback = on_change_callback
+
+    async def stop_monitoring(self):
+        """Do nothing for the default loader."""
 
 
 # Conveniant types.

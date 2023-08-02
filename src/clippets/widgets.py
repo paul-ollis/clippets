@@ -108,6 +108,10 @@ class PopupDialog(ModalScreen):
         super().__init__(*args, **kwargs)
         self.add_class('popup')
 
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Process a mouse click on a button."""
+        self.dismiss(event.button.id)
+
 
 class SnippetMenu(PopupDialog):
     """Menu providing snippet action choices."""
@@ -136,10 +140,6 @@ class SnippetMenu(PopupDialog):
             id='dialog', classes='popup',
         )
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Process a mouse click on a button."""
-        self.dismiss(event.button.id)
-
 
 class FileChangedMenu(PopupDialog):
     """Popup for when the snippets file has been changed."""
@@ -164,9 +164,35 @@ class FileChangedMenu(PopupDialog):
             Button('Ignore', variant='primary', id='cancel'),
             id='dialog', classes='popup')
 
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Process a mouse click on a button."""
-        self.dismiss(event.button.id)
+
+class DefaulFileMenu(PopupDialog):
+    """Popup for when starting with a non-existant file."""
+
+    DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
+    .popup {
+        grid-size: 2;
+    }
+    .question {
+        column-span: 2;
+    }
+    '''
+
+    def __init__(self, filename, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.filename = filename
+
+    def compose(self):
+        """Build the widget hierarchy."""
+        bg = self.styles.background
+        styles = self.styles
+        styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
+        yield Grid(
+            Label(
+                f'File {self.filename} does not exist, choose:',
+                id='question'),
+            Button('Create', variant='primary', id='create'),
+            Button('Quit', variant='primary', id='quit'),
+            id='dialog', classes='popup')
 
 
 @rich.repr.auto
