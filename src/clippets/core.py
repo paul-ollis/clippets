@@ -1049,6 +1049,15 @@ class Clippets(AppMixin, App):
         """Provide a list of bindings used for the application Footer."""
         return self.key_handler.active_shown_bindings()
 
+    async def check_bindings(
+            self, key: str,
+            priority: bool = False) -> bool:             # noqa:  FBT001,FBT002
+        """Handle a key press."""
+        handled = False
+        if priority:
+            handled = await self.key_handler.handle_key(key)
+        return handled or await super().check_bindings(key, priority)
+
     def on_ready(self) -> None:
         """React to the DOM having been created."""
         self.start_population()
@@ -1064,8 +1073,9 @@ class Clippets(AppMixin, App):
 
     async def on_key(self, event: Event) -> None:
         """Handle a top level key press."""
-        await self.key_handler.handle_key(event)
-        event.stop()
+        if handled := await self.key_handler.handle_key(event.key):
+            event.stop()
+        return handled
 
     def on_mount(self) -> None:
         """Perform app start-up actions."""
@@ -1171,13 +1181,16 @@ class KeyHandler:
         self.app = app
         self.bindings: dict[tuple(str, str), Binding] = {}
 
-    async def handle_key(self, ev: Event) -> None:
+    async def handle_key(self, key: str) -> bool:
         """Handle a top level key press."""
         app = self.app
         context = app.context_name()
-        binding = self.bindings.get((context, ev.key))
+        binding = self.bindings.get((context, key))
         if binding is not None:
             await app.run_action(binding.action)
+            return True
+        else:
+            return False
 
     def bind(                                                   # noqa: PLR0913
         self,
