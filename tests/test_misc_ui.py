@@ -107,7 +107,7 @@ class TestBootstrapping:
             ['tab']
             + ['enter']
         )
-        infile.close()
+        infile.delete()
         exited = await simple_run(infile, actions, expect_exit=True)
         assert exited
 
@@ -120,7 +120,7 @@ class TestBootstrapping:
             ['enter']              # Accept the template.
             + ['e']                # Edit a snippet.
         )
-        infile.close()
+        infile.delete()
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert not runner.exited
         assert 'My first snippet.' == edit_text_file.prev_text
@@ -155,7 +155,7 @@ class TestBootstrapping:
             KeywordSet:
             MarkdownSnippet: 'My third snippet.'
         ''')
-        infile.close()
+        infile.delete()
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert not runner.exited
         assert 'My first snippet.' == edit_text_file.prev_text

@@ -57,6 +57,16 @@ async def test_help_can_be_displayed(infile, snapshot_run):
 
 
 @pytest.mark.asyncio
+async def test_footer_click_show_help(infile, snapshot_run):
+    """Clicking the help part of the footer brings up a help page."""
+    actions = (
+        ['left:.footer']            # Open the help
+    )
+    _, snapshot_ok = await snapshot_run(infile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
 async def test_help_can_be_hidden(infile, snapshot_run):
     """The F1 is also used to close the help page."""
     actions = (

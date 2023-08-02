@@ -230,7 +230,7 @@ async def test_zero_snippets_is_handled(infile, snapshot_run):
 async def test_deletion_of_the_file_is_hnandled(infile, snapshot_run):
     """If the file is deleted, nothing bad happens."""
     def remove_file():
-        infile.close()   # Closing deletes the temp file.
+        infile.delete()
 
     actions = (
         ['pause: 0.02']

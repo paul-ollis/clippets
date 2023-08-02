@@ -1071,12 +1071,6 @@ class Clippets(AppMixin, App):
         """Show the help screen."""
         self.push_screen(HelpScreen(id='help'))
 
-    async def on_key(self, event: Event) -> None:
-        """Handle a top level key press."""
-        if handled := await self.key_handler.handle_key(event.key):
-            event.stop()
-        return handled
-
     def on_mount(self) -> None:
         """Perform app start-up actions."""
         self.dark = True

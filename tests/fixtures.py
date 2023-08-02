@@ -4,6 +4,7 @@ import functools
 import os
 import pickle
 from dataclasses import dataclass
+from contextlib import suppress
 from datetime import datetime
 from operator import attrgetter
 from os import PathLike
@@ -70,7 +71,8 @@ def temp_file(suffix: str, mode: str) -> TempTestFile:
     """
     f = TempTestFile(suffix=suffix, mode=mode)
     yield f
-    f.close()
+    with suppress(FileNotFoundError):
+        f.close()
 
 
 def temp_edit_file(suffix: str, mode: str) -> EditTempFile:
@@ -210,14 +212,6 @@ class TempTestFileSource:
         f = TempTestFile(suffix=suffix, mode=mode)
         self.test_files.append(f)
         return f
-
-
-@pytest.fixture
-def gen_tempfile():
-    """Provide a temporary file during test execution."""
-    source = TempTestFileSource()
-    yield source
-    source.close()
 
 
 def node_to_report_path(node):

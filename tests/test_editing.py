@@ -147,13 +147,13 @@ class TestKeyboardControlled:
         assert snapshot_ok
 
     @pytest.mark.asyncio
-    async def test_up_to_9_backups_are_made(
+    async def test_up_to_10_backups_are_made(
             self, infile, edit_text_file, snapshot_run):
-        """Up to 9 backup files are maintained when the file is saved."""
+        """Up to 10 backup files are maintained when the file is saved."""
         def update_text():
             populate(edit_text_file, next(data))
 
-        data = (f'Snippet {n}' for n in range(4, 14))
+        data = (f'Snippet {n}' for n in range(4, 15))
         populate(edit_text_file, next(data))
         actions = (
             ['down'] * 2                       # Move to Snippet 3
@@ -161,7 +161,7 @@ class TestKeyboardControlled:
 
             + [update_text]                    # Change edit emulation text.
             + ['d']                            # Duplicate the new snippet
-            + [update_text, 'd'] * 8           # ... and so on.
+            + [update_text, 'd'] * 9           # ... and so on.
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -181,12 +181,13 @@ class TestKeyboardControlled:
             MarkdownSnippet: 'Snippet 11'
             MarkdownSnippet: 'Snippet 12'
             MarkdownSnippet: 'Snippet 13'
+            MarkdownSnippet: 'Snippet 14'
         ''')
         runner, snapshot_ok = await snapshot_run(
             infile, actions, post_delay=0.2)
-        assert 9 == len(infile.backup_paths())
+        assert 10 == len(infile.backup_paths())                 # noqa: PLR2004
         assert expect == runner.app.groups.full_repr()
-        assert 'Snippet 12' == edit_text_file.prev_text
+        assert 'Snippet 13' == edit_text_file.prev_text
         assert snapshot_ok
 
 

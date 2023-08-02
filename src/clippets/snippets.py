@@ -865,15 +865,12 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
     @property
     def mtime(self) -> float | int:
         """The modification time of the loaded file."""
-        if isinstance(self.path, Path):
-            try:
-                st = self.path.stat()
-            except OSError:
-                return -1.0
-            else:
-                return st.st_mtime
-        else:
+        try:
+            st = self.path.stat()
+        except OSError:
             return -1.0
+        else:
+            return st.st_mtime
 
 
 class DefaultLoader(Loader):
