@@ -3,14 +3,13 @@ from __future__ import annotations
 # pylint: disable=no-self-use
 # pylint: disable=redefined-outer-name
 
-import os
 from pathlib import Path
 
 import pytest
 
 from support import populate, fix_named_temp_file, clean_text
 
-from clippets import core, snippets
+from clippets import core
 
 HERE = Path(__file__).parent
 std_infile_text = '''
@@ -161,3 +160,14 @@ class TestBootstrapping:
         assert 'My first snippet.' == edit_text_file.prev_text
         assert expect == runner.app.groups.full_repr()
         assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_failure_to_read_file_is_handled(
+            self, infile, simple_run):
+        """Clippets gracefully handles failure to read the file."""
+        actions = ()
+        Path(infile.name).chmod(0o222)
+        with pytest.raises(core.StartupError) as info:
+            await simple_run(infile, actions)
+        expect = f'Could not open {infile.name}: Permission denied'
+        assert expect == str(info.value)

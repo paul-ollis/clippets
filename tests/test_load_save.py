@@ -65,7 +65,8 @@ def dump(*strings):
 def load(path_name: str):
     """Load snippets from a file."""
     loader = snippets.Loader(path_name)
-    return loader.load()
+    *ret, _exc = loader.load()
+    return ret
 
 
 # TODO: Support empty or non-existant file.

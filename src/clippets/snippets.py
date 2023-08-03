@@ -819,11 +819,14 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
 
     def load(self):
         """Load a tree of snippets from a file."""
+        exc = None
         try:
             f = self.path.open(mode='rt', encoding='utf8')
         except OSError as exc:
-            sys.exit(f'Could not open {self.path}: {exc}')
-        return self._do_load(f)
+            msg = f'Could not open {self.path}: {exc.strerror}'
+            return None, None, msg
+        else:
+            return self._do_load(f)
 
     def _do_load(self, f):
         self.load_time = self.mtime
@@ -847,7 +850,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
 
         for el in self.root.walk_snippets(backwards=False):
             el.reset()
-        return self.root, self.root.title
+        return self.root, self.root.title, ''
 
     def save(self, root):
         """Save a snippet tree to the file."""
@@ -947,7 +950,6 @@ def backup_file(path):
         src_path = dirpath / old_name
         if src_path.exists():
             with suppress(OSError):
-                print('MOVE', src_path, dirpath / new_name)
                 shutil.move(src_path, dirpath / new_name)
     with suppress(OSError):
         shutil.copy(path, dirpath / names[0])

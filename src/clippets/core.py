@@ -84,6 +84,10 @@ Second
 '''.strip()
 
 
+class StartupError(Exception):
+    """Error raise when Clippets cannot start."""
+
+
 @dataclass
 class MoveInfo:
     """Details of snippet being moved.
@@ -943,7 +947,10 @@ class Clippets(AppMixin, App):
         else:
             self.loader = snippets.DefaultLoader(
                 DEFAULT_CONTENTS, args.snippet_file)
-        groups, title = self.loader.load()
+        groups, title, err = self.loader.load()
+        if err:
+            raise StartupError(err)
+
         if title:
             self.TITLE = title                   # pylint: disable=invalid-name
         super().__init__(groups)
@@ -1296,7 +1303,10 @@ is_group = partial(is_type, classinfo=Group)
 
 def main():                                                  # pragma: no cover
     """Run the application."""
-    app = Clippets(parse_args())
+    try:
+        app = Clippets(parse_args())
+    except StartupError as exc:
+        sys.exit(str(ext))
     app.run()
 
 
