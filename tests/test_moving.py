@@ -167,7 +167,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 7'
         ''')
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -197,7 +197,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 7'
         ''')
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -227,7 +227,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 6'
         ''')
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -256,7 +256,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 7'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -286,7 +286,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 7'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -315,7 +315,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 7'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -343,7 +343,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 5'
         ''')
         runner, snapshot_ok = await snapshot_run(infile_g1, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -373,7 +373,7 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 5'
         ''')
         runner, snapshot_ok = await snapshot_run(infile_g0, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 
@@ -545,7 +545,7 @@ class TestMouseControlled:
             + ['enter']               # Complete move
         )
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert std_result == runner.app.groups.full_repr()
+        assert std_result == runner.app.root.full_repr()
         assert snapshot_ok
 
     @pytest.mark.asyncio
@@ -557,7 +557,7 @@ class TestMouseControlled:
             + ['enter']                # Complete move
         )
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
-        assert std_result == runner.app.groups.full_repr()
+        assert std_result == runner.app.root.full_repr()
         assert snapshot_ok
 
     @pytest.mark.asyncio
@@ -571,5 +571,5 @@ class TestMouseControlled:
             + ['enter']               # Complete move
         )
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
-        assert std_result == runner.app.groups.full_repr()
+        assert std_result == runner.app.root.full_repr()
         assert snapshot_ok

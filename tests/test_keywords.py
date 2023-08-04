@@ -21,7 +21,7 @@ std_infile_text = '''
       @md@
         Keywords are highlighted even within *Markdown text*.
 
-        - The keyword **highlighting** is in addition to the Mardkown
+        - The keyword **highlighting** is in addition to the Markdown
           highlighting.
         - Keywords, quite correctly only matches complete words.
       @md@
@@ -108,15 +108,16 @@ async def test_keywords_can_be_edited(
 
 
 @pytest.mark.asyncio
-async def test_keywords_cannot_be_edited_if_no_snippet_selected(
+async def test_select_group_used_if_no_snippets(
         infile, snapshot_run_dyn, edit_text_file):
-    """If no snippet is showns as selected, keywords cannot be edited."""
+    """If no snippet is showns as selected, the slected gruop is used."""
     populate(edit_text_file, 'Markdown\ntext\n')
     actions = (
         ['f9']                  # Close all groups.
         + ['f7']                # Edit the first group's keywords.
+        + ['f9']                # Open all groups.
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
-    assert not edit_text_file.has_run
+    assert 'highlighting\ntext' == edit_text_file.prev_text
     assert snapshot_ok

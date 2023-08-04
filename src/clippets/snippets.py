@@ -8,9 +8,9 @@ import shutil
 import sys
 import textwrap
 import weakref
-from io import StringIO
 from contextlib import suppress
 from functools import partial
+from io import StringIO
 from pathlib import Path
 from typing import Callable, ClassVar
 
@@ -57,7 +57,7 @@ class SnippetInsertionPointer:
         """The next snippet within this snippet's group."""
         if self._next_snippet is False:
             self._next_snippet = self.snippet.neighbour(
-                backwards=False, within_group=True, predicate=is_snippet_like)
+                within_group=True, predicate=is_snippet_like)
         return self._next_snippet
 
     @property
@@ -65,7 +65,7 @@ class SnippetInsertionPointer:
         """The insertaion point in the form (uid, insert_after)."""
         return self.snippet.uid(), self.after
 
-    def move(self, *, backwards: bool, skip: Snippet) -> bool:
+    def move(self, *, skip: Snippet, backwards: bool = False) -> bool:
         """Move to the next insertion point.
 
         :return:
@@ -209,7 +209,9 @@ class Element:
             line.expandtabs().rstrip() for line in self.source_lines]
 
     def neighbour(
-            self, *, backwards: bool, within_group: bool,
+            self, *,
+            backwards: bool = False,
+            within_group: bool = False,
             predicate=lambda _el: True) -> Snippet | None:
         """Get this element's immediate neighbour.
 
@@ -589,7 +591,7 @@ class Group(GroupDebugMixin, Element):
             if not snippets:
                 self.children.append(PlaceHolder(parent=self))
 
-    def basic_walk(self, *, backwards: bool):
+    def basic_walk(self, *, backwards: bool = False):
         """Iterate over the entire tree of groups and snippets.
 
         :backwards:
@@ -598,8 +600,8 @@ class Group(GroupDebugMixin, Element):
         """
         if backwards:
             for group in reversed(self.groups.values()):
-                yield group
                 yield from group.basic_walk(backwards=backwards)
+                yield group
             yield from reversed(self.children[1:])
         else:
             yield from self.children[1:]
@@ -614,50 +616,21 @@ class Group(GroupDebugMixin, Element):
             return self
         return self.parent.root
 
-    def walk(
-            self, predicate=lambda _el: True, *, first_id: str = '',
-            backwards: bool):
-        """Iterate over the entire tree of groups and snippets.
+    def snippets(self):
+        """Iterate over all child snippets."""
+        yield from (el for el in self.children[1:] if isinstance(el, Snippet))
 
-        :predicate:
-            A function  taking an 'Element' as it only argument. Only elements
-            for which this returns a true value are visited.
-        :first_id:
-            If not an empty string, Skip all elements before the one with this
-            ID.
-        :backwards:
-            If set the walk in reverse order; i.e. last snippt is visited
-            first.
-        """
-        yield from walk_group_tree(
-            partial(self.basic_walk, backwards=backwards),
-            predicate=predicate, first_id=first_id)
-
-    def walk_snippets(self, *, first_id: str = '', backwards: bool):
-        """Iterate over all snippets."""
-        yield from self.walk(
-            predicate=lambda el: isinstance(el, Snippet),
-            first_id=first_id,
-            backwards=backwards)
+    def step_group(self, *, backwards: bool = False) -> Group | None:
+        """Get the group before or after this onw."""
+        for el in self.root.walk(
+                predicate=is_group, after_id=self.uid(), backwards=backwards):
+            return el
+        return None
 
     def is_last_snippet(self, snippet: Snippet) -> bool:
         """Test if a snippet is the last in this gruop."""
         snippets = [el for el in self.children if isinstance(el, Snippet)]
         return snippets and snippets[-1] is snippet
-
-    def first_snippet(self) -> Snippet | None:
-        """Get the first snippet, if any."""
-        try:
-            return next(self.walk_snippets(backwards=False))
-        except StopIteration:
-            return None
-
-    def find_element_by_uid(self, uid) -> Element | None:
-        """Find an element with the given UID."""
-        for el in self.walk(backwards=False):
-            if el.uid() == uid:
-                return el
-        return None
 
     def keyword_set(self) -> KeywordSet | None:
         """Find the keyword set, if any, for this group."""
@@ -696,13 +669,63 @@ class Root(Group):
         """
         self.groups = {}
 
+    def walk(
+            self, predicate=lambda _el: True, *, first_id: str | None = None,
+            after_id: str | None = None, backwards: bool = False):
+        """Iterate over the entire tree of groups and snippets.
+
+        :predicate:
+            A function  taking an 'Element' as it only argument. Only elements
+            for which this returns a true value are visited.
+        :first_id:
+            If not an empty string, Skip all elements before the one with this
+            ID.
+        :after_id:
+            If not an empty string, Skip all elements upto and including
+            the one with this ID. This and the `first_id` argument are mutually
+            exclusive
+        :backwards:
+            If set the walk in reverse order; i.e. last snippt is visited
+            first.
+        """
+        yield from walk_group_tree(
+            partial(self.basic_walk, backwards=backwards),
+            predicate=predicate, first_id=first_id, after_id=after_id)
+
+    def find_element_by_uid(self, uid) -> Element | None:
+        """Find an element with the given UID."""
+        for el in self.walk():
+            if el.uid() == uid:
+                return el
+        return None
+
+    def first_snippet(self) -> Snippet | None:
+        """Get the first snippet, if any."""
+        for el in self.walk(predicate=is_snippet):
+            return el
+        return None
+
+    def first_group(self) -> Group:
+        """Get the first group.
+
+        :return:
+            The first group. Note that the Root always has at least on e group
+            this cannot return ``None``.
+        """
+        for group in self.groups.values():
+            return group
+        return None                                          # pragma: no cover
+
 
 def walk_group_tree(
-        basic_walk, predicate=lambda _el: True, first_id: str = ''):
+        basic_walk, predicate=lambda _el: True, first_id: str | None = None,
+        after_id: str | None = None):
     """Perform a walk."""
     it = basic_walk()
-    if first_id:
+    if first_id or after_id:
         for el in it:
+            if el.uid() == after_id:
+                break
             if el.uid() == first_id:
                 if predicate(el):
                     yield el
@@ -848,7 +871,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         if not self.root.groups:
             sys.exit(f'File {self.path} contains no groups')
 
-        for el in self.root.walk_snippets(backwards=False):
+        for el in self.root.walk(predicate=is_snippet):
             el.reset()
         return self.root, self.root.title, ''
 
@@ -857,7 +880,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         with self.path.open('wt', encoding='utf8') as f:
             if root.title:
                 f.write(f'@title: {root.title}\n')
-            for el in root.walk(backwards=False):
+            for el in root.walk():
                 f.write(el.file_text())
                 if isinstance(el, Group):
                     kws = el.keyword_set()
@@ -905,18 +928,6 @@ class DefaultLoader(Loader):
         """Do nothing for the default loader."""
 
 
-# Conveniant types.
-SnippetLike = Snippet | PlaceHolder
-
-
-def is_snippet_like(el: Element) -> bool:
-    """Test if an element is like a snippet.
-
-    A PlaceHolder as considered to be snippet-like.
-    """
-    return isinstance(el, SnippetLike)
-
-
 def id_of_element(obj: Element | None) -> str | None:
     """Get the unique ID of an Element."""
     return None if obj is None else obj.uid()
@@ -927,7 +938,7 @@ def save(path, root):
     with Path(path).open('wt', encoding='utf8') as f:
         if root.title:
             f.write(f'@title: {root.title}\n')
-        for el in root.walk(backwards=False):
+        for el in root.walk():
             f.write(el.file_text())
             if isinstance(el, Group):
                 kws = el.keyword_set()
@@ -975,3 +986,18 @@ def reset_for_tests():
     This is not intended for non-testing use.
     """
     reset_for_reload()
+
+
+def is_type(obj, *, classinfo):
+    """Test is one of a set of types.
+
+    This simply wraps the built-in isinstance, but plays nrcely with
+    functools.partial.
+    """
+    return isinstance(obj, classinfo)
+
+
+# Useful partial functions for tree walking.
+is_snippet = partial(is_type, classinfo=Snippet)
+is_snippet_like = partial(is_type, classinfo=(Snippet, PlaceHolder))
+is_group = partial(is_type, classinfo=Group)

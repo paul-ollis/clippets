@@ -76,8 +76,13 @@ Screen {
     outline-bottom: solid  $success;
 }
 
-/* Markup to highlight the selected snippet. */
-.kb_focussed {
+/* Markup to highlight the selected snippet or group. */
+.is_group.kb_focussed {
+    outline-left: thick $secondary;
+    outline-right: thick $secondary;
+    padding: 0 1 0 1;
+}
+.is_snippet.kb_focussed {
     outline: solid $secondary;
     padding: 1 1 0 1;
 }

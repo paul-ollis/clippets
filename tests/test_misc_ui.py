@@ -158,7 +158,7 @@ class TestBootstrapping:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert not runner.exited
         assert 'My first snippet.' == edit_text_file.prev_text
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
     @pytest.mark.asyncio

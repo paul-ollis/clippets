@@ -503,7 +503,7 @@ class AltEventLoop(NativeEventLoop):
         elif self._scheduled:
             end_time = self.time() + self._clock_resolution
             sched_time = self._scheduled[0]._when - end_time
-            # TODO: Can I make the value below 0.0?
+            # TODO: Can I make the value below 0.01?
             return sched_time >= 0.01                           # noqa: PLR2004
         else:
             return True

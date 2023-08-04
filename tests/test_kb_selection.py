@@ -9,6 +9,40 @@ import pytest
 
 from support import long_infile_text, populate
 
+nested_infile_text = '''
+    Main
+      @text@
+        Snippet 1
+      @text@
+        Snippet 2
+      @text@
+        Snippet 3
+    Main : Level 1
+    Main : Level 1: Level 2
+      @text@
+        Snippet 4
+      @text@
+        Snippet 5
+      @text@
+        Snippet 6
+      @text@
+        Snippet 7
+      @text@
+        Snippet 8
+      @text@
+        Snippet 9
+    Main : Level 1: Level 2B
+      @text@
+        Snippet 10
+      @text@
+        Snippet 11
+      @text@
+        Snippet 12
+      @text@
+        Snippet 13
+      @text@
+        Snippet 14
+'''
 
 @pytest.fixture
 def longfile(snippet_infile):
@@ -17,14 +51,11 @@ def longfile(snippet_infile):
     return snippet_infile
 
 
-# TODO: Remove this when I am happy the code tests are stable.
-def gen_moves(move, n):
-    """Generate move and delay actions."""
-    fast_n = 6
-    moves_a = [move] * min(fast_n, n)
-    # moves_b = [move, 'pause:0.01'] * max(0, n - fast_n)
-    moves_b = [move] * max(0, n - fast_n)
-    return moves_a + moves_b
+@pytest.fixture
+def nested_file(snippet_infile):
+    """Create a standard input file for scrolling tests."""
+    populate(snippet_infile, nested_infile_text)
+    return snippet_infile
 
 
 @pytest.mark.asyncio
@@ -33,7 +64,7 @@ async def test_view_scrolls_as_necessary_on_down(
         longfile, snapshot_run, d_moves):
     """Moving down scrolls when necessary."""
     actions = (
-        gen_moves('down', d_moves)            # Move a number of times.
+        ['down'] * d_moves                 # Move down a number of times.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
     assert snapshot_ok
@@ -43,7 +74,7 @@ async def test_view_scrolls_as_necessary_on_down(
 async def test_view_only_scrolls_down_as_necessary(longfile, snapshot_run):
     """Moving down only scrolls when necessary."""
     actions = (
-        gen_moves('down', 6)                 # Move down a number of times.
+        ['down'] * 6                       # Move down a number of times.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok
@@ -55,10 +86,8 @@ async def test_view_scrolls_as_necessary_on_up(
         longfile, snapshot_run, d_moves, u_moves):
     """Moving up scrolls when necessary."""
     actions = (
-        gen_moves('down', d_moves)            # Move down number of times.
-        # + ['pause:0.1']
-        + gen_moves('up', u_moves)            # Move up a number of times.
-        # + ['pause:0.1']
+        ['down'] * d_moves                 # Move down a number of times.
+        + ['up'] * u_moves                 # Move up a number of times.
     )
 
     _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
@@ -98,4 +127,163 @@ async def test_no_snippets_is_handled(longfile, snapshot_run):
         ['down']                           # Try to move down.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_left_moves_to_group_names(longfile, snapshot_run):
+    """The left key moves into the group names."""
+    actions = (
+        ['left']                           # Move into the group names.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_left_stops_within_groups(longfile, snapshot_run):
+    """The left is ignore when already in the groups."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['left']                         # Pressing again does nothing.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_right_stops_within_snippets(longfile, snapshot_run):
+    """The right is ignore when already in the snippets."""
+    actions = (
+        ['right']                          # Try to move righ in snippets.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_down_moves_within_groups_and_scrolls(longfile, snapshot_run):
+    """The down key moves within the group names."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['down'] * 3                     # Move to the last group.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.2)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_up_moves_within_groups(longfile, snapshot_run):
+    """The up key moves within the group names."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['down'] * 3                     # Move to the last group.
+        + ['up'] * 2                       # Move to the second group.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_down_stops_at_last_gruop(longfile, snapshot_run):
+    """The up key safely hits the bottom."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['down'] * 3                     # Move to the last group.
+        + ['down'] * 2                     # Try to move beyond.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.2)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_up_stops_at_first_group(longfile, snapshot_run):
+    """The up key safely hits the top."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['down'] * 3                     # Move to the last group.
+        + ['up'] * 3                       # Move to the first group.
+        + ['up'] * 2                       # Try to move beyond.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_left_then_right_keeps_snippet_section(longfile, snapshot_run):
+    """Moving right again selects the same snippet as before."""
+    actions = (
+        ['down'] * 2                       # Move down a number of times.
+        + ['left']                         # Move into the group names.
+        + ['right']                        # Move back to the seleced snippet.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_first_snippet_selected_when_group_is_changed(
+            longfile, snapshot_run):
+    """When moving right in a new group, the first snippet is selected."""
+    actions = (
+        ['down'] * 2                       # Move down a number of times.
+        + ['left']                         # Move into the group names.
+        + ['down'] * 2                     # Move down 2 groups.
+        + ['right']                        # To first snippet in this group.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_closing_group_with_mouse_keeps_selection_in_groups(
+            nested_file, snapshot_run):
+    """Closing a group using the mouse leaves the selection within groups."""
+    actions = (
+        ['left']                           # Move to group 1.
+        + ['left:group-3']                 # Close the third group.
+    )
+    _, snapshot_ok = await snapshot_run(nested_file, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_cannot_enter_zero_snippet_group(
+            nested_file, snapshot_run):
+    """Right key does nothing if the group has no snippets."""
+    actions = (
+        ['left']                           # Move to group 1.
+        + ['left:group-3']                 # Close the third group.
+        + ['down']                         # Move to group 2
+        + ['right']                        # Try to enter it.
+    )
+    _, snapshot_ok = await snapshot_run(nested_file, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_cannot_enter_closed_group(
+            nested_file, snapshot_run):
+    """Right key does nothing if the group is closed."""
+    actions = (
+        ['left']                           # Move to group 1.
+        + ['left:group-3']                 # Close the third group.
+        + ['down'] * 2                     # Move to group 3
+        + ['right']                        # Try to enter it.
+    )
+    _, snapshot_ok = await snapshot_run(nested_file, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_open_groups_can_be_entered(
+            nested_file, snapshot_run):
+    """Open groups can be entered."""
+    actions = (
+        ['left']                           # Move to group 1.
+        + ['left:group-3']                 # Close the third group.
+        + ['down'] * 3                     # Move to group 4
+        + ['right']                        # Enter it.
+    )
+    _, snapshot_ok = await snapshot_run(nested_file, actions)
     assert snapshot_ok

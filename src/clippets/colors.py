@@ -22,3 +22,11 @@ def add_keyword(keyword):
     if keyword in keyword_to_code:
         return
     keyword_to_code[keyword] = len(keyword_to_code)
+
+
+def reset_for_tests():
+    """Perform a 'system' reset for test purposes.
+
+    This is not intended for non-testing use.
+    """
+    keyword_to_code.clear()

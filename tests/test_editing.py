@@ -52,7 +52,7 @@ class TestKeyboardControlled:
             MarkdownSnippet: 'Snippet 3'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert 'Snippet 2' == edit_text_file.prev_text
         assert snapshot_ok
 
@@ -76,7 +76,7 @@ class TestKeyboardControlled:
             MarkdownSnippet: 'Snippet 4'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert 'Snippet 3' == edit_text_file.prev_text
         assert snapshot_ok
 
@@ -186,7 +186,7 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(
             infile, actions, post_delay=0.2)
         assert 10 == len(infile.backup_paths())                 # noqa: PLR2004
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert 'Snippet 13' == edit_text_file.prev_text
         assert snapshot_ok
 
@@ -213,7 +213,7 @@ class TestMouseControlled:
             MarkdownSnippet: 'Snippet 3'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert 'Snippet 2' == edit_text_file.prev_text
         assert snapshot_ok
 
@@ -237,6 +237,6 @@ class TestMouseControlled:
             MarkdownSnippet: 'Snippet 4'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
-        assert expect == runner.app.groups.full_repr()
+        assert expect == runner.app.root.full_repr()
         assert 'Snippet 3' == edit_text_file.prev_text
         assert snapshot_ok

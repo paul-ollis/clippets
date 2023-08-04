@@ -3,8 +3,8 @@
 import functools
 import os
 import pickle
-from dataclasses import dataclass
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import datetime
 from operator import attrgetter
 from os import PathLike
@@ -19,9 +19,9 @@ from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
 from syrupy import SnapshotAssertion
 
-from support import AppRunner, TempTestFile, EditTempFile
+from support import AppRunner, EditTempFile, TempTestFile
 
-from clippets import core, snippets
+from clippets import colors, core, snippets
 
 HERE = Path(__file__).parent
 
@@ -194,6 +194,7 @@ def clean_data(pytestconfig, monkeypatch):
     """
     snippets.reset_for_tests()
     core.reset_for_tests()
+    colors.reset_for_tests()
 
 
 class TempTestFileSource:

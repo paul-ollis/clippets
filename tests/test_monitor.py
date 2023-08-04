@@ -56,7 +56,6 @@ async def test_change_to_the_file_is_detected(infile, snapshot_run):
         + ['pause:0.22']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    # assert expect == runner.app.groups.full_repr()
     assert snapshot_ok
 
 
@@ -83,7 +82,7 @@ async def test_change_to_the_file_can_be_loadd(infile, snapshot_run):
         MarkdownSnippet: 'Snippet 3'
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
-    assert expect == runner.app.groups.full_repr()
+    assert expect == runner.app.root.full_repr()
     assert snapshot_ok
 
 
@@ -111,7 +110,7 @@ async def test_change_to_the_file_can_be_ignored(infile, snapshot_run):
         MarkdownSnippet: 'Snippet 3'
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
-    assert expect == runner.app.groups.full_repr()
+    assert expect == runner.app.root.full_repr()
     assert snapshot_ok
 
 
@@ -151,7 +150,7 @@ async def test_folded_groups_fold_are_lost(infile, snapshot_run):
     ''')
     populate(infile, multi_group_infile)
     runner, snapshot_ok = await snapshot_run(infile, actions)
-    assert expect == runner.app.groups.full_repr()
+    assert expect == runner.app.root.full_repr()
     assert snapshot_ok
 
 
@@ -179,7 +178,7 @@ async def test_selection_is_adjusted_if_necessary(infile, snapshot_run):
         Snippet: 'Snippet 2'
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
-    assert expect == runner.app.groups.full_repr()
+    assert expect == runner.app.root.full_repr()
     assert snapshot_ok
 
 
@@ -199,7 +198,7 @@ async def test_display_scrolls_if_necessary(infile, snapshot_run):
         + ['enter']
     )
     populate(infile, long_infile_text)
-    _, snapshot_ok = await snapshot_run(infile, actions)
+    _, snapshot_ok = await snapshot_run(infile, actions, post_delay=0.2)
     assert snapshot_ok
 
 
@@ -222,7 +221,7 @@ async def test_zero_snippets_is_handled(infile, snapshot_run):
         KeywordSet:
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
-    assert expect == runner.app.groups.full_repr()
+    assert expect == runner.app.root.full_repr()
     assert snapshot_ok
 
 

@@ -242,7 +242,7 @@ class TestKeyboardControlled:
         assert snapshot_ok
 
     @pytest.mark.asyncio
-    async def test_filter_field_down_slects_snippets(
+    async def test_filter_field_down_selects_snippets(
             self, infile, snapshot_run):
         """The filter field provides a quick way to hide snippets."""
         actions = (
@@ -264,6 +264,38 @@ class TestKeyboardControlled:
             ['ctrl+f']          # Switch to the filter field.
             + ['2']             # Select only snippets containting '2'.
             + ['ctrl+f']        # Switch away from the filter field.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_down_drops_focus(
+            self, infile, snapshot_run):
+        """The Down key switches back to snippet selection.
+
+        The highlighted snippet will change if the previously highlighted
+        snippet was hidden.
+        """
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + ['2']             # Select only snippets containting '2'.
+            + ['down']          # Switch away from the filter field.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_filter_up_drops_focus(
+            self, infile, snapshot_run):
+        """The Up key switches back to snippet selection.
+
+        The highlighted snippet will change if the previously highlighted
+        snippet was hidden.
+        """
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + ['2']             # Select only snippets containting '2'.
+            + ['up']            # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
