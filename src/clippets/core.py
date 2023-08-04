@@ -99,8 +99,8 @@ class MoveInfo:
     dest: SnippetInsertionPointer
 
 
-def only_for_mode(name: str):
-    """Wrap Smippets method to only run when in a given mode."""
+def only_in_context(name: str):
+    """Wrap Smippets method to only run when in a given context."""
     def decor(method):
         @wraps(method)
         def invoke(self, *args, **kwargs):
@@ -385,7 +385,7 @@ class AppMixin:
         else:
             return None, None
 
-    @only_for_mode('normal')
+    @only_in_context('normal')
     def handle_blur(self, w: Widget):
         """Handle loss of focus for a widget.
 
@@ -453,7 +453,7 @@ class AppMixin:
                 w.remove_class('selected')
 
     ## Handling of mouse operations.
-    @only_for_mode('normal')
+    @only_in_context('normal')
     def on_click(self, ev) -> None:
         """Process a mouse click."""
         if ev.button == LEFT_MOUSE_BUTTON:
@@ -959,12 +959,6 @@ class AppMixin:
         self.fix_selection(kill_filter=True)
         self.set_visuals()
 
-    def action_zap_filter(self) -> None:
-        """Clear he contents of the filter input field."""
-        w = self.query_one('#filter')
-        self.on_input_changed(Input.Changed(input=w, value=''))
-        w.value = ''
-
     def action_edit_snippet(self) -> None:
         """Edit the currently selected snippet."""
         if self.selected_snippet:
@@ -1006,6 +1000,32 @@ class AppMixin:
             self.collapsed = set()
         self.filter_view()
 
+    def action_toggle_collapse_group(self) -> None:
+        """Toggle open/closed state of selected group.
+
+        This is triggerd by a key press. The same operation can be triggered by
+        a mouse click, but is handled, differently, by `on_left_click`.
+        """
+        sel = self._selection_stack[-1]
+        if sel.uid.startswith('snippet-'):
+            group = self.root.find_element_by_uid(sel.uid).parent
+            using_snippet = True
+        elif sel.uid.startswith('group-'):
+            group = self.root.find_element_by_uid(sel.uid)
+            using_snippet = False
+        else:
+            return                                           # pragma: no cover
+
+        if group.uid() in self.collapsed:
+            self.collapsed.remove(group.uid())
+        else:
+            self.collapsed.add(group.uid())
+            if using_snippet:
+                self._selection_stack.append(
+                    Selection(uid=group.uid(), user=False))
+                self.set_visuals()
+        self.filter_view()
+
     def action_toggle_select(self):
         """Handle any key that is used to select a snippet."""
         if self.root.find_element_by_uid(self.selected_snippet) is not None:
@@ -1028,6 +1048,12 @@ class AppMixin:
             else:
                 self.collapsed.discard(group.uid())
         self.filter_view()
+
+    def action_zap_filter(self) -> None:
+        """Clear he contents of the filter input field."""
+        w = self.query_one('#filter')
+        self.on_input_changed(Input.Changed(input=w, value=''))
+        w.value = ''
 
 
 class Clippets(AppMixin, App):
@@ -1096,7 +1122,7 @@ class Clippets(AppMixin, App):
 
     def init_bindings(self):
         """Set up the application bindings."""
-        bind = partial(self.key_handler.bind, ('normal',), show=False)
+        bind = partial(self.key_handler.bind, contexts=('normal',), show=False)
         bind('f8', 'toggle_order', description='Toggle order')
         bind('up', 'select_move(-1)')
         bind('down', 'select_move(1)')
@@ -1108,14 +1134,15 @@ class Clippets(AppMixin, App):
         bind('ctrl+r', 'do_redo', description='Redo', priority=True)
         bind('e', 'edit_snippet')
         bind('d c', 'duplicate_snippet')
+        bind('f insert', 'toggle_collapse_group')
         bind('m', 'start_moving_snippet', description='Move snippet')
         bind('f7', 'edit_keywords', description='Edit keywords')
 
-        bind = partial(self.key_handler.bind, ('filter',), show=True)
+        bind = partial(self.key_handler.bind, contexts=('filter',), show=True)
         bind(
             'ctrl+f up down', 'leave_filter', description='Leave filter input')
 
-        bind = partial(self.key_handler.bind, ('normal',), show=True)
+        bind = partial(self.key_handler.bind, contexts=('normal',), show=True)
         bind('f1', 'show_help', description='Help')
         bind('f2', 'edit_clipboard', description='Edit')
         bind('f3', 'clear_selection', description='Clear')
@@ -1123,7 +1150,7 @@ class Clippets(AppMixin, App):
         bind('enter space', 'toggle_select', description='Toggle select')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
-        bind = partial(self.key_handler.bind, ('moving',), show=True)
+        bind = partial(self.key_handler.bind, contexts=('moving',), show=True)
         bind(
             'up', 'move_insertion_point("up")', description='Cursor up')
         bind(
@@ -1131,7 +1158,7 @@ class Clippets(AppMixin, App):
         bind('enter', 'complete_move', description='Insert')
         bind('escape', 'stop_moving', description='Cancel')
 
-        bind = partial(self.key_handler.bind, ('help',), show=True)
+        bind = partial(self.key_handler.bind, contexts=('help',), show=True)
         bind('f1', 'pop_screen', description='Close help')
 
     def compose(self) -> ComposeResult:
@@ -1297,10 +1324,10 @@ class KeyHandler:
 
     def bind(                                                   # noqa: PLR0913
         self,
-        contexts: Iterable[str],
         keys: str,
         action: str,
         *,
+        contexts: Iterable[str],
         description: str = '',
         show: bool = True,
         key_display: str | None = None,

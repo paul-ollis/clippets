@@ -39,6 +39,8 @@ std_infile_text = '''
     Third [tag-c tag-a]
       @text@
         Snippet 3
+      @text@
+        Snippet 4
 '''
 
 
@@ -237,6 +239,66 @@ class TestKeyboardControlled:
         actions = (
             ['f9']              # Fold the entire tree
             + ['f9']            # Expand the entire tree
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_groups_can_be_folded(self, infile, snapshot_run):
+        """Individual groups can be folded."""
+        actions = (
+            ['left']                      # Select using groups.
+            + ['down'] * 2                # Move to third group
+            + ['f']                       # Close group.
+            + ['down'] * 2                # Move to fifth group
+            + ['f']                       # Close group.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_fold_works_when_snippet_selected(
+            self, infile, snapshot_run):
+        """A group can be folded when a snippet is selected."""
+        actions = (
+            ['left']                      # Select using groups.
+            + ['down'] * 2                # Move to third group
+            + ['f']                       # Close group.
+            + ['down'] * 2                # Move to fifth group
+            + ['right']                   # Move to snippet within group.
+            + ['f']                       # Close group.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_unfold_reverts_snippet_selected(
+            self, infile, snapshot_run):
+        """Unfolding the same gruop, reverts to previous snippet selection."""
+        actions = (
+            ['left']                      # Select using groups.
+            + ['down'] * 2                # Move to third group
+            + ['f']                       # Close group.
+            + ['down'] * 2                # Move to fifth group
+            + ['right']                   # Move to snippet within group.
+            + ['down']                    # Move to sedonc snippet in group.
+            + ['f']                       # Close group.
+            + ['f']                       # Reopen the group.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_ins_key_toggles_folds(self, infile, snapshot_run):
+        """The Ins key also toggles folds."""
+        actions = (
+            ['left']                      # Select using groups.
+            + ['down'] * 2                # Move to third group.
+            + ['f']                       # Close group.
+            + ['down'] * 2                # Move to fifth group.
+            + ['insert']                  # Close group using Ins key.
+            + ['up'] * 2                  # Move back to third group.
+            + ['insert']                  # Re-open the third gruop.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok

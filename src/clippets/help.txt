@@ -54,15 +54,18 @@ indicated.
     Collapse (close) all the groups if any group is not currently collapsed. If
     all the groups are already collapsed then open them all.
 
+**c, d**
+    Duplicate the currently selected snippet and then edit the copy.
+
+    [Mouse: Right click the snippet and then select the 'Duplicate' button.]
+
 **e**
     Edit the contents of the currently selected snippet.
 
     [Mouse: Right click the snippet and then select the 'Edit' button.]
 
-**c, d**
-    Duplicate the currently selected snippet and then edit the copy.
-
-    [Mouse: Right click the snippet and then select the 'Duplicate' button.]
+**f, Ins**
+    Collapse or open the selected group (or group containing the selected snippet).
 
 **m**
     Start moving the currently selected snippet. This switches Clippets to
