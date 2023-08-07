@@ -2,24 +2,20 @@
 from __future__ import annotations
 
 import re
-import unicodedata
 from collections import defaultdict
-from contextlib import suppress
-from typing import Iterable
+from typing import cast
 
 import rich.repr
+from rich.errors import StyleSyntaxError
 from rich.style import Style
 from rich.text import Span, Text
-from textual import events
-from textual.app import App
 from textual.color import Color
 from textual.containers import Grid, VerticalScroll
-from textual.keys import (
-    REPLACED_KEYS, _character_to_key, _get_unicode_name_from_key)
 from textual.screen import ModalScreen
+from textual.widget import Widget
 from textual.widgets import Button, Footer, Input, Label, Markdown, Static
-from textual.widgets._markdown import MarkdownBlock
 
+from . import abc
 from .colors import keyword_colors
 
 # We 'smuggle' keyword information by surrounding them with specific Unicode
@@ -29,7 +25,16 @@ re_keyword = re.compile('\u2e24([^\u2e25]*)\u2e25')
 re_keyword_start = re.compile('\u2e24[^\u2e25]*')
 
 
-class StdMixin:                        # pylint: disable=too-few-public-methods
+class AppChild(Widget):
+    """Mixin for children of the Clippet's application class."""
+
+    @property
+    def app(self) -> abc.ClippetsApp:                  # type: ignore[override]
+        """Handle a mouse entering a widget."""
+        return cast(abc.ClippetsApp, super().app)
+
+
+class StdMixin(AppChild):
     """Common code for various widgets."""
 
     def on_enter(self, _event):
@@ -64,7 +69,7 @@ class MyLabel(Label, StdMixin):
             event.group = self
 
 
-class MyTag(MyLabel):
+class MyTag(MyLabel):                      # pylint: disable=too-many-ancestors
     """A label indicating a snippet tag."""
 
     def on_click(self, event):
@@ -76,7 +81,7 @@ class MyVerticalScroll(VerticalScroll, StdMixin):
     """Application specific VerticalScroll widget."""
 
 
-class MyInput(Input):
+class MyInput(Input, AppChild):
     """Application specific Input widget."""
 
     def on_blur(self, _event):
@@ -196,7 +201,7 @@ class DefaulFileMenu(PopupDialog):
 
 
 @rich.repr.auto
-class MyFooter(Footer):
+class MyFooter(Footer, AppChild):
     """A simple footer docked to the bottom of the parent container."""
 
     def __init__(self) -> None:
@@ -283,6 +288,17 @@ def gen_highlight_spans(
     return spans, ''.join(new_parts)
 
 
+def force_style(st: str | Style) -> Style:
+    """Convert any string to a Style instance."""
+    if isinstance(st, str):
+        try:
+            return Style.parse(st)
+        except StyleSyntaxError:
+            return Style()
+    else:
+        return st
+
+
 def render_text(text: Text | str) -> Text:
     """Render specially marked up text."""
     if isinstance(text, str):
@@ -295,58 +311,10 @@ def render_text(text: Text | str) -> Text:
         for span in text.spans:
             substr = raw_text[span.start:span.end]
             new_subspans, new_substr = gen_highlight_spans(
-                substr, span.style, off)
+                substr, force_style(span.style), off)
             new_spans.extend(new_subspans)
             new_parts.append(new_substr)
             off += len(new_parts[-1])
         return Text(''.join(new_parts), spans=new_spans)
     else:
         return text
-
-
-class ExtendMixin:
-    """Namespace to hold ``textual`` extension methods."""
-
-    def on_enter(self, ev):
-        """Perform action the mouse enters the widtget."""
-        with suppress(AttributeError):
-            self.parent.on_enter(ev)
-
-    def set_content(self, text: Text) -> None:
-        """Over-ride set_content to highlight keywords."""
-        self._text = render_text(text)
-        self.update(self._text)
-
-    async def _press_keys(self, keys: Iterable[str]) -> None:
-        """Simulate a key press.
-
-        This is a copy of the standrard Textual code except:
-
-        - the 'wait:...' form of key is not handled; my test runner handles
-          delays.
-        - print calls have been removed.
-        - assertions have been removed.
-        - some wait calls have been removed.
-        """
-        app = self
-        driver = app._driver                                     # noqa: SLF001
-        for key in keys:
-            if len(key) == 1 and not key.isalnum():
-                key = _character_to_key(key)                    # noqa: PLW2901
-            original_key = REPLACED_KEYS.get(key, key)
-            char: str | None = None
-            try:
-                char = unicodedata.lookup(
-                    _get_unicode_name_from_key(original_key))
-            except KeyError:                                    # noqa: PERF203
-                char = key if len(key) == 1 else None
-            key_event = events.Key(key, char)
-            key_event._set_sender(app)                           # noqa: SLF001
-            driver.send_event(key_event)
-
-        await app._animator.wait_until_complete()                # noqa: SLF001
-
-
-MarkdownBlock.on_enter = ExtendMixin.on_enter
-MarkdownBlock.set_content = ExtendMixin.set_content
-App._press_keys = ExtendMixin._press_keys                        # noqa: SLF001

@@ -1,10 +1,11 @@
 """Code that handles platform specific behaviour."""
 
-import platform
+import sys
 import tempfile
 from pathlib import Path
 
 __all__ = [
+    'dump_clipboard',
     'get_editor_command',
     'get_winpos',
     'put_to_clipboard',
@@ -12,27 +13,29 @@ __all__ = [
     'terminal_title',
 ]
 
-if platform.system() == 'Windows':                           # pragma: no cover
+if sys.platform == 'win32':                                  # pragma: no cover
     from .win import (
-        get_editor_command, get_winpos, put_to_clipboard, terminal_title)
-elif platform.system() == 'Linux':
+        get_editor_command, get_winpos, put_to_clipboard, terminal_title,
+        dump_clipboard)
+elif sys.platform == 'linux':
     from .linux import (
-        get_editor_command, get_winpos, put_to_clipboard, terminal_title)
+        get_editor_command, get_winpos, put_to_clipboard, terminal_title,
+        dump_clipboard)
 
 
 class SharedTempFile(Path):
-    """A temporary file that can be shared betweed processes.
+    """A temporary file that can be shared between processes.
 
-    Under Linux we can use NamedTemporaryFile alone to handle all th
+    Under Linux we can use NamedTemporaryFile alone to handle all the
     copmplexities. Under Windows, file locking requires that we manage things a
     bit differently.
 
-    This is a subclass of pathlib.Path, but it can also be used as a conetxt
+    This is a subclass of pathlib.Path, but it can also be used as a context
     manager, which handles deletion of the file.
     """
 
     # pylint: disable=no-member
-    _flavour = type(Path())._flavour                             # noqa: SLF001
+    _flavour = getattr(type(Path()), '_flavour', '')
 
     def __new__(cls, *args, **kwargs) -> 'SharedTempFile':
         """Extend behaviour of Path.__new__.

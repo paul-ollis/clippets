@@ -1,27 +1,30 @@
 """Windows specific code.
 
-Musch of this code is copied from pyperclip
-(https://pypi.org/project/pyperclip) and then edited to temove anythin that
-Snippets really does not need.
+Musch of this code is copied from pyperclip:
 
-FUTURE: I want to support HTML formatted text.
+    (https://pypi.org/project/pyperclip)
+
+and then edited to remove anythin that Snippets really does not need. It has
+also undergone some changes resulting from quality tooling.
+
+FUTURE: I want to support things like Wordpad formatted text.
 """
+from __future__ import annotations
 # ruff: noqa: N816
 
-import asyncio
 import contextlib
 import ctypes
 import os
+import sys
 import time
-from ctypes import c_char_p, c_size_t, c_wchar, c_wchar_p, get_errno, sizeof
+from ctypes import (
+    Array, c_char, c_char_p, c_size_t, c_wchar, c_wchar_p, get_errno, sizeof)
 from ctypes.wintypes import (
     BOOL, DWORD, HANDLE, HGLOBAL, HINSTANCE, HMENU, HWND, INT, LPCSTR, LPVOID,
     UINT)
 from pathlib import Path
-from typing import Tuple
 
 import markdown
-from textual.drivers.windows_driver import WindowsDriver, WriterThread, win32
 
 doc_template = r'''
 Version:0.9
@@ -58,8 +61,8 @@ class ClipboardError(Exception):
     """Inidication that clipboard access failed."""
 
 
-class CheckedCall:
-    """Wrapper to invokke and cehck a windows API function."""
+class CheckedCall:                     # pylint: disable=too-few-public-methods
+    """Wrapper to invoke and check a windows API function."""
 
     def __init__(self, f, argtypes, restype):
         self.f = f
@@ -74,7 +77,7 @@ class CheckedCall:
         return ret
 
 
-windll = ctypes.windll
+windll = ctypes.windll                             # type: ignore[attr-defined]
 msvcrt = ctypes.CDLL('msvcrt')
 
 cc = CheckedCall
@@ -109,13 +112,13 @@ RegisterClipboardFormat = cc(windll.user32.RegisterClipboardFormatA, [LPCSTR],
 
 GMEM_MOVEABLE = 0x0002
 CF_UNICODETEXT = 13
-s = c_char_p(b'HTML Format')
-CF_HTML = RegisterClipboardFormat(s)
+CF_HTML = RegisterClipboardFormat(c_char_p(b'HTML Format'))
+CF_UNICODETEXT = 13
 
 
 @contextlib.contextmanager
 def window():
-    """Context that provides a valid Windows hwnd."""
+    """Context that provides a valid Windows handle."""
     # we really just need the hwnd, so setting 'STATIC'
     # as predefined lpClass is just fine.
     hwnd = safeCreateWindowExA(
@@ -127,29 +130,30 @@ def window():
 
 
 @contextlib.contextmanager
-def clipboard(hwnd):
-    """Context manager that opens the clipboard excllusively.
+def clipboard():
+    """Context manager that opens the clipboard exclusively.
 
-    Tghis prevents other applications from modifying the clipboard content.
+    This prevents other applications from modifying the clipboard content.
     """
     # We may not get the clipboard handle immediately because
     # some other application is accessing it (?)
     # We try for at least 500ms to get the clipboard.
-    t = time.time() + 0.5
-    success = False
-    while time.time() < t:
-        success = OpenClipboard(hwnd)
-        if success:
-            break
-        time.sleep(0.01)
-    if not success:
-        msg = 'Error calling OpenClipboard'
-        raise ClipboardError(msg)
+    with window() as hwnd:
+        t = time.time() + 0.5
+        success = False
+        while time.time() < t:
+            success = OpenClipboard(hwnd)
+            if success:
+                break
+            time.sleep(0.01)
+        if not success:
+            msg = 'Error calling OpenClipboard'
+            raise ClipboardError(msg)
 
-    try:
-        yield
-    finally:
-        CloseClipboard()
+        try:
+            yield
+        finally:
+            CloseClipboard()
 
 
 def copy_windows(_format_code: int, text: str):
@@ -165,58 +169,84 @@ def copy_windows(_format_code: int, text: str):
     # SetClipboardData to fail.
     #
     # We need a valid hwnd to copy something.
-    with window() as hwnd, clipboard(hwnd):
+    with clipboard():
         EmptyClipboard()
         put_ascii(CF_HTML, text.encode())
+        put_unicode(text)
 
 
-def dump_clipboard(text):
+@contextlib.contextmanager
+def locked_clipboard_data(fmt):
+    """Acquire loacked access to clipboard data."""
+    h = GetClipboardData(fmt)
+    yield safeGlobalLock(h)
+    safeGlobalUnlock(h)
+
+
+def dump_clipboard(text='', f=sys.stdout, *, show_html=False):     # noqa: C901
     """Dump the clipboard contents to a file.
 
-    This was critical to me when grikking the correct formatting to put HTML
+    This was critical to me when grokking the correct formatting to put HTML
     into the clipboard.
     """
-    with Path('fred.txt').open('w') as f:
-        f.write(text)
-        n = CountClipboardFormats()
-        print(f'Formats = {n}', file=f)
+    if text:
+        print(text, file=f)
+    print(f'Formats = {CountClipboardFormats()}', file=f)
 
-        fmt = 0
-        content = {}
+    fmt = 0
+    content = {}
+    with clipboard():
         while True:
+            dp : Array[c_char] | Array[c_wchar]
+            chars: str | bytes
+
             fmt = EnumClipboardFormats(fmt)
             if fmt == 0:
+                print('END', getLastError())
                 break
-            p = ctypes.create_string_buffer(b' ' * 30)
-            n = GetClipboardFormatName(fmt, p, len(p))
-            name = b''.join(p)[:n]
-            print(f'    {fmt}: {name}', file=f)
+            dp = ctypes.create_string_buffer(b' ' * 30)
+            n = GetClipboardFormatName(fmt, dp, len(dp))
+            name = b''.join(dp)[:n]
+            print(f'    {fmt}: {name!r}', file=f)
 
-            if name in (b'text/html', b'HTML Format'):
-                h = GetClipboardData(fmt)
-                lh = safeGlobalLock(h)
-                if name.startswith(b'text/'):
-                    p = c_wchar_p(lh)
-                    n = wcslen(p)
-                    nw = n * sizeof(c_wchar)
-                    dp = ctypes.create_unicode_buffer(nw + 1)
-                    ctypes.memmove(dp, p, nw + 1)
-                    chars = ''.join(dp)[:n]
-                    content[fmt] = chars
+            with locked_clipboard_data(fmt) as lh:
+                if lh is None:
+                    print('        inaccessible?')
                 else:
-                    p = c_char_p(lh)
-                    n = strlen(p)
-                    dp = ctypes.create_string_buffer(n + 1)
-                    ctypes.memmove(dp, p, n)
-                    chars = b''.join(dp)[:n]
-                    content[fmt] = chars.decode()
-                print(f'        {p} {n} {chars[:10]}', file=f)
-                safeGlobalUnlock(h)
+                    is_html = name in (b'text/html', b'HTML Format')
+                    if name.startswith(b'text/'):
+                        pw = c_wchar_p(lh)
+                        n = wcslen(pw)
+                        nw = n * sizeof(c_wchar)
+                        dp = ctypes.create_unicode_buffer(nw + 1)
+                        ctypes.memmove(dp, pw, nw + 1)
+                        chars = ''.join(dp)[:n]
+                        if is_html:
+                            content[fmt] = chars
+                    else:
+                        pb = c_char_p(lh)
+                        n = strlen(pb)
+                        dp = ctypes.create_string_buffer(n + 1)
+                        ctypes.memmove(dp, pb, n)
+                        chars = b''.join(dp)[:n]
+                        if is_html:
+                            try:
+                                content[fmt] = chars.decode()
+                            except UnicodeError:
+                                content[fmt] = f'{chars!r}'
+                    print(f'        {pb} {n} {chars[:70]!r}', file=f)
 
+    if content and show_html:
         print(f'MY HTML = {CF_HTML}', file=f)
-        for fmt, text in content.items():
+        for fmt, val in content.items():
             print(f'\n{fmt}:', file=f)
-            print(text, file=f)
+            print(val, file=f)
+
+
+def dump_clipboard_to_fred(text):
+    """Dump the clipboard contents to a file."""
+    with Path('fred.txt').open('w', encoding='utf-8') as f:
+        dump_clipboard(text, f)
 
 
 def put_ascii(format_code, text):
@@ -229,7 +259,7 @@ def put_ascii(format_code, text):
     SetClipboardData(format_code, h)
 
 
-def put_unicode(format_code, text):
+def put_unicode(text):
     """Copy unicode string to the clipboard.
 
     This is unused and untested.
@@ -239,7 +269,7 @@ def put_unicode(format_code, text):
     lh = safeGlobalLock(h)
     ctypes.memmove(c_wchar_p(lh), c_wchar_p(text), count * sizeof(c_wchar))
     safeGlobalUnlock(h)
-    SetClipboardData(format_code, h)
+    SetClipboardData(CF_UNICODETEXT, h)
 
 
 def put_to_clipboard(text: str, mode: str = 'styled'):
@@ -272,50 +302,6 @@ def get_editor_command(env_var_name: str) -> str:
     return os.getenv(env_var_name, 'notepad')
 
 
-def get_winpos() -> Tuple[int, int]:
+def get_winpos() -> tuple[int, int]:
     """Get the screen position of the terminal."""
     return 0, 0
-
-
-class Patch:
-    """Definition of patched Textual functions."""
-
-    def start_application_mode(self) -> None:
-        """Start application mode."""
-        loop = asyncio.get_running_loop()
-
-        self._restore_console = win32.enable_application_mode()
-
-        self._writer_thread = WriterThread(self._file)
-        self._writer_thread.start()
-
-        self.write('\x1b[?1049h')              # Enable alt screen
-        self._enable_mouse_support()
-        self.write('\x1b[?25l')                # Hide cursor
-        self.write('\x1b[?1003h\n')
-        self._enable_bracketed_paste()
-
-        self._event_thread = win32.EventMonitor(
-            loop, self._app, self.exit_event, self.process_event)
-        self._event_thread.start()
-
-    def stop_application_mode(self) -> None:
-        """Stop application mode, restore state."""
-        self._disable_bracketed_paste()
-        self.disable_input()
-
-        # Disable alt screen, show cursor
-        self.write('\x1b[?1049l' + '\x1b[?25h')                 # noqa: ISC003
-        self.flush()
-
-    def close(self) -> None:
-        """Perform cleanup."""
-        if self._writer_thread is not None:
-            self._writer_thread.stop()
-        if self._restore_console:
-            self._restore_console()
-
-
-WindowsDriver.stop_application_mode = Patch.stop_application_mode
-WindowsDriver.start_application_mode = Patch.start_application_mode
-WindowsDriver.close = Patch.close

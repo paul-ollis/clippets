@@ -2,6 +2,7 @@
 source = src
 omit =
     src/clippets/win.py
+    src/clippets/abc.py
 
 [report]
 exclude_also =

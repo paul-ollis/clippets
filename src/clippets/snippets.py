@@ -1,4 +1,5 @@
 """Data structure used to store the snippet text."""
+# pylint: disable=too-many-lines
 from __future__ import annotations
 
 import asyncio
@@ -12,7 +13,7 @@ from contextlib import suppress
 from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import Callable, ClassVar
+from typing import Callable, ClassVar, Iterable, Sequence, TypeAlias, cast
 
 from markdown_strings import esc_format
 
@@ -27,7 +28,7 @@ class SnippetInsertionPointer:
     following snippet.
     """
 
-    def __init__(self, snippet):
+    def __init__(self, snippet: Snippet):
         self._snippet = snippet
         self.after = False
         self._prev_snippet: bool | None | Snippet = False
@@ -138,23 +139,23 @@ class Element:
     id_source = itertools.count()
     has_uid: bool = True
 
-    def __init__(self, parent: Element):
-        self.parent = parent
+    def __init__(self, parent: Group):
+        self.parent: Group = parent
         if self.has_uid:
             n = next(self.id_source)
             self._uid = f'{self._uid_base_name()}-{n}'
         else:
             self._uid = ''
-        self._source_lines = []
+        self._source_lines: list[str] = []
         self.dirty = True
 
     @property
-    def source_lines(self) -> tuple:
+    def source_lines(self) -> Sequence[str]:
         """The source lines for this element."""
         return tuple(self._source_lines)
 
     @source_lines.setter
-    def source_lines(self, value):
+    def source_lines(self, value: Iterable[str]):
         self._source_lines = list(value)
         self.dirty = True
 
@@ -200,7 +201,7 @@ class Element:
         """Generate the text that should be written to a file."""
         return ''
 
-    def clean(self) -> Element | None:
+    def clean(self) -> Element | None:                   # type: ignore[return]
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
@@ -250,7 +251,7 @@ class TextualElement(Element):
     """An `Element` that holds text."""
 
     id_source = itertools.count()
-    marker = None
+    marker:str = ''
 
     def add(self, line):
         """Add a line to this element."""
@@ -362,7 +363,7 @@ class Snippet(TextualElement):
         """
         return esc_format(self.body).splitlines()
 
-    def duplicate(self):
+    def duplicate(self) -> Snippet:
         """Create a duplicate of this snippet, inserted after."""
         inst = self.__class__(self.parent)
         inst.source_lines = list(self.source_lines)
@@ -392,7 +393,7 @@ class Snippet(TextualElement):
             removed.append(lines.pop())
         self._source_lines[:] = textwrap.dedent('\n'.join(lines)).splitlines()
         if removed:
-            p = PreservedText(parent=None)
+            p = PreservedText(parent=self.parent)
             while removed:
                 p.add(removed.pop())
             return p
@@ -488,6 +489,11 @@ class Title(TextualElement):
 class GroupDebugMixin:
     """Support for test and debug of the `Group`` class."""
 
+    uid: Callable[[], str]
+    name: str
+    groups: dict[str, Group]
+    children: list[Element]
+
     def outline_repr(self, end='\n'):
         """Format a simple group-only outline representation of the tree.
 
@@ -571,7 +577,7 @@ class Group(GroupDebugMixin, Element):
         if not snippets:
             self.children.append(PlaceHolder(parent=self))
 
-    def clean(self) -> Element | None:
+    def clean(self) -> Element | None:                   # type: ignore[return]
         """Clean up this and any child groups.
 
         Empty children and groups are removed.
@@ -630,11 +636,11 @@ class Group(GroupDebugMixin, Element):
     def is_last_snippet(self, snippet: Snippet) -> bool:
         """Test if a snippet is the last in this gruop."""
         snippets = [el for el in self.children if isinstance(el, Snippet)]
-        return snippets and snippets[-1] is snippet
+        return bool(snippets) and snippets[-1] is snippet
 
-    def keyword_set(self) -> KeywordSet | None:
-        """Find the keyword set, if any, for this group."""
-        return self.children[0]
+    def keyword_set(self) -> KeywordSet:
+        """Find the keyword set, for this group."""
+        return cast(KeywordSet, self.children[0])
 
     def keywords(self) -> set[str]:
         """Provide all the keywords applicable to this group's snippets."""
@@ -710,11 +716,11 @@ class Root(Group):
 
         :return:
             The first group. Note that the Root always has at least on e group
-            this cannot return ``None``.
+            so, in practice, this cannot return itself.
         """
         for group in self.groups.values():
             return group
-        return None                                          # pragma: no cover
+        return self                                          # pragma: no cover
 
 
 def walk_group_tree(
@@ -735,16 +741,19 @@ def walk_group_tree(
             yield el
 
 
+ParsedElement: TypeAlias = PreservedText | Snippet | KeywordSet
+
+
 class Loader:                    # pylint: disable=too-many-instance-attributes
     """Encapsulation of snippet loading machinery."""
 
     def __init__(self, path: str, *, root: Root | None = None):
         self.path = Path(path)
-        self.el: Element = PreservedText(parent=None)
         self.root = root or Root('<ROOT>')
-        self.cur_group = None
-        self.monitor_task: asyncio.Task = None
-        self.load_time = 0
+        self.el: ParsedElement = Snippet(parent=self.root)
+        self.cur_group: Group = Group('')
+        self.monitor_task: asyncio.Task | None = None
+        self.load_time: float = 0.0
         self.stop_event = asyncio.Event()
 
     def start_monitoring(self, on_change_callback: Callable):
@@ -784,14 +793,14 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
             self.cur_group.add(el)
         if preserved_text:
             self.cur_group.add(preserved_text)
-        self.el = PreservedText(parent=None)
+        self.el = PreservedText(parent=self.cur_group)
 
     def handle_comment(self, line):
         """Handle a comment line."""
         if line.startswith('#'):
             if not isinstance(self.el, PreservedText):
                 self.store()
-                self.el = PreservedText(parent=None)
+                self.el = PreservedText(parent=self.cur_group)
             self.el.add(line)
             return True
         else:
@@ -803,7 +812,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
             self.store()
             _, _, title = line.partition(':')
             self.root.title = title.strip()
-            self.el = PreservedText(parent=None)
+            self.el = PreservedText(parent=self.cur_group)
             return True
         else:
             return False
@@ -819,7 +828,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
             self.cur_group = self.root.add_group(sub_groups.pop(0))
             while sub_groups:
                 self.cur_group = self.cur_group.add_group(sub_groups.pop(0))
-            self.el = PreservedText(parent=None)
+            self.el = PreservedText(parent=self.cur_group)
             return True
         else:
             return False
@@ -857,7 +866,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         self.root.reset()
         self.cur_group = self.root
         with f:
-            self.el = PreservedText(parent=None)
+            self.el = PreservedText(parent=self.cur_group)
             for rawline in f:
                 line = rawline.rstrip()
                 if not (self.handle_comment(line)
@@ -905,7 +914,7 @@ class DefaultLoader(Loader):
     def __init__(self, content: str, path: str):
         super().__init__(path)
         self.f = StringIO(content)
-        self.on_change_callback: Callable = None
+        self.on_change_callback: Callable[[], None] | None = None
 
     def load(self):
         """Load a tree of snippets from a file."""
@@ -926,11 +935,6 @@ class DefaultLoader(Loader):
 
     async def stop_monitoring(self):
         """Do nothing for the default loader."""
-
-
-def id_of_element(obj: Element | None) -> str | None:
-    """Get the unique ID of an Element."""
-    return None if obj is None else obj.uid()
 
 
 def save(path, root):
@@ -988,10 +992,10 @@ def reset_for_tests():
     reset_for_reload()
 
 
-def is_type(obj, *, classinfo):
-    """Test is one of a set of types.
+def is_type(obj, *, classinfo) -> bool:
+    """Test if an object is an instance of the given types.
 
-    This simply wraps the built-in isinstance, but plays nrcely with
+    This simply wraps the built-in ``isinstance``, but plays nicely with
     functools.partial.
     """
     return isinstance(obj, classinfo)

@@ -75,3 +75,7 @@ def get_winpos() -> Tuple[int, int]:                         # pragma: no cover
         elif line.startswith('Absolute upper-left Y:'):
             y = int(line.partition(':')[-1].strip())
     return x, y
+
+
+def dump_clipboard(_text='', _f=None):
+    """Do nothing on Linux."""

@@ -1,0 +1,2 @@
+-e h:/np/os/python/textual/
+-e h:/np/os/python/textual-dev/

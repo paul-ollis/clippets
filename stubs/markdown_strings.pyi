@@ -1,0 +1,3 @@
+"""Very minimal stub file for markdown_strings."""
+
+def esc_format(str) -> str: ...

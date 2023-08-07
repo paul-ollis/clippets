@@ -1,6 +1,6 @@
 """Details of colors and styles."""
 
-keyword_to_code = {}
+keyword_to_code: dict[str, int] = {}
 keyword_colors = {
     'a': 'magenta',
     'b': 'chartreuse3',

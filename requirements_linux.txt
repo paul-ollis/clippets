@@ -1,0 +1,2 @@
+-e /home/paul/np/os/python/textual/
+-e /home/paul/np/os/python/textual-dev/

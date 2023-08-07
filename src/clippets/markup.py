@@ -63,6 +63,7 @@ In brief, the markup rules are:
 Note that the parser code is quite simple and the result of incorrectly
 formatted input text is likely to result in a run-time error or garbage out.
 """
+from __future__ import annotations
 
 # TODO:                                                             noqa: TD005
 #     There should be some way to define class names so that instead of::
@@ -77,11 +78,13 @@ import re
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Iterable, List, Tuple
+from typing import ClassVar, Generic, Iterator, TypeVar
 
-from rich.text import Text
 from rich.style import Style
+from rich.text import Text
 from textual.widgets import Markdown, Static
+
+T = TypeVar('T')
 
 STD_IND = 4
 
@@ -147,7 +150,7 @@ rc_inline_class_markup = re.compile(r'''(?x)
     (?P=emph)
 ''')
 
-style_lookup = {
+style_lookup: dict[str, str | Style] = {
     '*': 'italic',
     '**': 'bold',
     '***': 'bold italic',
@@ -158,7 +161,7 @@ style_lookup = {
 }
 
 
-def dedent_lines(lines: List[str]) -> Tuple[int, List[str]]:
+def dedent_lines(lines: list[str]) -> tuple[int, list[str]]:
     """Remove common leading space from a block of lines.
 
     :return:
@@ -179,21 +182,21 @@ def ind_level(line):
     return ind(line) // STD_IND
 
 
-class PushbackIter:
+class PushbackIter(Generic[T]):
     """An iterator that support pushing back values."""
 
-    def __init__(self, s: Iterable):
+    def __init__(self, s: Iterator[T]):
         self.s = s
-        self.stack = []
+        self.stack: list[T] = []
 
-    def push(self, value):
+    def push(self, value: T):
         """Push a value back input the input stream."""
         self.stack.append(value)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[T]:
         return self
 
-    def __next__(self):
+    def __next__(self) -> T:
         if self.stack:
             return self.stack.pop()
         else:
@@ -256,13 +259,13 @@ class TextElement:
     """A text string with styling information."""
 
     text: str
-    style: str = ''
+    style: str | Style = ''
 
 
 class BlockElement(Element):
     """Base for all markup block elements; heading, paragraph, *etc*."""
 
-    widget_class = Static
+    widget_class: type = Static
     margin_adjust = 0
 
     def __init__(self, lines, parent, classes=(), _match=None):
@@ -360,6 +363,7 @@ class Paragraph(BlockElement):         # pylint: disable=too-few-public-methods
             text = ' '.join(self.lines)
             self._elements = []
             while text:
+                m: re.Match | None
                 ma = rc_inline_markup.match(text)
                 mb = rc_inline_class_markup.match(text)
                 if ma and mb:
@@ -420,7 +424,7 @@ class Paragraph(BlockElement):         # pylint: disable=too-few-public-methods
 class CodeBlock(Paragraph):
     """A block of code or uninterpreted text."""
 
-    widget_class = Markdown
+    widget_class: type = Markdown
     margin_adjust = -1
 
     def __init__(self, blocks, parent, lang):
@@ -529,10 +533,10 @@ class Section(BlockElement):           # pylint: disable=too-few-public-methods
 class Document(Element):
     """An entire document.
 
-    This holds a sequence of Secsionts and paragraphs.
+    This holds a sequence of Sections and paragraphs.
     """
 
-    top_tokens: ClassVar[List[str]] = [
+    top_tokens: ClassVar[list[type[Element]]] = [
         Section,
         Definition,
         Paragraph,
