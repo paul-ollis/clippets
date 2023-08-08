@@ -148,6 +148,13 @@ Button {
     align: center middle;
 }
 
+.modal_information {
+    border: tall;
+    width: auto;
+    padding: 1 2 1 2;
+    outline: double $warning;
+}
+
 /* The help text. */
 .banner {
     content-align: center middle;

@@ -1,6 +1,7 @@
 """Common test support code."""
 
 import asyncio
+import os
 import textwrap
 import traceback
 from contextlib import contextmanager, suppress
@@ -25,6 +26,9 @@ try:
     NativeEventLoop = asyncio.ProactorEventLoop
 except AttributeError:
     NativeEventLoop = asyncio.SelectorEventLoop
+
+# Time to wait to allow Clipets to detect that the editor has exited.
+epause = 'pause:0.06'
 
 data_dir = Path('/tmp/girok')
 msg_filter = set([
@@ -350,7 +354,7 @@ async def wait_for_idle(pilot, app: App | None = None):
         raise RuntimeError(msg)
 
 
-class AppRunner:
+class AppRunner:                 # pylint: disable=too-many-instance-attributes
     """Runs the Clippets application in a controlled manner.
 
     The app is run under the pytest asyncio loop.
@@ -381,9 +385,14 @@ class AppRunner:
 
     logf = None
 
-    def __init__(
-            self, snippet_file: TempTestFile, actions: list[str | Callable],
-            *, test_mode: bool = True, options: list[str] | None = None):
+    def __init__(                                               # noqa: PLR0913
+            self,
+            snippet_file: TempTestFile,
+            actions: list[str | Callable],
+            *,
+            test_mode: bool = True,
+            options: list[str] | None = None,
+            control_editor: bool = False):
         if self.__class__.logf is None:
             self.__class__.logf = log.Log('/tmp/test.log')
         options = options or []
@@ -395,13 +404,19 @@ class AppRunner:
         self.actions = actions
         self.pilot = None
         self.exited = False
+        self.svg = ''
+        if control_editor:
+            self.watch_file = TempTestFile()
+            os.environ['CLIPPETS_TEST_WATCH_FILE'] = self.watch_file.name
+        else:
+            self.watch_file = None
+            os.environ['CLIPPETS_TEST_WATCH_FILE'] = ''
 
     async def run(
             self, *, size: tuple = (80, 35), post_delay: float= 0.0) -> str:
         """Run the application."""
         coro =  self.app.run_test(
             headless=True, size=size, message_hook=self.on_msg)
-        svg = ''
         tb = ''
         try:
             async with coro as self.pilot:
@@ -415,14 +430,18 @@ class AppRunner:
                 # TODO: I would like to remove this delay.
                 if post_delay:
                     await asyncio.sleep(post_delay)
-                svg = self.app.export_screenshot()
+                if not self.svg:
+                    self.svg = self.app.export_screenshot()
                 self.exited = self.app._exit
                 await self.pilot.press('ctrl+c')
+                if self.watch_file is not None:
+                    self.watch_file.close()
+                    assert False, 'Edit session was not stopperd.'
         except Exception as exc:       # pylint: disable=broad-exception-caught
             tb = traceback.format_exception(exc)
         except SystemExit as exc:
             tb = traceback.format_exception(exc)
-        return svg, tb, self.app._exit
+        return self.svg, tb, self.app._exit
 
     async def apply_action(self, action):
         """Apply an action."""
@@ -430,17 +449,25 @@ class AppRunner:
             action()
             return
 
-        cmd, _, arg = action.partition(':')
-        if arg:
+        with self.logf:
+            cmd, colon, arg = action.partition(':')
+            print('ACTION', (cmd, colon, arg))
+        if colon:
             await self.apply_cmd_action(cmd, arg)
         else:
             await self.pilot.press(action)
             await wait_for_idle(self.pilot, self.app)
 
     async def apply_cmd_action(self, cmd, arg):
-        """Apply an action sonsisteing of a command and argument(s)."""
+        """Apply an action consisting of a command and argument(s)."""
         if cmd == 'pause':
             await asyncio.sleep(float(arg))
+        elif cmd == 'snapshot':
+            self.svg = self.app.export_screenshot()
+        elif cmd == 'end_edit':
+            assert self.watch_file
+            self.watch_file.close()
+            self.watch_file = None
         else:
             offset = Offset()
             arg, _, offset_str = arg.partition('+')
@@ -455,9 +482,9 @@ class AppRunner:
                 names = []
                 root, *_ = arg.partition('-')
                 for w in walk_depth_first(self.app):
-                    if w.id.startswith(root):
+                    if w.id and w.id.startswith(root):
                         names.append(w.ui)
-                msg = f'Bad widget ID: {arg}, similar names = {names}'
+                msg = f'Bad widget ID: {arg!r}, similar names = {names}'
                 raise RuntimeError(msg)
 
             kw = {}

@@ -57,8 +57,8 @@ from .snippets import (
     DefaultLoader, Group, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
     SnippetInsertionPointer, is_group, is_snippet, is_snippet_like)
 from .widgets import (
-    DefaulFileMenu, FileChangedMenu, MyFooter, MyInput, MyLabel, MyMarkdown,
-    MyTag, MyText, MyVerticalScroll, SnippetMenu)
+    DefaulFileMenu, FileChangedMenu, GreyoutScreen, MyFooter, MyInput, MyLabel,
+    MyMarkdown, MyTag, MyText, MyVerticalScroll, SnippetMenu)
 
 
 from . import patches                                              # noqa: F401
@@ -66,6 +66,7 @@ from . import patches                                              # noqa: F401
 if TYPE_CHECKING:
     from textual.widget import Widget
     from .snippets import Element
+    from textual.timer import Timer
 
 HL_GROUP = ''
 LEFT_MOUSE_BUTTON = 1
@@ -261,6 +262,10 @@ class MainScreen(Screen):
         """
         return self.widgets.get(el.uid())
 
+    def on_screen_resume(self):
+        """Handle when this scrren is resumed."""
+        self.screen.set_focus(None)
+
 
 def make_snippet_widget(uid, snippet) -> Widget | None:
     """Construct correct widegt for a given snnippet."""
@@ -341,16 +346,43 @@ async def resolve(q, lookup, walk, query):
                 lookup.update(new_lookup)
 
 
+class EditSession:                     # pylint: disable=too-few-public-methods
+    """Encapsulation of a user editing session."""
+
+    def __init__(
+            self,
+            app: Clippets,
+            temp_path: SharedTempFile,
+            proc: asyncio.subprocess.Process,
+            on_complete: Callable[[str], None]):
+        self.app = app
+        self.temp_path = temp_path
+        self.proc = proc
+        self.timer: Timer = app.set_interval(0.05, self.check_if_edit_finished)
+        self.on_complete = on_complete
+
+    async def check_if_edit_finished(self):
+        """Poll to see if the editor process has finished."""
+        if self.proc.returncode is not None:
+            await self.proc.wait()
+            text = self.temp_path.read_text(encoding='utf8')
+            self.app.pop_screen()
+            self.on_complete(text)
+            self.timer.stop()
+            self.edit_session = None
+
+
 class AppMixin:
     """Mixin providing application logic."""
 
     # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-instance-attributes
     args: argparse.Namespace
+    focused: Widget
     mount: Callable
+    pop_screen: Callable
     push_screen: Callable
     query_one: Callable
-    focused: Widget
     resolver: asyncio.Task | None
     screen: Screen
     MODES: ClassVar[dict[str, str | Screen | Callable[[], Screen]]]
@@ -471,7 +503,7 @@ class AppMixin:
 
     ## Handling of mouse operations.
     @only_in_context('normal')
-    def on_click(self, ev) -> None:
+    async def on_click(self, ev) -> None:
         """Process a mouse click."""
         if ev.button == LEFT_MOUSE_BUTTON:
             if ev.meta:
@@ -489,7 +521,7 @@ class AppMixin:
                 if w:
                     print('CLICK ON', w.id)
             else:
-                self.on_right_click(ev)
+                await self.on_right_click(ev)
 
     def on_left_click(self, ev) -> None:
         """Process a mouse left-click."""
@@ -514,16 +546,16 @@ class AppMixin:
         elif tag := getattr(ev, 'tag', None):
             self.action_toggle_tag(tag.name)
 
-    def on_right_click(self, ev) -> None:
+    async def on_right_click(self, ev) -> None:
         """Process a mouse right-click."""
         w = getattr(ev, 'snippet', None)
         if w:
-            def on_close(v):
+            async def on_close(v):
                 self.screen.set_focus(None)
                 if  v == 'edit':
-                    self.edit_snippet(w.id)
+                    await self.edit_snippet(w.id)
                 elif  v == 'duplicate':
-                    self.duplicate_snippet(w.id)
+                    await self.duplicate_snippet(w.id)
                 elif  v == 'move':
                     self.action_start_moving_snippet(w.id)
 
@@ -832,6 +864,38 @@ class AppMixin:
         return '\n'.join(s)
 
     ## Editing and duplicating snippets.
+    def backup_and_save(self):
+        """Create a new snippet file backup and then save."""
+        snippets.backup_file(self.args.snippet_file)
+        self.loader.save(self.root)                # type: ignore[attr-defined]
+
+    async def duplicate_snippet(self, id_str: str):
+        """Duplicate and the edit the current snippet."""
+        def on_edit_complete(text):
+            new_snippet.set_text(text)
+            self._selection_stack[:] = [
+                Selection(uid=new_snippet.uid(), user=True)]
+            self.rebuild_after_edits()
+            w = self.find_widget(new_snippet)
+            w.scroll_visible()
+
+        snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+        new_snippet = snippet.duplicate()
+        await self.run_editor(
+            new_snippet.text, 'Currently editing a duplicate snippet',
+            on_edit_complete)
+
+    async def edit_snippet(self, id_str) -> None:
+        """Invoke the user's editor on a snippet."""
+        def on_edit_complete(text):
+            if text.strip() != snippet.text.strip():
+                snippet.set_text(text)
+                self.rebuild_after_edits()
+
+        snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+        await self.run_editor(
+            snippet.text, 'Currently editing a snippet', on_edit_complete)
+
     def rebuild(self):
         """Rebuild, refresh, *etc*. after changes to the snippets tree."""
         self.lookup.clear()
@@ -852,30 +916,15 @@ class AppMixin:
         self.backup_and_save()
         self.rebuild()
 
-    def edit_snippet(self, id_str) -> None:
-        """Invoke the user's editor on a snippet."""
-        snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
-        text = run_editor(snippet.text)
-        if text.strip() != snippet.text.strip():
-            snippet.set_text(text)
-            self.rebuild_after_edits()
-
-    def duplicate_snippet(self, id_str: str):
-        """Duplicate and the edit the current snippet."""
-        snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
-        new_snippet = snippet.duplicate()
-        text = run_editor(new_snippet.text)
-        new_snippet.set_text(text)
-        self._selection_stack[:] = [
-            Selection(uid=new_snippet.uid(), user=True)]
-        self.rebuild_after_edits()
-        w = self.find_widget(new_snippet)
-        w.scroll_visible()
-
-    def backup_and_save(self):
-        """Create a new snippet file backup and then save."""
-        snippets.backup_file(self.args.snippet_file)
-        self.loader.save(self.root)                # type: ignore[attr-defined]
+    async def run_editor(
+            self, text: str, message: str,
+            on_complete: Callable[[str], None]) -> None:
+        """Run the user's preferred editor on a textual element."""
+        self.push_screen(GreyoutScreen(message, id='greyout'))
+        temp_path = SharedTempFile()
+        proc = await run_editor(text, temp_path)
+        self.edit_session = EditSession(
+            cast(Clippets, self), temp_path, proc, on_complete)
 
     ## Snippet position movement.
     def action_start_moving_snippet(self, id_str: str | None = None) -> None:
@@ -932,36 +981,42 @@ class AppMixin:
             self.update_result()
             self.update_selected()
 
-    def action_duplicate_snippet(self) -> None:
+    async def action_duplicate_snippet(self) -> None:
         """Duplicate and edit the currently selected snippet."""
         if self.selected_snippet:
-            self.duplicate_snippet(self.selected_snippet)
+            await self.duplicate_snippet(self.selected_snippet)
 
-    def action_edit_clipboard(self) -> None:
+    async def action_edit_clipboard(self) -> None:
         """Run the user's editor on the current clipboard contents."""
+        def on_edit_complete(new_text: str):
+            if new_text.strip() != text.strip():
+                self.edited_text = new_text
+                self.update_result()
+
         text = self.build_result_text()
         self.push_undo()
-        new_text = run_editor(text)
-        if new_text.strip() != text.strip():
-            self.edited_text = new_text
-            self.update_result()
+        await self.run_editor(
+            text, 'Currently editing clipboard contents', on_edit_complete)
 
-    def action_edit_keywords(self) -> None:
+    async def action_edit_keywords(self) -> None:
         """Invoke the user's editor on the current group's keyword list."""
+        def on_edit_complete(new_text: str):
+            new_words = set(new_text.split())
+            if new_words != kw.words:
+                kw.words = new_words
+                self.backup_and_save()
+                for snippet in self.walk_snippets():
+                    snippet.reset()
+                if self.populater:
+                    self.populater_q.put_nowait('pop')
+                else:                                        # pragma: no cover
+                    populate_fg(self.walk_snippets, self.find_widget)
+
         el, _ = self.selection
         group = cast(Group, el.parent if isinstance(el, Snippet) else el)
         kw = group.keyword_set()
-        text = run_editor(kw.text)
-        new_words = set(text.split())
-        if new_words != kw.words:
-            kw.words = new_words
-            self.backup_and_save()
-            for snippet in self.walk_snippets():
-                snippet.reset()
-            if self.populater:
-                self.populater_q.put_nowait('pop')
-            else:                                            # pragma: no cover
-                populate_fg(self.walk_snippets, self.find_widget)
+        await self.run_editor(
+            kw.text, 'Currently editing group keywords', on_edit_complete)
 
     def action_enter_filter(self) -> None:
         """Move focus to the filter input field."""
@@ -976,10 +1031,10 @@ class AppMixin:
         self.fix_selection(kill_filter=True)
         self.set_visuals()
 
-    def action_edit_snippet(self) -> None:
+    async def action_edit_snippet(self) -> None:
         """Edit the currently selected snippet."""
         if self.selected_snippet:
-            self.edit_snippet(self.selected_snippet)
+            await self.edit_snippet(self.selected_snippet)
 
     def action_move_insertion_point(self, direction: str) -> bool:
         """Move the snippet insertion up of down.
@@ -1079,9 +1134,10 @@ class Clippets(AppMixin, App):
     """The textual application object."""
 
     # pylint: disable=too-many-instance-attributes
-    TITLE = 'Comment snippet wrangler'
+    AUTO_FOCUS = None
     CSS_PATH = 'clippets.css'
     SCREENS: ClassVar[dict] = {'help': HelpScreen()}
+    TITLE = 'Comment snippet wrangler'
     id_to_focus: ClassVar[dict] = {'input': 'filter'}
 
     def __init__(self, args):
@@ -1218,6 +1274,10 @@ class Clippets(AppMixin, App):
         if priority:
             handled = await self.key_handler.handle_key(key)
         return handled or await super().check_bindings(key, priority)
+
+    def on_screen_resume(self):
+        """Handle when this scrren is resumed."""
+        self.screen.set_focus(None)
 
     def on_ready(self) -> None:
         """React to the DOM having been created."""
@@ -1382,7 +1442,7 @@ class KeyHandler:
             if ctx == context and binding.show]
 
 
-def run_editor(text) -> str:
+async def run_editor(text: str, path: Path) -> asyncio.subprocess.Process:
     r"""Run the user's preferred editor on a textual element.
 
     The user's chosen editor is found using the CLIPPETS_EDITOR environment
@@ -1411,17 +1471,16 @@ def run_editor(text) -> str:
     """
     edit_cmd = get_editor_command('CLIPPETS_EDITOR')
     uses_pos = '{x}' in edit_cmd and '{y}' in edit_cmd
-    with SharedTempFile() as path:
-        path.write_text(text, encoding='utf8')
-        if uses_pos:                                         # pragma: no cover
-            x, y = get_winpos()
-            dims = {'w': 80, 'h': 25, 'x': x, 'y': y}
-        else:
-            dims = {'w': 80, 'h': 25}
-        edit_cmd += ' ' + str(path)
-        cmd = edit_cmd.format(**dims).split()
-        subprocess.run(cmd, stderr=subprocess.DEVNULL, check=False)
-        return path.read_text(encoding='utf8')
+    path.write_text(text, encoding='utf8')
+    if uses_pos:                                         # pragma: no cover
+        x, y = get_winpos()
+        dims = {'w': 80, 'h': 25, 'x': x, 'y': y}
+    else:
+        dims = {'w': 80, 'h': 25}
+    edit_cmd += ' ' + str(path)
+    cmd = edit_cmd.format(**dims).split()
+    return await asyncio.create_subprocess_exec(
+        *cmd, stderr=subprocess.DEVNULL)
 
 
 def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:

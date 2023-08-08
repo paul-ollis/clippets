@@ -46,6 +46,7 @@ disable=
     # Checks provided by Ruff.
     protected-access,
     unused-import,
+    too-many-branches,
 
 [REPORTS]
 evaluation=10.0 - ((float(5 * error + warning + refactor + convention) / statement) * 10)

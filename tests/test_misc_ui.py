@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from support import populate, fix_named_temp_file, clean_text
+from support import clean_text, epause, fix_named_temp_file, populate
 
 from clippets import core
 
@@ -118,6 +118,7 @@ class TestBootstrapping:
         actions = (
             ['enter']              # Accept the template.
             + ['e']                # Edit a snippet.
+            + [epause]
         )
         infile.delete()
         runner, snapshot_ok = await snapshot_run(infile, actions)

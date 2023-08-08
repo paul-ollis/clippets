@@ -3,12 +3,11 @@ from __future__ import annotations
 # pylint: disable=redefined-outer-name
 # pylint: disable=no-self-use
 
-import os
 from pathlib import Path
 
 import pytest
 
-from support import clean_text, populate
+from support import clean_text, populate, epause
 
 HERE = Path(__file__).parent
 std_infile_text = '''
@@ -41,6 +40,7 @@ class TestKeyboardControlled:
         actions = (
             ['down']              # Move to Snippet 2
             + ['e']               # Edit it
+            + [epause]
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -64,6 +64,7 @@ class TestKeyboardControlled:
         actions = (
             ['down'] * 2          # Move to Snippet 3
             + ['d']               # Duplicate and edit it
+            + [epause]
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -89,6 +90,7 @@ class TestKeyboardControlled:
             ['down']              # Move to Snippet 2
             + ['enter']           # Add to the clipboard
             + ['f2']              # Edit the clipboard preview
+            + [epause]
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert 'Snippet 2' == edit_text_file.prev_text
@@ -103,6 +105,7 @@ class TestKeyboardControlled:
             ['down']              # Move to Snippet 2
             + ['enter']           # Add to the clipboard
             + ['f2']              # Edit the clipboard preview
+            + [epause]
             + ['ctrl+u']          # Undo the edit.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
@@ -118,6 +121,7 @@ class TestKeyboardControlled:
             ['down']              # Move to Snippet 2
             + ['enter']           # Add to the clipboard
             + ['f2']              # Edit the clipboard preview
+            + [epause]
             + ['ctrl+u']          # Undo the edit.
             + ['ctrl+r']          # The redo it again
         )
@@ -138,6 +142,7 @@ class TestKeyboardControlled:
             ['down']              # Move to Snippet 2
             + ['enter']           # Add to the clipboard
             + ['f2']              # Edit the clipboard preview
+            + [epause]
             + ['down']            # Move to Snippet 3
             + ['enter']           # Add to the clipboard, loses edit.
             + ['ctrl+u']          # Undo the add.
@@ -156,12 +161,13 @@ class TestKeyboardControlled:
         data = (f'Snippet {n}' for n in range(4, 15))
         populate(edit_text_file, next(data))
         actions = (
-            ['down'] * 2                       # Move to Snippet 3
-            + ['d']                            # Duplicate
-
-            + [update_text]                    # Change edit emulation text.
-            + ['d']                            # Duplicate the new snippet
-            + [update_text, 'd'] * 9           # ... and so on.
+            ['down'] * 2                      # Move to Snippet 3
+            + ['d']                           # Duplicate
+            + [epause]
+            + [update_text]                   # Change edit emulation text.
+            + ['d']                           # Duplicate the new snippet
+            + [epause]
+            + [update_text, 'd', epause] * 9  # ... and so on.
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -190,6 +196,51 @@ class TestKeyboardControlled:
         assert 'Snippet 13' == edit_text_file.prev_text
         assert snapshot_ok
 
+    @pytest.mark.asyncio
+    async def test_ui_is_greyed_out_during_snippet_editing(
+            self, infile, edit_text_file, snapshot_run):
+        """The main TUI is greayed out during editing."""
+        populate(edit_text_file, 'Snippet 2')
+        actions = (
+            ['down']                # Move to Snippet 2
+            + ['e']                 # Edit it
+            + ['snapshot:']         # Take snapshot with editor running
+            + ['end_edit:']         # Stop the editor.
+        )
+        _, snapshot_ok = await snapshot_run(
+            infile, actions, control_editor=True)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_ui_is_greyed_out_during_snippet_duplication(
+            self, infile, edit_text_file, snapshot_run):
+        """The main TUI is greayed out during editing a duplicated snippet."""
+        populate(edit_text_file, 'Snippet 2')
+        actions = (
+            ['down']                # Move to Snippet 2
+            + ['d']                 # Edit it
+            + ['snapshot:']         # Take snapshot with editor running
+            + ['end_edit:']         # Stop the editor.
+        )
+        _, snapshot_ok = await snapshot_run(
+            infile, actions, control_editor=True)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_ui_is_greyed_out_during_clipboard_editing(
+            self, infile, edit_text_file, snapshot_run):
+        """The main TUI is greayed out during editing of the clipboard."""
+        populate(edit_text_file, 'Snippet 2')
+        actions = (
+            ['down']                # Move to Snippet 2
+            + ['f2']                 # Edit it
+            + ['snapshot:']         # Take snapshot with editor running
+            + ['end_edit:']         # Stop the editor.
+        )
+        _, snapshot_ok = await snapshot_run(
+            infile, actions, control_editor=True)
+        assert snapshot_ok
+
 
 class TestMouseControlled:
     """Generally preferring to use the mouse."""
@@ -202,6 +253,7 @@ class TestMouseControlled:
         actions = (
             ['right:snippet-1']       # Open snippet-2 menu.
             + ['left:edit']           # Select edit.
+            + [epause]
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -225,6 +277,7 @@ class TestMouseControlled:
         actions = (
             ['right:snippet-2']       # Open snippet-3 menu.
             + ['left:duplicate']      # Select edit.
+            + [epause]
         )
         expect = clean_text('''
             Group: <ROOT>

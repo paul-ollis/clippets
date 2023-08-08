@@ -159,9 +159,11 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
             infile: TempTestFile, actions: list, *, log=False,
             post_delay: float = 0.0, test_mode: bool = True,
             options: list[str] | None = None,
-            expect_exit: bool = False):
+            expect_exit: bool = False,
+            control_editor: bool = False):
         runner = AppRunner(
-            infile, actions, test_mode=test_mode, options=options)
+            infile, actions, test_mode=test_mode, options=options,
+            control_editor=control_editor)
         if log:
             with runner.logf:
                 svg, tb, exited = await runner.run(post_delay=post_delay)

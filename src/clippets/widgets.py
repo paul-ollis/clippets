@@ -118,9 +118,26 @@ class PopupDialog(ModalScreen):
         self.dismiss(event.button.id)
 
 
+class GreyoutScreen(PopupDialog):
+    """Screen to grey out the current screen."""
+
+    def __init__(self, message: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.message = message
+
+    def compose(self):
+        """Build the widget hierarchy."""
+        styles = self.styles
+        bg = styles.background
+        styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
+
+        yield Static(self.message, classes='modal_information')
+
+
 class SnippetMenu(PopupDialog):
     """Menu providing snippet action choices."""
 
+    AUTO_FOCUS = '#edit'
     DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
     .popup {
         grid-size: 4;
@@ -149,6 +166,7 @@ class SnippetMenu(PopupDialog):
 class FileChangedMenu(PopupDialog):
     """Popup for when the snippets file has been changed."""
 
+    AUTO_FOCUS = '#load'
     DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
     .popup {
         grid-size: 2;
@@ -173,6 +191,7 @@ class FileChangedMenu(PopupDialog):
 class DefaulFileMenu(PopupDialog):
     """Popup for when starting with a non-existant file."""
 
+    AUTO_FOCUS = '#create'
     DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
     .popup {
         grid-size: 2;

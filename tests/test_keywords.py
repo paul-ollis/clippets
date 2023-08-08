@@ -5,11 +5,9 @@ Keywords are useful to make help spot relevant snippets within a group.
 from __future__ import annotations
 # pylint: disable=redefined-outer-name
 
-import functools
-
 import pytest
 
-from support import clean_text, populate
+from support import epause, populate
 
 std_infile_text = '''
     Main
@@ -100,9 +98,27 @@ async def test_keywords_can_be_edited(
     populate(edit_text_file, 'Markdown\ntext\n')
     actions = (
         ['f7']                # Edit the first group's keywords.
+        + [epause]
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
+    assert 'highlighting\ntext' == edit_text_file.prev_text
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_ui_is_greyed_out_during_clipboard_editing(
+        infile, snapshot_run, edit_text_file):
+    """The main TUI is greayed out during editing of keywords."""
+    populate(edit_text_file, 'Markdown\ntext\n')
+    actions = (
+        ['f7']                # Edit the first group's keywords.
+        + ['snapshot:']         # Take snapshot with editor running
+        + ['end_edit:']         # Stop the editor.
+    )
+    kw = 'highlighting text'
+    _, snapshot_ok = await snapshot_run(
+        infile(kw), actions, control_editor=True)
     assert 'highlighting\ntext' == edit_text_file.prev_text
     assert snapshot_ok
 
@@ -115,6 +131,7 @@ async def test_select_group_used_if_no_snippets(
     actions = (
         ['f9']                  # Close all groups.
         + ['f7']                # Edit the first group's keywords.
+        + [epause]
         + ['f9']                # Open all groups.
     )
     kw = 'highlighting text'
