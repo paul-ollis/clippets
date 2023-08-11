@@ -29,9 +29,6 @@ class SharedTempFile(Path):
     Under Linux we can use NamedTemporaryFile alone to handle all the
     copmplexities. Under Windows, file locking requires that we manage things a
     bit differently.
-
-    This is a subclass of pathlib.Path, but it can also be used as a context
-    manager, which handles deletion of the file.
     """
 
     # pylint: disable=no-member
@@ -47,9 +44,3 @@ class SharedTempFile(Path):
         tf = tempfile.NamedTemporaryFile(mode='wt+', delete=False)
         tf.close()
         return super().__new__(cls, tf.name, *args, **kwargs)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *args, **kwargs):
-        self.unlink()

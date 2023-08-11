@@ -294,12 +294,14 @@ def terminal_title(_title: str):
     yield None
 
 
-def get_editor_command(env_var_name: str) -> str:
-    """Get the editor command using a given envirot variable name.
+def get_editor_command(env_var_name: str, default: str | None = None) -> str:
+    """Get the editor command using a given environment variable name.
 
     If the environment variable is not set, this uses notepad.
     """
-    return os.getenv(env_var_name, 'notepad')
+    if default is None:
+        default = 'notepad'
+    return os.getenv(env_var_name, default)
 
 
 def get_winpos() -> tuple[int, int]:

@@ -3,6 +3,7 @@
 import asyncio
 import os
 import textwrap
+import time
 import traceback
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
@@ -13,8 +14,9 @@ from typing import Callable
 import log
 
 from textual.app import App
+from textual.css.query import NoMatches
 from textual.events import (
-    Click, MouseDown, MouseScrollDown, MouseScrollUp, MouseUp)
+    Click, MouseDown, MouseMove, MouseScrollDown, MouseScrollUp, MouseUp)
 from textual.geometry import Offset
 from textual.pilot import _get_mouse_message_arguments
 from textual.walk import walk_depth_first
@@ -27,22 +29,27 @@ try:
 except AttributeError:
     NativeEventLoop = asyncio.SelectorEventLoop
 
-# Time to wait to allow Clipets to detect that the editor has exited.
-epause = 'pause:0.06'
+# Time to wait to allow Clippets to detect that the editor has exited.
+epause = 'pause:0.01'
 
 data_dir = Path('/tmp/girok')
 msg_filter = set([
     'Blur',
     'Callback',
+    'Click',
     'Compose',
     'DescendantBlur',
     'DescendantFocus',
+    'ExitApp',
     'Focus',
     'Hide',
     'InvokeLater',
     'Key',
     'Layout',
+    'Load',
     'Mount',
+    #@ 'MouseDown',
+    #@ 'MouseUp',
     'Resize',
     'Ready',
     'ScreenResume',
@@ -51,8 +58,7 @@ msg_filter = set([
     'TableOfContentsUpdated',
     'Unmount',
     'Update',
-
-    'Load',
+    'UpdateScroll',
 ])
 long_infile_text = '''
     Main
@@ -97,7 +103,8 @@ def all_pumps(app: App):
 
 async def click(                                                # noqa: PLR0913
     pilot,
-    button: str = 'left',
+    button: str,
+    op: str,
     selector: type[Widget] | str | None = None,
     offset: Offset = Offset(),
     shift: bool = False,
@@ -125,8 +132,12 @@ async def click(                                                # noqa: PLR0913
     else:
         target_widget = screen
 
-    cls = MouseDown
+    cls = Click
     bn = 0
+    if op == 'drag_release':
+        cls = MouseMove
+    elif op == 'leftdown':
+        cls = MouseDown
     if button in ('left', 'right'):
         bn = 1 if button == 'left' else 3
     elif button == 'up':
@@ -141,10 +152,14 @@ async def click(                                                # noqa: PLR0913
         control=control
     )
     await wait_for_idle(pilot)
-    if cls is MouseDown:
+    print("SEL", cls, message_arguments)
+    if cls is Click:
         app.post_message(MouseDown(**message_arguments))
         app.post_message(MouseUp(**message_arguments))
         app.post_message(Click(**message_arguments))
+    elif op == 'drag_release':
+        app.post_message(MouseMove(**message_arguments))
+        app.post_message(MouseUp(**message_arguments))
     else:
         app.post_message(cls(**message_arguments))
     await pilot.pause(0.01)
@@ -367,6 +382,9 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
 
         pause:0.2
             Pause for a short time.
+        wait:0.2:EditorHasExited
+            Wait for an given message  for a given amount of time. If the
+            message is not received within the time period, the test fails.
         left:group-1
             Perform a left mouse button click on the widget with the ID
             'group-1'. The word before the colon identifies the button and
@@ -421,12 +439,13 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
         try:
             async with coro as self.pilot:
                 await self.wait_for_message_name('Ready')
-                for action in self.actions:
-                    await self.apply_action(action)
-                self.app.refresh()
-                await self.pilot._wait_for_screen()
-                self.app.screen._on_timer_update()
-                await wait_for_idle(self.pilot, self.app)
+                with self.logf:
+                    for action in self.actions:
+                        await self.apply_action(action)
+                    self.app.refresh()
+                    await self.pilot._wait_for_screen()
+                    self.app.screen._on_timer_update()
+                    await wait_for_idle(self.pilot, self.app)
                 # TODO: I would like to remove this delay.
                 if post_delay:
                     await asyncio.sleep(post_delay)
@@ -449,56 +468,88 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
             action()
             return
 
-        with self.logf:
-            cmd, colon, arg = action.partition(':')
-            print('ACTION', (cmd, colon, arg))
+        cmd, colon, arg = action.partition(':')
         if colon:
             await self.apply_cmd_action(cmd, arg)
         else:
             await self.pilot.press(action)
             await wait_for_idle(self.pilot, self.app)
 
+    async def exec_wait(self, arg):
+        """Execute a wait action."""
+        timeout, _, message_type_name = arg.partition(':')
+        end_time = time.time() + float(timeout)
+        while time.time() <= end_time:
+            while not self.msg_q.empty():
+                m = await self.msg_q.get()
+                if m.__class__.__name__ == message_type_name:
+                    return
+            await asyncio.sleep(0.01)
+
+        msg = f'Timed out waiting for {message_type_name}'
+        raise RuntimeError(msg)
+
     async def apply_cmd_action(self, cmd, arg):
         """Apply an action consisting of a command and argument(s)."""
-        if cmd == 'pause':
-            await asyncio.sleep(float(arg))
-        elif cmd == 'snapshot':
-            self.svg = self.app.export_screenshot()
-        elif cmd == 'end_edit':
-            assert self.watch_file
-            self.watch_file.close()
-            self.watch_file = None
+        handler = getattr(self, f'exec_{cmd}', None)
+        if handler:
+            return await handler(arg)
         else:
-            offset = Offset()
-            arg, _, offset_str = arg.partition('+')
-            x_str, _, y_str = offset_str.partition('x')
-            if y_str:
-                offset = Offset(int(x_str), int(y_str))
-            elif x_str:
-                offset = Offset(int(x_str), 0)
-            selector = arg if arg.startswith('.') else f'#{arg}'
-            widgets = self.app.query(selector)
-            if not widgets or len(widgets) > 1:
-                names = []
-                root, *_ = arg.partition('-')
-                for w in walk_depth_first(self.app):
-                    if w.id and w.id.startswith(root):
-                        names.append(w.ui)
-                msg = f'Bad widget ID: {arg!r}, similar names = {names}'
-                raise RuntimeError(msg)
+            return await self.exec_generic(cmd, arg)
 
-            kw = {}
-            while '-' in cmd:
-                mod, _, cmd = cmd.partition('-')
-                kw[mod] = True
-            if cmd == 'hover':
-                await self.pilot.hover(selector=selector)
+    @staticmethod
+    async def exec_pause(arg):
+        """Execute a pause action."""
+        await asyncio.sleep(float(arg))
+
+    async def exec_snapshot(self, arg):
+        """Execute a snapshot action."""
+        self.svg = self.app.export_screenshot()
+
+    async def exec_end_edit(self, arg):
+        """Execute a end_edit action."""
+        assert self.watch_file
+        self.watch_file.close()
+        self.watch_file = None
+
+    async def exec_generic(self, cmd, arg):
+        """Execute a generic action."""
+        offset = Offset()
+        arg, _, offset_str = arg.partition('+')
+        x_str, _, y_str = offset_str.partition('x')
+        if y_str:
+            offset = Offset(int(x_str), int(y_str))
+        elif x_str:
+            offset = Offset(int(x_str), 0)
+        selector = arg if arg.startswith('.') else f'#{arg}'
+        try:
+            self.app.screen.query_one(selector)
+        except NoMatches:
+            msg = f'Bad widget ID: {arg!r}, screen={self.app.screen}'
+            names = set()
+            for node in self.app.screen.query(None):
+                if node.id:
+                    names.add(node.id)
+            msg += 'Known names:\n    '
+            msg += '\n    '.join(names)
+            raise RuntimeError(msg) from None
+
+        kw = {}
+        while '-' in cmd:
+            mod, _, cmd = cmd.partition('-')
+            kw[mod] = True
+        if cmd == 'hover':
+            await self.pilot.hover(selector=selector)
+        else:
+            if cmd in ('drag_release', 'leftdown'):
+                button = 'left'
             else:
-                await click(
-                    self.pilot, button=cmd, selector=selector,
-                    offset=offset, **kw)
-            await wait_for_idle(self.pilot, self.app)
-
+                button = cmd
+            print("CLICK", button, cmd)
+            await click(
+                self.pilot, button=button, op=cmd, selector=selector,
+                offset=offset, **kw)
+        await wait_for_idle(self.pilot, self.app)
 
     def on_msg(self, m):
         """Handle a message generated by the app."""

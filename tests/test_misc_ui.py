@@ -118,7 +118,7 @@ class TestBootstrapping:
         actions = (
             ['enter']              # Accept the template.
             + ['e']                # Edit a snippet.
-            + [epause]
+            + ['wait:0.5:EditorHasExited']
         )
         infile.delete()
         runner, snapshot_ok = await snapshot_run(infile, actions)

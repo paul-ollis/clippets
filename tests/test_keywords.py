@@ -4,10 +4,13 @@ Keywords are useful to make help spot relevant snippets within a group.
 """
 from __future__ import annotations
 # pylint: disable=redefined-outer-name
+# pylint: disable=no-self-use
+
+import os
 
 import pytest
 
-from support import epause, populate
+from support import populate, epause
 
 std_infile_text = '''
     Main
@@ -98,7 +101,7 @@ async def test_keywords_can_be_edited(
     populate(edit_text_file, 'Markdown\ntext\n')
     actions = (
         ['f7']                # Edit the first group's keywords.
-        + [epause]
+        + ['wait:0.5:EditorHasExited']
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
@@ -113,6 +116,7 @@ async def test_ui_is_greyed_out_during_clipboard_editing(
     populate(edit_text_file, 'Markdown\ntext\n')
     actions = (
         ['f7']                # Edit the first group's keywords.
+        + [epause]
         + ['snapshot:']         # Take snapshot with editor running
         + ['end_edit:']         # Stop the editor.
     )
@@ -131,10 +135,39 @@ async def test_select_group_used_if_no_snippets(
     actions = (
         ['f9']                  # Close all groups.
         + ['f7']                # Edit the first group's keywords.
-        + [epause]
+        + ['wait:0.2:EditorHasExited']
         + ['f9']                # Open all groups.
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
     assert 'highlighting\ntext' == edit_text_file.prev_text
     assert snapshot_ok
+
+
+class TestInternalEditor:
+    """Using the built-in editor."""
+
+    @pytest.fixture(autouse=True)
+    @classmethod
+    def set_env(cls):
+        """Set up the environment for these tests."""
+        os.environ['CLIPPETS_EDITOR'] = ''
+
+    @pytest.mark.asyncio
+    async def test_keywords_can_be__edited(
+            self, infile, snapshot_run_dyn):
+        """The internal editor can be used to edit the keywords."""
+        actions = (
+            ['f7']                # Edit the first group's keywords.
+            + ['home']
+            + ['shift-end']
+            + ['del']
+            + list('Markdown')
+            + ['enter']
+            + list('text')
+            + ['ctrl+s']
+            + [ epause ]
+        )
+        kw = 'highlighting text'
+        _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
+        assert snapshot_ok

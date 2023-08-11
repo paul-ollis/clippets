@@ -309,7 +309,7 @@ def gen_highlight_spans(
 
 def force_style(st: str | Style) -> Style:
     """Convert any string to a Style instance."""
-    if isinstance(st, str):
+    if isinstance(st, str):                                  # pragma: no cover
         try:
             return Style.parse(st)
         except StyleSyntaxError:

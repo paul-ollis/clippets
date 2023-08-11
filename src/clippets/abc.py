@@ -5,7 +5,6 @@
 # type: ignore[empty-body]
 
 from textual.app import Binding
-from textual.dom import DOMNode
 from textual.widget import Widget
 
 

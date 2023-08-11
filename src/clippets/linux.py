@@ -55,12 +55,14 @@ def terminal_title(title: str):
     sys.stdout.flush()
 
 
-def get_editor_command(env_var_name: str) -> str:
-    """Get the editor command using a given envirot variable name.
+def get_editor_command(env_var_name: str, default: str | None = None) -> str:
+    """Get the editor command using a given environment variable name.
 
     If the environment variable is not set, this uses gvim.
     """
-    return os.getenv(env_var_name, 'gvim -f -geom {w}x{h}+{x}+{y}')
+    if default is None:
+        default = 'gvim -f -geom {w}x{h}+{x}+{y}'
+    return os.getenv(env_var_name, default)
 
 
 def get_winpos() -> Tuple[int, int]:                         # pragma: no cover

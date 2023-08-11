@@ -50,6 +50,7 @@ from textual.widgets import Header, Input, Static
 from textual.widgets._markdown import MarkdownFence
 
 from . import markup, snippets
+from .editor import TextArea
 from .platform import (
     SharedTempFile, dump_clipboard, get_editor_command, get_winpos,
     put_to_clipboard, terminal_title)
@@ -60,13 +61,13 @@ from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, MyFooter, MyInput, MyLabel,
     MyMarkdown, MyTag, MyText, MyVerticalScroll, SnippetMenu)
 
-
 from . import patches                                              # noqa: F401
 
 if TYPE_CHECKING:
     from textual.widget import Widget
     from .snippets import Element
     from textual.timer import Timer
+    from textual.binding import _Bindings
 
 HL_GROUP = ''
 LEFT_MOUSE_BUTTON = 1
@@ -139,6 +140,10 @@ class SetupDefaultFile(Message):
     """An inidication that we need to create a default file."""
 
 
+class EditorHasExited(Message):
+    """An inidication the extenal editor has exited."""
+
+
 class Matcher:                         # pylint: disable=too-few-public-methods
     """Simple plain-text replacement for a compiled regular expression."""
 
@@ -150,12 +155,50 @@ class Matcher:                         # pylint: disable=too-few-public-methods
         return not self.pat or self.pat in text.lower()
 
 
+class EditorScreen(Screen):
+    """An internal editor."""
+
+    _inherit_bindings: ClassVar[bool] = False
+    preview: MyMarkdown
+
+    def __init__(self, text: str, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.text = text
+        self._prev_lines: list[str] = []
+
+    def compose(self) -> ComposeResult:
+        """Build the widget tree for the editor screen."""
+        yield Header(id='header')
+        vs = MyVerticalScroll(id='editor_view_sc', classes='editor_result')
+        vs.can_focus = False
+        vs.can_focus_children = False
+        with vs:
+            self.preview = MyMarkdown(id='result')
+            self.preview.can_focus = False
+            self.preview.can_focus_children = False
+            yield self.preview
+        yield TextArea(
+            on_changed=self.on_changed, id='editor_sc',classes='editor_sc')
+        yield MyFooter()
+
+    def on_mount(self):
+        """Tada."""
+        ta = self.query_one(TextArea)
+        ta.lines = self.text.splitlines()
+        ta.focus()
+
+    def on_changed(self, lines):
+        """Handle change to the editor contents."""
+        if lines != self._prev_lines:
+            self.preview.update('\n'.join(lines))
+            self._prev_lines[:] = lines
+
+
 class HelpScreen(Screen):
-    """Tada."""
+    """The screen that is used to display help."""
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.timer = None
 
     def compose(self) -> ComposeResult:
         """Tada."""
@@ -263,7 +306,7 @@ class MainScreen(Screen):
         return self.widgets.get(el.uid())
 
     def on_screen_resume(self):
-        """Handle when this scrren is resumed."""
+        """Handle when this screen is resumed."""
         self.screen.set_focus(None)
 
 
@@ -346,30 +389,59 @@ async def resolve(q, lookup, walk, query):
                 lookup.update(new_lookup)
 
 
-class EditSession:                     # pylint: disable=too-few-public-methods
+class EditSession:
     """Encapsulation of a user editing session."""
 
     def __init__(
             self,
             app: Clippets,
-            temp_path: SharedTempFile,
-            proc: asyncio.subprocess.Process,
             on_complete: Callable[[str], None]):
         self.app = app
+        self.on_complete = on_complete
+
+    def save(self):
+        """Save the changes from the editor."""
+        ta = self.app.query_one('TextArea')
+        text = '\n'.join(ta.lines)
+        self.app.pop_screen()
+        self.app.edit_session = None
+        self.on_complete(text)
+
+    def quit(self):                                                # noqa: A003
+        """Quite the editor."""
+        self.app.pop_screen()
+        self.app.edit_session = None
+
+
+class ExtEditSession(EditSession):
+    """Encapsulation of an external editing session."""
+
+    def __init__(
+            self,
+            app: Clippets,
+            temp_path: SharedTempFile,
+            proc: asyncio.subprocess.Process |None,
+            on_complete: Callable[[str], None]):
+        super().__init__(app, on_complete)
         self.temp_path = temp_path
         self.proc = proc
-        self.timer: Timer = app.set_interval(0.05, self.check_if_edit_finished)
-        self.on_complete = on_complete
+        self.timer: Timer = app.set_interval(0.02, self.check_if_edit_finished)
 
     async def check_if_edit_finished(self):
         """Poll to see if the editor process has finished."""
-        if self.proc.returncode is not None:
-            await self.proc.wait()
+        if self.proc and self.proc.returncode is not None:
+            # Note that more calls to this method may already be queued. We
+            # cannot rely on simply stopping the timer. So we use self.proc
+            # being ``None`` as a guard.
+            proc, self.proc = self.proc, None
+
+            self.timer.stop()
+            await proc.wait()
             text = self.temp_path.read_text(encoding='utf8')
             self.app.pop_screen()
             self.on_complete(text)
-            self.timer.stop()
-            self.edit_session = None
+            self.app.edit_session = None
+            self.app.post_message(EditorHasExited())
 
 
 class AppMixin:
@@ -385,6 +457,7 @@ class AppMixin:
     query_one: Callable
     resolver: asyncio.Task | None
     screen: Screen
+    _bindings: _Bindings
     MODES: ClassVar[dict[str, str | Screen | Callable[[], Screen]]]
 
     def __init__(self, root: Root):
@@ -412,6 +485,8 @@ class AppMixin:
         self.walk_snippets = partial(self.walk, is_snippet)
         self.walk_snippet_like = partial(self.walk, is_snippet_like)
         self.populater: asyncio.Task | None = None
+        self.edit_session: EditSession | None = None
+        self.disabled_bindings: dict[str, Binding] = {}
 
     async def on_exit_app(self, _event):
         """Clean up when exiting the application."""
@@ -629,7 +704,7 @@ class AppMixin:
             self._selection_stack[:] = [Selection(uid=el.uid(), user=False)]
             self.screen.set_focus(None)
             self.set_visuals()
-            w.scroll_visible()
+            w.scroll_visible(animate=False)
             return True
 
         elif inc == 0:
@@ -694,7 +769,7 @@ class AppMixin:
                             Selection(uid=next_snippet.uid(), user=user)]
                     self.screen.set_focus(None)
                     self.set_visuals()
-                    next_widget.scroll_visible()
+                    next_widget.scroll_visible(animate=False)
                     return True
 
         return False
@@ -718,7 +793,7 @@ class AppMixin:
             self._selection_stack[-1] = Selection(
                 uid=next_group.uid(), user=user)
             self.set_visuals()
-            w.scroll_visible()
+            w.scroll_visible(animate=False)
 
     def select_move_horizontally(self, inc: int, *, user: bool):
         """Move the selection to/from group mode."""
@@ -731,7 +806,7 @@ class AppMixin:
                 Selection(uid=group.uid(), user=user))
             w = self.find_widget(group)
             self.set_visuals()
-            w.scroll_visible()
+            w.scroll_visible(animate=False)
         else:
             if not sel_id.startswith('group-'):
                 return
@@ -754,7 +829,7 @@ class AppMixin:
 
             w = self.find_widget(snippet)
             self.set_visuals()
-            w.scroll_visible()
+            w.scroll_visible(animate=False)
 
     ## Ways to limit visible snippets.
     def filter_view(self) -> None:
@@ -820,6 +895,7 @@ class AppMixin:
             self.filter = rexp
             self.filter_view()
 
+    @only_in_context('normal')
     def update_hover(self, w) -> None:
         """Update the UI to indicate where the mouse is."""
         self.hover_uid = w.id
@@ -877,7 +953,7 @@ class AppMixin:
                 Selection(uid=new_snippet.uid(), user=True)]
             self.rebuild_after_edits()
             w = self.find_widget(new_snippet)
-            w.scroll_visible()
+            w.scroll_visible(animate=False)
 
         snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
         new_snippet = snippet.duplicate()
@@ -920,11 +996,31 @@ class AppMixin:
             self, text: str, message: str,
             on_complete: Callable[[str], None]) -> None:
         """Run the user's preferred editor on a textual element."""
-        self.push_screen(GreyoutScreen(message, id='greyout'))
-        temp_path = SharedTempFile()
-        proc = await run_editor(text, temp_path)
-        self.edit_session = EditSession(
-            cast(Clippets, self), temp_path, proc, on_complete)
+        ext_editor = get_editor_command('CLIPPETS_EDITOR', '')
+        if ext_editor:
+            self.push_screen(GreyoutScreen(message, id='greyout'))
+            temp_path = SharedTempFile()
+            proc = await run_editor(text, temp_path)
+            self.edit_session = ExtEditSession(
+                cast(Clippets, self), temp_path, proc, on_complete)
+        else:
+            self.disabled_bindings = self._bindings.keys.copy()
+            self._bindings.keys.clear()
+            self.push_screen(EditorScreen(text, id='editor'))
+            self.edit_session = EditSession(
+                cast(Clippets, self), on_complete)
+
+    def action_edit_save_and_quit(self):
+        """Save and quit an internal edirot session."""
+        if self.edit_session:
+            self.edit_session.save()
+            self._bindings.keys.update(self.disabled_bindings)
+
+    def action_edit_quit(self):
+        """Just quit an internal edirot session."""
+        if self.edit_session:
+            self.edit_session.quit()
+            self._bindings.keys.update(self.disabled_bindings)
 
     ## Snippet position movement.
     def action_start_moving_snippet(self, id_str: str | None = None) -> None:
@@ -933,7 +1029,7 @@ class AppMixin:
             if i == 1:
                 break
         else:
-            # We have fewer than 2 snippets, moving is impossibnle.
+            # We have fewer than 2 snippets, moving is impossible.
             # TODO: What about when groups are collapsed?
             return
 
@@ -1046,7 +1142,7 @@ class AppMixin:
         if dest.move(backwards=direction == 'up', skip=snippet):
             self.set_visuals()
             w = self.find_widget(dest.snippet)
-            w.scroll_visible()
+            w.scroll_visible(animate=False)
             return True
         else:
             return False
@@ -1230,6 +1326,12 @@ class Clippets(AppMixin, App):
         bind('enter', 'complete_move', description='Insert')
         bind('escape', 'stop_moving', description='Cancel')
 
+        bind = partial(
+            self.key_handler.bind, contexts=('editor',), show=True,
+            priority=True)
+        bind('ctrl+s', 'edit_save_and_quit', description='Save and quit')
+        bind('ctrl+q', 'edit_quit', description='Quit and discard changes')
+
         bind = partial(self.key_handler.bind, contexts=('help',), show=True)
         bind('f1', 'pop_screen', description='Close help')
 
@@ -1239,7 +1341,7 @@ class Clippets(AppMixin, App):
         if self.resolver:
             self.resolver_q.put_nowait(None)
             await self.resolver
-        super().on_exit_app(event)
+        await super().on_exit_app(event)
 
     def compose(self) -> ComposeResult:
         """Build the widget hierarchy."""
@@ -1274,10 +1376,6 @@ class Clippets(AppMixin, App):
         if priority:
             handled = await self.key_handler.handle_key(key)
         return handled or await super().check_bindings(key, priority)
-
-    def on_screen_resume(self):
-        """Handle when this scrren is resumed."""
-        self.screen.set_focus(None)
 
     def on_ready(self) -> None:
         """React to the DOM having been created."""
@@ -1352,7 +1450,7 @@ class Clippets(AppMixin, App):
             app_ready_event.set()
 
         async def run_app(app) -> None:
-            """Yada."""
+            """Run the application."""
             if message_hook is not None:
                 message_hook_context_var.set(message_hook)
             app._loop = asyncio.get_running_loop()               # noqa: SLF001

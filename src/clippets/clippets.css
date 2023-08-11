@@ -120,7 +120,7 @@ MarkdownParagraph {
     width: 100%;
 }
 
-#view {
+.result {
     background: $background 50%;
     margin: 0 0 0 0;
     height: 10;
@@ -128,10 +128,21 @@ MarkdownParagraph {
     border: solid $primary-lighten-3;
 }
 
-#view:focus {
-    border: tall $accent;
+.editor_result {
+    background: $background 50%;
+    margin: 0 0 0 0;
+    height: 2fr;
+    overflow: hidden auto;
+    border: solid $primary-lighten-3;
 }
 
+.editor_sc {
+    background: $background 50%;
+    margin: 0 0 0 0;
+    height: 3fr;
+    overflow: hidden auto;
+    border: solid $primary-lighten-3;
+}
 
 #question {
     height: 1;
@@ -139,7 +150,6 @@ MarkdownParagraph {
     column-span: 4;
     content-align: center middle;
 }
-
 Button {
     width: 100%;
 }
