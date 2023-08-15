@@ -1333,19 +1333,22 @@ class Clippets(AppMixin, App):
         bind('left', 'select_move(-1, "horizontally")')
         bind('right', 'select_move(1, "horizontally")')
         bind('ctrl+b', 'zap_filter', description='Clear filter input')
-        bind('ctrl+f', 'enter_filter', description='Enter filter input')
+        bind(
+            'ctrl+f tab shit-tab', 'enter_filter',
+            description='Enter filter input')
         bind('ctrl+u', 'do_undo', description='Undo', priority=True)
         bind('ctrl+r', 'do_redo', description='Redo', priority=True)
         bind('a', 'add_snippet')
-        bind('e', 'edit_snippet')
         bind('d', 'duplicate_snippet')
+        bind('e', 'edit_snippet')
         bind('f insert', 'toggle_collapse_group')
         bind('m', 'start_moving_snippet', description='Move snippet')
         bind('f7', 'edit_keywords', description='Edit keywords')
 
         bind = partial(self.key_handler.bind, contexts=('filter',), show=True)
         bind(
-            'ctrl+f up down', 'leave_filter', description='Leave filter input')
+            'ctrl+f up down tab shift-tab', 'leave_filter',
+            description='Leave filter input')
 
         bind = partial(self.key_handler.bind, contexts=('normal',), show=True)
         bind('f1', 'show_help', description='Help')

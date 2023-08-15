@@ -468,10 +468,14 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
             action()
             return
 
-        cmd, colon, arg = action.partition(':')
+        if len(action) > 2:
+            cmd, colon, arg = action.partition(':')
+        else:
+            cmd, colon, arg = action, '', ''
         if colon:
             await self.apply_cmd_action(cmd, arg)
         else:
+            print("PRESS", repr(action))
             await self.pilot.press(action)
             await wait_for_idle(self.pilot, self.app)
 

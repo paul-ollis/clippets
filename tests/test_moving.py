@@ -493,7 +493,7 @@ class TestMouseControlled:
     """Generally preferring to use the mouse."""
 
     @pytest.fixture
-    @classmethod
+    @staticmethod
     def std_result(snippet_infile):
         """Create a standard expected result."""
         return clean_text('''
