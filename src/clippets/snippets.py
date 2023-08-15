@@ -134,7 +134,19 @@ class SnippetInsertionPointer:
 
 
 class Element:
-    """An element in a tree of groups and snippets."""
+    """An element in a tree of groups and snippets.
+
+    Many subclasses of Element provide a unique ID, available using a ``uid``
+    method. Such UIDs follow a simple naming convention, which other parts of
+    the Clippet's code relies on. Snippet instances have UIDs of
+    the form <snippet>-<n>, for example, 'snippet-6'. The important ID forms
+    are:
+
+    snippet-<n>
+        A simple (text) `Snippet` or a `MarkdownSnippet`.
+    group-<n>
+        A snippet `Group`.
+    """
 
     id_source = itertools.count()
     has_uid: bool = True

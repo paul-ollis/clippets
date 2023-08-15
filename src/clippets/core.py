@@ -64,10 +64,10 @@ from .widgets import (
 from . import patches                                              # noqa: F401
 
 if TYPE_CHECKING:
-    from textual.widget import Widget
     from .snippets import Element
-    from textual.timer import Timer
     from textual.binding import _Bindings
+    from textual.timer import Timer
+    from textual.widget import Widget
 
 HL_GROUP = ''
 LEFT_MOUSE_BUTTON = 1
@@ -495,8 +495,8 @@ class AppMixin:
             await self.populater
 
     @property
-    def selected_snippet(self):
-        """The currently focussed snippet."""
+    def selection_uid(self) -> str:
+        """The UID of the currently selected group or snippet."""
         return self._selection_stack[-1].uid
 
     @property
@@ -947,6 +947,7 @@ class AppMixin:
 
     async def duplicate_snippet(self, id_str: str):
         """Duplicate and the edit the current snippet."""
+
         def on_edit_complete(text):
             new_snippet.set_text(text)
             self._selection_stack[:] = [
@@ -955,22 +956,25 @@ class AppMixin:
             w = self.find_widget(new_snippet)
             w.scroll_visible(animate=False)
 
-        snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
-        new_snippet = snippet.duplicate()
-        await self.run_editor(
-            new_snippet.text, 'Currently editing a duplicate snippet',
-            on_edit_complete)
+        if id_str.startswith('snippet-'):
+            snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+            new_snippet = snippet.duplicate()
+            await self.run_editor(
+                new_snippet.text, 'Currently editing a duplicate snippet',
+                on_edit_complete)
 
     async def edit_snippet(self, id_str) -> None:
         """Invoke the user's editor on a snippet."""
+
         def on_edit_complete(text):
             if text.strip() != snippet.text.strip():
                 snippet.set_text(text)
                 self.rebuild_after_edits()
 
-        snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
-        await self.run_editor(
-            snippet.text, 'Currently editing a snippet', on_edit_complete)
+        if id_str.startswith('snippet-'):
+            snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+            await self.run_editor(
+                snippet.text, 'Currently editing a snippet', on_edit_complete)
 
     def rebuild(self):
         """Rebuild, refresh, *etc*. after changes to the snippets tree."""
@@ -1033,7 +1037,7 @@ class AppMixin:
             # TODO: What about when groups are collapsed?
             return
 
-        id_str = id_str or self.selected_snippet
+        id_str = id_str or self.selection_uid
         w = self.query_one(f'#{id_str}')
         w.add_class('moving')
 
@@ -1079,8 +1083,7 @@ class AppMixin:
 
     async def action_duplicate_snippet(self) -> None:
         """Duplicate and edit the currently selected snippet."""
-        if self.selected_snippet:
-            await self.duplicate_snippet(self.selected_snippet)
+        await self.duplicate_snippet(self.selection_uid)
 
     async def action_edit_clipboard(self) -> None:
         """Run the user's editor on the current clipboard contents."""
@@ -1129,8 +1132,7 @@ class AppMixin:
 
     async def action_edit_snippet(self) -> None:
         """Edit the currently selected snippet."""
-        if self.selected_snippet:
-            await self.edit_snippet(self.selected_snippet)
+        await self.edit_snippet(self.selection_uid)
 
     def action_move_insertion_point(self, direction: str) -> bool:
         """Move the snippet insertion up of down.
@@ -1198,9 +1200,9 @@ class AppMixin:
 
     def action_toggle_select(self):
         """Handle any key that is used to select a snippet."""
-        if self.root.find_element_by_uid(self.selected_snippet) is not None:
+        if self.root.find_element_by_uid(self.selection_uid) is not None:
             self.push_undo()
-            id_str = self.selected_snippet
+            id_str = self.selection_uid
             if id_str in self.chosen:
                 self.chosen.remove(id_str)
             else:
@@ -1281,7 +1283,7 @@ class Clippets(AppMixin, App):
         if self.screen.id == 'main':
             if self.move_info is not None:
                 return 'moving'
-            elif self.selected_snippet == 'filter':
+            elif self.selection_uid == 'filter':
                 return 'filter'
             else:
                 return 'normal'
@@ -1301,7 +1303,7 @@ class Clippets(AppMixin, App):
         bind('ctrl+u', 'do_undo', description='Undo', priority=True)
         bind('ctrl+r', 'do_redo', description='Redo', priority=True)
         bind('e', 'edit_snippet')
-        bind('d c', 'duplicate_snippet')
+        bind('d', 'duplicate_snippet')
         bind('f insert', 'toggle_collapse_group')
         bind('m', 'start_moving_snippet', description='Move snippet')
         bind('f7', 'edit_keywords', description='Edit keywords')

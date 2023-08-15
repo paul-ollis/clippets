@@ -83,6 +83,28 @@ class TestKeyboardControlled:
         assert snapshot_ok
 
     @pytest.mark.asyncio
+    async def test_edit_dup_etc_ignored_for_group(
+            self, infile, edit_text_file, snapshot_run):
+        """Request to edit, etc. are ignored when a group is selected."""
+        populate(edit_text_file, 'Snippet 4')
+        actions = (
+            ['left']              # Delect the group.
+            + ['e']               # Try to edit.
+            + ['d']               # Try to duplicate.
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
     async def test_clipboard_can_be_edited(
             self, infile, edit_text_file, snapshot_run):
         """The prepared clipboard content can be edited."""
