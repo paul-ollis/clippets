@@ -5,7 +5,7 @@
 # 5. The keywords support needs a bigger, cleaner palette.
 # 6. Global keywords?
 # 8. Make it work on Macs.
-# 10. Genertae frozen versions for all platforms.
+# 10. Generate frozen versions for all platforms.
 
 # TODO: Make terminology consistent as follows.
 #       Added
@@ -46,6 +46,7 @@ from textual.message import Message
 from textual.pilot import Pilot
 from textual.screen import Screen
 from textual.walk import walk_depth_first
+from textual.widget import Widget
 from textual.widgets import Header, Input, Static
 from textual.widgets._markdown import MarkdownFence
 
@@ -58,8 +59,8 @@ from .snippets import (
     DefaultLoader, Group, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
     SnippetInsertionPointer, is_group, is_snippet, is_snippet_like)
 from .widgets import (
-    DefaulFileMenu, FileChangedMenu, GreyoutScreen, MyFooter, MyInput, MyLabel,
-    MyMarkdown, MyTag, MyText, MyVerticalScroll, SnippetMenu)
+    DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, MyFooter,
+    MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll, SnippetMenu)
 
 from . import patches                                              # noqa: F401
 
@@ -67,7 +68,6 @@ if TYPE_CHECKING:
     from .snippets import Element
     from textual.binding import _Bindings
     from textual.timer import Timer
-    from textual.widget import Widget
 
 HL_GROUP = ''
 LEFT_MOUSE_BUTTON = 1
@@ -623,20 +623,28 @@ class AppMixin:
 
     async def on_right_click(self, ev) -> None:
         """Process a mouse right-click."""
-        w = getattr(ev, 'snippet', None)
-        if w:
-            async def on_close(v):
-                self.screen.set_focus(None)
-                if  v == 'edit':
-                    await self.edit_snippet(w.id)
-                elif  v == 'duplicate':
-                    await self.duplicate_snippet(w.id)
-                elif  v == 'move':
-                    self.action_start_moving_snippet(w.id)
 
-            snippet = self.root.find_element_by_uid(w.id)
+        async def on_close(v):
+            self.screen.set_focus(None)
+            if  v == 'add':
+                await self.add_snippet(wid)
+            elif  v == 'edit':
+                await self.edit_snippet(wid)
+            elif  v == 'duplicate':
+                await self.duplicate_snippet(wid)
+            elif  v == 'move':
+                self.action_start_moving_snippet(wid)
+
+        if w := cast(Widget, getattr(ev, 'snippet', None)):
+            wid = cast(str, w.id)
+            snippet = self.root.find_element_by_uid(wid)
             if snippet:
                 self.push_screen(SnippetMenu(id='snippet-menu'), on_close)
+        elif w := cast(Widget, getattr(ev, 'group', None)):
+            wid = cast(str, w.id)
+            snippet = self.root.find_element_by_uid(w.id)
+            if snippet:
+                self.push_screen(GroupMenu(id='snippet-menu'), on_close)
 
     ## Handling of keyboard operations.
     def fix_selection(self, *, kill_filter: bool = False):
@@ -649,7 +657,7 @@ class AppMixin:
             else:
                 return
 
-        # If the top of the stak is a gruop and the user moved there, do
+        # If the top of the stak is a group and the user moved there, do
         # nothing.
         if sel.uid.startswith('group-') and sel.user:
             return
@@ -940,6 +948,27 @@ class AppMixin:
         return '\n'.join(s)
 
     ## Editing and duplicating snippets.
+    async def add_snippet(self, id_str: str):
+        """Add and the edit the a new snippet."""
+
+        def on_edit_complete(text):
+            new_snippet.set_text(text)
+            self._selection_stack[:] = [
+                Selection(uid=new_snippet.uid(), user=True)]
+            self.rebuild_after_edits()
+            w = self.find_widget(new_snippet)
+            w.scroll_visible(animate=False)
+
+        if id_str.startswith('snippet-'):
+            snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+            new_snippet = snippet.add_new()
+        elif id_str.startswith('group-'):
+            group = cast(Group, self.root.find_element_by_uid(id_str))
+            new_snippet = group.add_new()
+        await self.run_editor(
+            new_snippet.text, 'Currently editing a new snippet',
+            on_edit_complete)
+
     def backup_and_save(self):
         """Create a new snippet file backup and then save."""
         snippets.backup_file(self.args.snippet_file)
@@ -1049,6 +1078,11 @@ class AppMixin:
         self.set_visuals()
 
     ## Binding handlers.
+    async def action_add_snippet(self) -> None:
+        """Add and edit the a new snippet."""
+        if self.selection_uid:
+            await self.add_snippet(self.selection_uid)
+
     def action_clear_selection(self) -> None:
         """Clear all snippets from the selection."""
         self.chosen[:] = []
@@ -1302,6 +1336,7 @@ class Clippets(AppMixin, App):
         bind('ctrl+f', 'enter_filter', description='Enter filter input')
         bind('ctrl+u', 'do_undo', description='Undo', priority=True)
         bind('ctrl+r', 'do_redo', description='Redo', priority=True)
+        bind('a', 'add_snippet')
         bind('e', 'edit_snippet')
         bind('d', 'duplicate_snippet')
         bind('f insert', 'toggle_collapse_group')

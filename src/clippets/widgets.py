@@ -137,13 +137,13 @@ class GreyoutScreen(PopupDialog):
 class SnippetMenu(PopupDialog):
     """Menu providing snippet action choices."""
 
-    AUTO_FOCUS = '#edit'
+    AUTO_FOCUS = '#add'
     DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
     .popup {
-        grid-size: 4;
+        grid-size: 5;
     }
     .question {
-        column-span: 4;
+        column-span: 5;
     }
     '''
 
@@ -155,9 +155,37 @@ class SnippetMenu(PopupDialog):
 
         yield Grid(
             Label('Choose action', id='question', classes='question'),
+            Button('Add', variant='primary', id='add'),
             Button('Edit', variant='primary', id='edit'),
             Button('Duplicate', variant='primary', id='duplicate'),
             Button('Move', variant='primary', id='move'),
+            Button('Cancel', variant='primary', id='cancel'),
+            id='dialog', classes='popup',
+        )
+
+
+class GroupMenu(PopupDialog):
+    """Menu providing group action choices."""
+
+    AUTO_FOCUS = '#add'
+    DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
+    .popup {
+        grid-size: 2;
+    }
+    .question {
+        column-span: 2;
+    }
+    '''
+
+    def compose(self):
+        """Build the widget hierarchy."""
+        styles = self.styles
+        bg = styles.background
+        styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
+
+        yield Grid(
+            Label('Choose action', id='question', classes='question'),
+            Button('Add', variant='primary', id='add'),
             Button('Cancel', variant='primary', id='cancel'),
             id='dialog', classes='popup',
         )
@@ -182,7 +210,8 @@ class FileChangedMenu(PopupDialog):
         styles = self.styles
         styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
         yield Grid(
-            Label('Input file has changed.', id='question'),
+            Label(
+                'Input file has changed.', id='question', classes='question'),
             Button('Load changes', variant='primary', id='load'),
             Button('Ignore', variant='primary', id='cancel'),
             id='dialog', classes='popup')
@@ -213,7 +242,7 @@ class DefaulFileMenu(PopupDialog):
         yield Grid(
             Label(
                 f'File {self.filename} does not exist, choose:',
-                id='question'),
+                id='question', classes='question'),
             Button('Create', variant='primary', id='create'),
             Button('Quit', variant='primary', id='quit'),
             id='dialog', classes='popup')

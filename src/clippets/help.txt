@@ -54,7 +54,14 @@ indicated.
     Collapse (close) all the groups if any group is not currently collapsed. If
     all the groups are already collapsed then open them all.
 
-**c, d**
+**a**
+    Add a snippet new snippet; opened in the editor. The new snippet is added
+    below any currently selected snippet or, if a group is selected, the
+    snippet becomes the first in the group.
+
+    [Mouse: Right click the snippet and then select the 'Add' button.]
+
+**d**
     Duplicate the currently selected snippet and then edit the copy.
 
     [Mouse: Right click the snippet and then select the 'Duplicate' button.]
@@ -67,11 +74,14 @@ indicated.
 **f, Ins**
     Collapse or open the selected group (or group containing the selected snippet).
 
+    [Mouse: Left click on the group label.]
+
 **m**
     Start moving the currently selected snippet. This switches Clippets to
     the *snippet movement mode*.
 
-    [Mouse: Alt+Right click the snippet.]
+    [Mouse: Right click the snippet and then select the 'Move' button. Or
+    Alt+Right click the snippet.]
 
 **Enter (Return), Space**
     If the selected snippet is already in the clipboard, remove it. Otherwise
@@ -94,7 +104,7 @@ indicated.
 **Ctrl+B**
     Clears (Blanks) the filter field's contents.
 
-**Ctrl+F**
+**Ctrl+F, Tab**
     Toggle the focus to or away from the filter field at the top of the display.
     See (TBD) for how this is used.
 

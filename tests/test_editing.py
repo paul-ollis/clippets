@@ -21,12 +21,23 @@ std_infile_text = '''
       @md@
         Snippet 3
 '''
+empty_group_infile_text = '''
+    @title: User supplied title
+    Main
+'''
 
 
 @pytest.fixture
 def infile(snippet_infile):
     """Create a standard input file for many of this module's tests."""
     populate(snippet_infile, std_infile_text)
+    return snippet_infile
+
+
+@pytest.fixture
+def empty_group_infile(snippet_infile):
+    """Create a standard input file for many of this module's tests."""
+    populate(snippet_infile, empty_group_infile_text)
     return snippet_infile
 
 
@@ -105,6 +116,78 @@ class TestKeyboardControlled:
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
+    @pytest.mark.asyncio
+    async def test_a_new_snippet_can_be_added_after_a_snippet(
+            self, infile, edit_text_file, snapshot_run):
+        """A snippet may be added after another."""
+        populate(edit_text_file, 'New snippet')
+        actions = (
+            ['down'] * 2          # Move to Snippet 3.
+            + ['a']               # Add a new snippet.
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            MarkdownSnippet: 'New snippet'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert '' == edit_text_file.prev_text
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_snippet_can_be_added_at_group_start(
+            self, infile, edit_text_file, snapshot_run):
+        """A snippet may be added at the start of a group."""
+        populate(edit_text_file, 'New snippet')
+        actions = (
+            ['left']              # Select the group.
+            + ['a']               # Add a new snippet.
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            MarkdownSnippet: 'New snippet'
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert '' == edit_text_file.prev_text
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_snippet_can_be_added_to_and_empty_group(
+            self, empty_group_infile, edit_text_file, snapshot_run):
+        """A snippet may be added to an empty group."""
+        populate(edit_text_file, 'New snippet')
+        actions = (
+            ['a']               # Add a new snippet.
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            MarkdownSnippet: 'New snippet'
+        ''')
+        runner, snapshot_ok = await snapshot_run(empty_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert '' == edit_text_file.prev_text
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
     async def test_clipboard_can_be_edited(
             self, infile, edit_text_file, snapshot_run):
         """The prepared clipboard content can be edited."""
@@ -318,6 +401,56 @@ class TestMouseControlled:
         assert 'Snippet 3' == edit_text_file.prev_text
         assert snapshot_ok
 
+    @pytest.mark.asyncio
+    async def test_a_new_snippet_can_be_added_after_a_snippet(
+            self, infile, edit_text_file, snapshot_run):
+        """A snippet may be added after another."""
+        populate(edit_text_file, 'New snippet')
+        actions = (
+            ['right:snippet-2']       # Open snippet-3 menu.
+            + ['left:add']            # Select edit.
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            MarkdownSnippet: 'New snippet'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert '' == edit_text_file.prev_text
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_snippet_can_be_added_at_group_start(
+            self, infile, edit_text_file, snapshot_run):
+        """A snippet may be added at the start of a group."""
+        populate(edit_text_file, 'New snippet')
+        actions = (
+            ['right:group-1']         # Open group-1 menu.
+            + ['left:add']            # Select edit.
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            MarkdownSnippet: 'New snippet'
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert '' == edit_text_file.prev_text
+        assert snapshot_ok
+
 
 class TestInternalEditor:
     """Using the built-in editor."""
@@ -419,4 +552,27 @@ class TestInternalEditor:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_snippet_can_be_added_to_and_empty_group(
+            self, empty_group_infile, edit_text_file, snapshot_run):
+        """A snippet may be added to an empty group."""
+        populate(edit_text_file, 'New snippet')
+        actions = (
+            ['a']               # Add and edit it
+            + list('New snippet')
+            + ['ctrl+s']
+            + [epause]
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            MarkdownSnippet: 'New snippet'
+        ''')
+        runner, snapshot_ok = await snapshot_run(empty_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert '' == edit_text_file.prev_text
         assert snapshot_ok

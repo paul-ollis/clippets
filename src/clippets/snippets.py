@@ -13,7 +13,8 @@ from contextlib import suppress
 from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import Callable, ClassVar, Iterable, Sequence, TypeAlias, cast
+from typing import (
+    Callable, ClassVar, Iterable, Literal, Sequence, TypeAlias, cast)
 
 from markdown_strings import esc_format
 
@@ -375,6 +376,12 @@ class Snippet(TextualElement):
         """
         return esc_format(self.body).splitlines()
 
+    def add_new(self) -> Snippet:
+        """Add a new snippet, inserted after this one."""
+        inst = self.__class__(self.parent)
+        self.parent.add(inst, after=self)
+        return inst
+
     def duplicate(self) -> Snippet:
         """Create a duplicate of this snippet, inserted after."""
         inst = self.__class__(self.parent)
@@ -568,11 +575,13 @@ class Group(GroupDebugMixin, Element):
 
     def add(
             self, child,
-            after: Element | None = None,
+            after: Element | Literal[0] | None = None,
             before: Element | None = None):
         """Add a new element as a child of this group."""
         children = self.children
-        if after:
+        if after == 0:
+            p = 1
+        elif after:
             p = children.index(after) + 1
         elif before:
             p = children.index(before)
@@ -580,6 +589,12 @@ class Group(GroupDebugMixin, Element):
             p = len(children)
         self.children[p:p] = [child]
         child.parent = self
+
+    def add_new(self):
+        """Add a new snippet at the start of this group."""
+        snippet = MarkdownSnippet(self)
+        self.add(snippet, after=0)
+        return snippet
 
     def remove(self, child):
         """Remove a child element from this group."""

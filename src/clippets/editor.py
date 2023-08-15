@@ -464,6 +464,8 @@ class TextArea(ScrollableContainer, can_focus=True, can_focus_children=False):
     def lines(self, contents: list[str]):
         self.text_input.move_cursor(0, 0)
         self.text_input.lines = [f'{line} ' for line in contents]
+        if not self.text_input.lines:
+            self.text_input.lines = [' ']
 
     def compose(self) -> ComposeResult:
         """Create this widget's sub-tree."""

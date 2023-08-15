@@ -3,14 +3,11 @@ from __future__ import annotations
 # pylint: disable=no-self-use
 # pylint: disable=redefined-outer-name
 
-import os
 from pathlib import Path
 
 import pytest
 
 from support import populate
-
-from clippets import core, snippets
 
 HERE = Path(__file__).parent
 std_infile_text = '''

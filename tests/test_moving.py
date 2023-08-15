@@ -493,6 +493,7 @@ class TestMouseControlled:
     """Generally preferring to use the mouse."""
 
     @pytest.fixture
+    @classmethod
     def std_result(snippet_infile):
         """Create a standard expected result."""
         return clean_text('''
@@ -514,14 +515,21 @@ class TestMouseControlled:
     @pytest.mark.asyncio
     async def test_right_click_brings_up_context_menu(
             self, infile, snapshot_run_dyn):
-        """A right click on a snippet brings up a context menu.
-
-        One option provided is to move the snippet.
-        """
+        """A right click on a snippet brings up a context menu."""
         actions = (
             ['right:snippet-5']
         )
         _, snapshot_ok = await snapshot_run_dyn(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_right_click_brings_up_context_menu_for_group(
+            self, infile, snapshot_run):
+        """A right click on a group brings up a context menu."""
+        actions = (
+            ['right:group-1']         # Open group context menu.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
     @pytest.mark.asyncio
@@ -533,6 +541,17 @@ class TestMouseControlled:
             + ['left:cancel']         # Then just quit.
         )
         _, snapshot_ok = await snapshot_run_dyn(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_group_context_menu_can_be_quit(
+            self, infile, snapshot_run):
+        """A right click on a group brings up a context menu."""
+        actions = (
+            ['right:group-1']         # Open group context menu.
+            + ['left:cancel']         # Then just quit.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
     @pytest.mark.asyncio
@@ -566,7 +585,7 @@ class TestMouseControlled:
         """The keyboard may be used to select and press the menu buttons."""
         actions = (
             ['right:snippet-5']       # Open snippet-6 menu
-            + ['tab'] * 2             # Select move.
+            + ['tab'] * 3             # Select move.
             + ['enter']               # Activate the move button
             + ['enter']               # Complete move
         )

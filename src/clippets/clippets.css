@@ -147,7 +147,6 @@ MarkdownParagraph {
 #question {
     height: 1;
     width: 1fr;
-    column-span: 4;
     content-align: center middle;
 }
 Button {
