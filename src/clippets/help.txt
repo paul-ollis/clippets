@@ -95,7 +95,7 @@ indicated.
     Otherwise move the selection to the previous or next snippet/group.
 
 **Left**
-    If s snippet is selected, moves the selection into the group headings.
+    If a snippet is selected, moves the selection into the group headings.
 
 **Right**
     If a group heading is selected and it has at least one visible snippet, move

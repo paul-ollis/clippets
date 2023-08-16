@@ -1145,6 +1145,7 @@ class AppMixin:
                     self.populater_q.put_nowait('pop')
                 else:                                        # pragma: no cover
                     populate_fg(self.walk_snippets, self.find_widget)
+                self.root.update_keywords()
 
         el, _ = self.selection
         group = cast(Group, el.parent if isinstance(el, Snippet) else el)

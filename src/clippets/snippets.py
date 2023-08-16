@@ -344,7 +344,7 @@ class Snippet(TextualElement):
                     new_parts = []
                     for i, part in enumerate(parts):
                         if i & 1:
-                            code = colors.keyword_code(part)
+                            code = colors.keywords.code(part)
                             rep = f'\u2e24{code}{part}\u2e25'
                             new_parts.append(rep)
                         else:
@@ -454,14 +454,12 @@ class KeywordSet(TextualElement):
         self.words = set()
 
     def add(self, line):
-        """Add a a line to this set of keywords.
+        """Add a entry to this set of keywords.
 
         The line is split at spaces to obtain the set of keywords.
         """
         super().add(line)
         new_words = self.source_lines[-1].split()
-        for w in new_words:
-            colors.add_keyword(w)
         self.words.update(new_words)
 
     @property
@@ -749,6 +747,13 @@ class Root(Group):
             return group
         return self                                          # pragma: no cover
 
+    def update_keywords(self):
+        """Update the keyword tracker with any changes."""
+        all_keywords: set[str] = set()
+        for group in self.walk(is_group):
+            all_keywords |= group.keywords()
+        colors.keywords.apply_changes(all_keywords)
+
 
 def walk_group_tree(
         basic_walk, predicate=lambda _el: True, first_id: str | None = None,
@@ -904,6 +909,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
 
         self.store()
         self.root.clean()
+        self.root.update_keywords()
         if not self.root.groups:
             sys.exit(f'File {self.path} contains no groups')
 
