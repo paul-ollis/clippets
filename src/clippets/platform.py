@@ -2,6 +2,7 @@
 
 import sys
 import tempfile
+from contextlib import suppress
 from pathlib import Path
 
 __all__ = [
@@ -15,12 +16,12 @@ __all__ = [
 
 if sys.platform == 'win32':                                  # pragma: no cover
     from .win import (
-        get_editor_command, get_winpos, put_to_clipboard, terminal_title,
-        dump_clipboard)
+        dump_clipboard, get_editor_command, get_winpos, put_to_clipboard,
+        terminal_title)
 elif sys.platform == 'linux':
     from .linux import (
-        get_editor_command, get_winpos, put_to_clipboard, terminal_title,
-        dump_clipboard)
+        dump_clipboard, get_editor_command, get_winpos, put_to_clipboard,
+        terminal_title)
 
 
 class SharedTempFile(Path):
@@ -44,3 +45,8 @@ class SharedTempFile(Path):
         tf = tempfile.NamedTemporaryFile(mode='wt+', delete=False)
         tf.close()
         return super().__new__(cls, tf.name, *args, **kwargs)
+
+    def clean_up(self):
+        """Clean up when this file is no longer required."""
+        with suppress(OSError):
+            self.unlink()

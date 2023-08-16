@@ -281,11 +281,16 @@ class TempTestFile:
         for bak_path in self.backup_paths():
             with suppress(OSError):
                 bak_path.unlink()
+        p = Path(self.name)
+        if p.exists():
+            with suppress(OSError):
+                p.unlink()
+        assert not p.exists()
 
     def close(self):
         """Close the file."""
+        self._f.close()
         self._cleanup()
-        return self._f.close()
 
     def seek(self, *args, **kwargs):
         """Seek within the file."""

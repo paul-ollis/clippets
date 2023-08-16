@@ -313,6 +313,7 @@ class TestKeyboardControlled:
             + ['e']                 # Edit it
             + ['snapshot:']         # Take snapshot with editor running
             + ['end_edit:']         # Stop the editor.
+            + ['wait:0.5:EditorHasExited']
         )
         _, snapshot_ok = await snapshot_run(
             infile, actions, control_editor=True)
@@ -328,6 +329,7 @@ class TestKeyboardControlled:
             + ['d']                 # Edit it
             + ['snapshot:']         # Take snapshot with editor running
             + ['end_edit:']         # Stop the editor.
+            + ['wait:0.5:EditorHasExited']
         )
         _, snapshot_ok = await snapshot_run(
             infile, actions, control_editor=True)
@@ -343,6 +345,7 @@ class TestKeyboardControlled:
             + ['f2']                # Edit clipboard
             + ['snapshot:']         # Take snapshot with editor running
             + ['end_edit:']         # Stop the editor.
+            + ['wait:0.5:EditorHasExited']
         )
         _, snapshot_ok = await snapshot_run(
             infile, actions, control_editor=True)

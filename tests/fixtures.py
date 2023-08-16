@@ -199,24 +199,6 @@ def clean_data(pytestconfig, monkeypatch):
     colors.reset_for_tests()
 
 
-class TempTestFileSource:
-    """Fixture helper that can provide multiple test files."""
-
-    def __init__(self):
-        self.test_files = []
-
-    def close(self):
-        """Close all the temporary test files."""
-        for f in self.test_files:
-            f.close()
-
-    def __call__(self, mode='wt', suffix='.txt'):
-        """Create and remember a temporary test file."""
-        f = TempTestFile(suffix=suffix, mode=mode)
-        self.test_files.append(f)
-        return f
-
-
 def node_to_report_path(node):
     """Generate a reoirt file name for a test node."""
     path, _, name = node.reportinfo()

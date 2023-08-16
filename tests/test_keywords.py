@@ -119,6 +119,7 @@ async def test_ui_is_greyed_out_during_clipboard_editing(
         + [epause]
         + ['snapshot:']         # Take snapshot with editor running
         + ['end_edit:']         # Stop the editor.
+        + ['wait:0.5:EditorHasExited']
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run(

@@ -438,6 +438,7 @@ class ExtEditSession(EditSession):
             self.timer.stop()
             await proc.wait()
             text = self.temp_path.read_text(encoding='utf8')
+            self.temp_path.clean_up()
             self.app.pop_screen()
             self.on_complete(text)
             self.app.edit_session = None
