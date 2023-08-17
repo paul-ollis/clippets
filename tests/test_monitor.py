@@ -51,7 +51,7 @@ async def test_change_to_the_file_is_detected(infile, snapshot_run):
         populate(infile, text)
 
     actions = (
-        ['pause: 0.02']
+        ['pause: 0.01']
         + [update_file]
         + ['pause:0.22']
     )
@@ -67,7 +67,7 @@ async def test_change_to_the_file_can_be_loadd(infile, snapshot_run):
         populate(infile, text)
 
     actions = (
-        ['pause: 0.02']
+        ['pause: 0.01']
         + [update_file]
         + ['pause:0.22']
         + ['enter']
@@ -94,7 +94,7 @@ async def test_change_to_the_file_can_be_ignored(infile, snapshot_run):
         populate(infile, text)
 
     actions = (
-        ['pause: 0.02']
+        ['pause: 0.01']
         + [update_file]
         + ['pause:0.22']
         + ['tab']
@@ -129,7 +129,7 @@ async def test_folded_groups_fold_are_lost(infile, snapshot_run):
 
     actions = (
         ['left:group-2']
-        + ['pause: 0.02']
+        + ['pause: 0.01']
         + [update_file]
         + ['pause:0.22']
         + ['enter']
@@ -164,7 +164,7 @@ async def test_selection_is_adjusted_if_necessary(infile, snapshot_run):
 
     actions = (
         ['down'] * 2
-        + ['pause: 0.02']
+        + ['pause: 0.01']
         + [update_file]
         + ['pause:0.22']
         + ['enter']
@@ -192,13 +192,13 @@ async def test_display_scrolls_if_necessary(infile, snapshot_run):
 
     actions = (
         ['down'] * 13
-        + ['pause: 0.02']
+        + ['pause: 0.01']
         + [update_file]
         + ['pause:0.22']
         + ['enter']
     )
     populate(infile, long_infile_text)
-    _, snapshot_ok = await snapshot_run(infile, actions, post_delay=0.2)
+    _, snapshot_ok = await snapshot_run(infile, actions)
     assert snapshot_ok
 
 
@@ -209,7 +209,7 @@ async def test_zero_snippets_is_handled(infile, snapshot_run):
         populate(infile, '''Main''')
 
     actions = (
-        ['pause: 0.02']
+        ['pause: 0.01']
         + [update_file]
         + ['pause:0.22']
         + ['enter']
@@ -232,9 +232,9 @@ async def test_deletion_of_the_file_is_hnandled(infile, snapshot_run):
         infile.delete()
 
     actions = (
-        ['pause: 0.02']
+        ['pause: 0.01']
         + [remove_file]
-        + ['pause:0.22']
+        #==+ ['pause:0.22']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
     assert snapshot_ok

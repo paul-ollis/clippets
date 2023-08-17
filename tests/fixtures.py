@@ -133,16 +133,15 @@ def simple_run():
     """Provide a way to run the Clippets app."""
     async def run_app(                                          # noqa: PLR0913
             infile: TempTestFile, actions: list, *, log=False,
-            post_delay: float = 0.0, test_mode: bool = True,
-            options: list[str] | None = None,
+            test_mode: bool = True, options: list[str] | None = None,
             expect_exit: bool = False):
         runner = AppRunner(
             infile, actions, test_mode=test_mode, options=options)
         if log:
             with runner.logf:
-                svg, tb, exited = await runner.run(post_delay=post_delay)
+                svg, tb, exited = await runner.run()
         else:
-            svg, tb, exited = await runner.run(post_delay=post_delay)
+            svg, tb, exited = await runner.run()
         if tb:
             if not (exited and expect_exit):
                 print(''.join(tb))
@@ -157,8 +156,7 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
     """Provide a way to run the Clippets app and capture a snapshot."""
     async def run_app(                                          # noqa: PLR0913
             infile: TempTestFile, actions: list, *, log=False,
-            post_delay: float = 0.0, test_mode: bool = True,
-            options: list[str] | None = None,
+            test_mode: bool = True, options: list[str] | None = None,
             expect_exit: bool = False,
             control_editor: bool = False):
         runner = AppRunner(
@@ -166,9 +164,9 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
             control_editor=control_editor)
         if log:
             with runner.logf:
-                svg, tb, exited = await runner.run(post_delay=post_delay)
+                svg, tb, exited = await runner.run()
         else:
-            svg, tb, exited = await runner.run(post_delay=post_delay)
+            svg, tb, exited = await runner.run()
         if tb:
             if not (exited and expect_exit):
                 print(''.join(tb))

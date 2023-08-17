@@ -66,7 +66,7 @@ async def test_view_scrolls_as_necessary_on_down(
     actions = (
         ['down'] * d_moves                 # Move down a number of times.
     )
-    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
+    _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok
 
 
@@ -90,7 +90,7 @@ async def test_view_scrolls_as_necessary_on_up(
         + ['up'] * u_moves                 # Move up a number of times.
     )
 
-    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
+    _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok
 
 
@@ -168,7 +168,7 @@ async def test_down_moves_within_groups_and_scrolls(longfile, snapshot_run):
         ['left']                           # Move into the group names.
         + ['down'] * 3                     # Move to the last group.
     )
-    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.2)
+    _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok
 
 
@@ -192,7 +192,7 @@ async def test_down_stops_at_last_gruop(longfile, snapshot_run):
         + ['down'] * 3                     # Move to the last group.
         + ['down'] * 2                     # Try to move beyond.
     )
-    _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.2)
+    _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok
 
 

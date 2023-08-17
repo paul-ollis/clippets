@@ -184,7 +184,7 @@ class TestKeyboardControlled:
         actions = (
             ['enter', 'down'] * 5         # Add snippets.
         )
-        _, snapshot_ok = await snapshot_run(infile, actions, post_delay=0.05)
+        _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
     @pytest.mark.asyncio

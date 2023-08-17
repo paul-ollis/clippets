@@ -409,8 +409,7 @@ class TestKeyboardControlled:
             MarkdownSnippet: 'Snippet 13'
             MarkdownSnippet: 'Snippet 14'
         ''')
-        runner, snapshot_ok = await snapshot_run(
-            infile, actions, post_delay=0.2)
+        runner, snapshot_ok = await snapshot_run(infile, actions)
         assert 10 == len(infile.backup_paths())                 # noqa: PLR2004
         assert expect == runner.app.root.full_repr()
         assert 'Snippet 13' == edit_text_file.prev_text

@@ -473,7 +473,6 @@ class TestKeyboardControlled:
         actions = (
             ['m']                    # Start moving
             + ['down']  * 2          # Move to the empty group.
-            # + ['pause:0.1']
         )
         _, snapshot_ok = await snapshot_run(infile_g0, actions)
         assert snapshot_ok
@@ -497,7 +496,7 @@ class TestKeyboardControlled:
             ['m']                    # Start moving
             + gen_moves('down', 6)   # Move down a number of times.
         )
-        _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
+        _, snapshot_ok = await snapshot_run(longfile, actions)
         assert snapshot_ok
 
     @pytest.mark.asyncio
@@ -521,7 +520,7 @@ class TestKeyboardControlled:
             + gen_moves('down', 6)   # Move down a number of times.
             + gen_moves('up', 6)     # Move to snippet 2.
         )
-        _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.20)
+        _, snapshot_ok = await snapshot_run(longfile, actions)
         assert snapshot_ok
 
     @pytest.mark.asyncio
@@ -532,7 +531,7 @@ class TestKeyboardControlled:
             ['m']                    # Try to start moving
         )
         _, snapshot_ok = await snapshot_run(
-            single_snippet, actions, post_delay=0.20)
+            single_snippet, actions)
         assert snapshot_ok
 
     @pytest.mark.asyncio
@@ -543,7 +542,7 @@ class TestKeyboardControlled:
             ['m']                    # Try to start moving
         )
         _, snapshot_ok = await snapshot_run(
-            zero_snippets, actions, post_delay=0.20)
+            zero_snippets, actions)
         assert snapshot_ok
 
 

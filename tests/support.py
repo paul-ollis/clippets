@@ -435,8 +435,7 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
             self.watch_file = None
             os.environ['CLIPPETS_TEST_WATCH_FILE'] = ''
 
-    async def run(
-            self, *, size: tuple = (80, 35), post_delay: float= 0.0) -> str:
+    async def run(self, *, size: tuple = (80, 35)) -> str:
         """Run the application."""
         coro =  self.app.run_test(
             headless=True, size=size, message_hook=self.on_msg)
@@ -451,11 +450,8 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
                     await self.pilot._wait_for_screen()
                     self.app.screen._on_timer_update()
                     await wait_for_idle(self.pilot, self.app)
-                # TODO: I would like to remove this delay.
-                if post_delay:
-                    await asyncio.sleep(post_delay)
                 if not self.svg:
-                    self.svg = self.app.export_screenshot()
+                    self.svg = await self.take_screenshot()
                 self.exited = self.app._exit
                 await self.pilot.press('ctrl+c')
                 if self.watch_file is not None:
@@ -473,7 +469,7 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
             action()
             return
 
-        if len(action) > 2:
+        if len(action) > 2:                                     # noqa: PLR2004
             cmd, colon, arg = action.partition(':')
         else:
             cmd, colon, arg = action, '', ''
@@ -483,6 +479,24 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
             print("PRESS", repr(action))
             await self.pilot.press(action)
             await wait_for_idle(self.pilot, self.app)
+
+    async def take_screenshot(self, timeout=1.0):
+        """Take a screenshot, checking for stability.
+
+        This creates multiple screen shots until two consecutive screens are
+        the same or the operation times out.
+        """
+        svg = self.app.export_screenshot()
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            await asyncio.sleep(0.03)
+            new_svg = self.app.export_screenshot()
+            if svg == new_svg:
+                return svg
+            svg = new_svg
+
+        msg = 'Timed out waiting for stable screen shot'
+        raise RuntimeError(msg)
 
     async def exec_wait(self, arg):
         """Execute a wait action."""
@@ -513,7 +527,7 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
 
     async def exec_snapshot(self, arg):
         """Execute a snapshot action."""
-        self.svg = self.app.export_screenshot()
+        self.svg = await self.take_screenshot()
 
     async def exec_end_edit(self, arg):
         """Execute a end_edit action."""

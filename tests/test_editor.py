@@ -11,7 +11,7 @@ import os
 
 import pytest
 
-from support import populate, epause
+from support import populate
 
 std_infile_text = '''
     Main
@@ -51,7 +51,6 @@ async def test_mouse_can_place_the_cursor(infile, snapshot_run):
     actions = (
         ['e']                              # Edit the first snippet
         + ['left:editor_win+5x2']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -66,7 +65,6 @@ async def test_mouse_can_make_selection(infile, snapshot_run):
         ['e']                              # Edit the first snippet
         + ['leftdown:editor_win+5x2']
         + ['drag_release:editor_win+20x3']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -85,7 +83,6 @@ async def test_can_copy_and_paste(infile, snapshot_run):
         + ['ctrl+c']
         + ['down']
         + ['ctrl+v']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -104,7 +101,6 @@ async def test_can_cut_and_paste(infile, snapshot_run):
         + ['ctrl+x']
         + ['down']
         + ['ctrl+v']
-        + ['pause:0.1']
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -120,7 +116,6 @@ async def test_printable_key_replace_selection(infile, snapshot_run):
         + ['home']
         + ['shift+right'] * 5
         + ['x']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -139,7 +134,6 @@ async def test_paste_replace_selection(infile, snapshot_run):
         + ['right'] * 2
         + ['shift+right'] * 3
         + ['ctrl+v']
-        + [epause] * 3
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -155,7 +149,6 @@ async def test_ctrl_a_selects_everything(infile, snapshot_run):
         + ['home']
         + ['down'] * 2
         + ['ctrl+a']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -170,7 +163,6 @@ async def test_page_down_key_is_handled(long_infile, snapshot_run):
         ['e']                              # Edit the first snippet
         + ['home']
         + ['pagedown'] * 3
-        + ['pause:0.1']
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -186,7 +178,6 @@ async def test_page_up_key_is_handled(long_infile, snapshot_run):
         + ['home']
         + ['pagedown'] * 3
         + ['pageup']
-        + ['pause:0.1']
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -204,7 +195,6 @@ async def test_right_arrow_key_scrolls_appropriately(
         + ['down'] * 2
         + ['backspace'] * 2
         + ['right'] * 20
-        + ['pause:0.1']
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -224,7 +214,6 @@ async def test_left_arrow_key_scrolls_appropriately(
         + ['right'] * 20
         + ['pause:0.1']
         + ['left'] * 55
-        + ['pause:0.1']
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -241,7 +230,6 @@ async def test_ctrl_home_moves_cursor_to_start_of_buffer(
         + ['home']
         + ['pagedown'] * 3
         + ['ctrl+home']
-        + ['pause:0.1']
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -257,7 +245,6 @@ async def test_ctrl_end_moves_cursor_to_end_of_buffer(
         ['e']                              # Edit the first snippet
         + ['home']
         + ['ctrl+end']
-        + ['pause:0.1']
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -492,7 +479,6 @@ async def test_tab_key_inserts_4_spaces(infile, snapshot_run):
         ['e']                              # Edit the first snippet
         + ['right']
         + ['tab']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -509,7 +495,6 @@ async def test_backspace_deletes_previous_character(infile, snapshot_run):
         + ['backspace'] * 3
         + ['down']
         + ['backspace']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -524,7 +509,6 @@ async def test_backspace_deletes_the_selection(infile, snapshot_run):
         ['e']                              # Edit the first snippet
         + ['shift+right'] * 5
         + ['backspace']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -542,7 +526,6 @@ async def test_del_deletes_previous_character(infile, snapshot_run):
         + ['down'] * 4
         + ['end']
         + ['delete']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )
@@ -557,7 +540,6 @@ async def test_del_deletes_the_selection(infile, snapshot_run):
         ['e']                              # Edit the first snippet
         + ['shift+right'] * 5
         + ['delete']
-        + [epause]
         + ['snapshot:']
         + ['ctrl+q']
     )

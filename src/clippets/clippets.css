@@ -155,6 +155,9 @@ MarkdownParagraph {
 Button {
     width: 100%;
 }
+.popup {
+    align: center middle;
+}
 
 .modal_information {
     border: tall;
