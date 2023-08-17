@@ -146,15 +146,14 @@ MarkdownParagraph {
 
 #question {
     height: 1;
-    width: 1fr;
     content-align: center middle;
+}
+.field_label {
+    height: 3;
+    padding: 1 0 0 0;
 }
 Button {
     width: 100%;
-}
-
-.popup {
-    align: center middle;
 }
 
 .modal_information {

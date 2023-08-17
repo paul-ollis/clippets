@@ -25,6 +25,19 @@ empty_group_infile_text = '''
     @title: User supplied title
     Main
 '''
+two_group_infile_text = '''
+    @title: User supplied title
+    Main
+      @text@
+        Snippet 1
+      @text@
+        Snippet 2
+      @md@
+        Snippet 3
+    Third
+      @md@
+        Snippet 4
+'''
 
 
 @pytest.fixture
@@ -38,6 +51,13 @@ def infile(snippet_infile):
 def empty_group_infile(snippet_infile):
     """Create a standard input file for many of this module's tests."""
     populate(snippet_infile, empty_group_infile_text)
+    return snippet_infile
+
+
+@pytest.fixture
+def two_group_infile(snippet_infile):
+    """Create a standard input file for many of this module's tests."""
+    populate(snippet_infile, two_group_infile_text)
     return snippet_infile
 
 
@@ -167,7 +187,7 @@ class TestKeyboardControlled:
         assert snapshot_ok
 
     @pytest.mark.asyncio
-    async def test_a_new_snippet_can_be_added_to_and_empty_group(
+    async def test_a_new_snippet_can_be_added_to_an_empty_group(
             self, empty_group_infile, edit_text_file, snapshot_run):
         """A snippet may be added to an empty group."""
         populate(edit_text_file, 'New snippet')
@@ -185,6 +205,99 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(empty_group_infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_group_can_be_added(
+            self, two_group_infile, snapshot_run):
+        """A new group may be added after another."""
+        actions = (
+            ['left']              # Move to group.
+            + ['A']               # Add a new group.
+            + list('Second')
+            + ['tab']
+            + ['enter']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            Group: Third
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_snippet_can_be_moved_into_new_group(
+            self, two_group_infile, snapshot_run):
+        """A new group may be added after another."""
+        actions = (
+            ['left']              # Move to group.
+            + ['A']               # Add a new group.
+            + list('Second')
+            + ['tab']
+            + ['enter']
+            + ['up']              # Move to first group.
+            + ['right']           # Move to first snippet.
+            + ['m']               # Move snippet...
+            + ['down'] * 2        # ... to new group.
+            + ['enter']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Group: Third
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_group_can_be_added_at_end(
+            self, two_group_infile, snapshot_run):
+        """A new group may be added as the last group."""
+        actions = (
+            ['left']              # Move to group.
+            + ['down']            # Move to bottom group.
+            + ['A']               # Add a new group.
+            + list('Second')
+            + ['tab']
+            + ['enter']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Third
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+            Group: Second
+            KeywordSet:
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
     @pytest.mark.asyncio

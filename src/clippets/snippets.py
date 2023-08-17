@@ -18,7 +18,8 @@ from typing import (
 
 from markdown_strings import esc_format
 
-from . import colors, widgets
+from . import colors
+from .text import render_text
 
 
 class SnippetInsertionPointer:
@@ -358,7 +359,7 @@ class Snippet(TextualElement):
     def marked_text(self):
         """The snippet's text, with keywords marked up."""
         lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
-        return widgets.render_text('\n'.join(lines))
+        return render_text('\n'.join(lines))
 
     def reset(self):
         """Clear any cached state."""
@@ -510,6 +511,8 @@ class GroupDebugMixin:
     name: str
     groups: dict[str, Group]
     children: list[Element]
+    parent: Group
+    ordered_groups: list[Group]
 
     def outline_repr(self, end='\n'):
         """Format a simple group-only outline representation of the tree.
@@ -518,9 +521,21 @@ class GroupDebugMixin:
         releases.
         """
         s = [self.name]
-        for g in self.groups.values():
+        for g in self.ordered_groups:
             s.append(g.outline_repr(end=''))
         return '\n'.join(s) + end
+
+    @property
+    def repr_full_name(self):
+        """The full repr name of this group."""
+        if self.parent and self.parent.parent:
+            pfull_name = self.parent.repr_full_name if self.parent else ''
+        else:
+            pfull_name = ''
+        if pfull_name:
+            return f'{pfull_name}:{self.name}'
+        else:
+            return self.name
 
     def full_repr(self, end='\n', *, debug: bool = False):
         """Format a simple outline representation of the tree.
@@ -528,14 +543,14 @@ class GroupDebugMixin:
         This is intended for test support. The exact format may change between
         releases.
         """
-        if debug:
-            s = [f'Group: {self.name} {self.uid()}']         # pragma: no cover
+        if debug:                                            # pragma: no cover
+            s = [f'Group: {self.repr_full_name} {self.uid()}']
         else:
-            s = [f'Group: {self.name}']
+            s = [f'Group: {self.repr_full_name}']
         for c in self.children:
             if not isinstance(c, PlaceHolder):
                 s.append(c.full_repr(end='', debug=debug))
-        for g in self.groups.values():
+        for g in self.ordered_groups:
             s.append(g.full_repr(end='', debug=debug))
         return '\n'.join(s) + end
 
@@ -551,15 +566,25 @@ class Group(GroupDebugMixin, Element):
         super().__init__(parent)
         self.name = name
         self.title = ''
-        self.groups = {}
+        self.groups: dict[str, Group] = {}
+        self._ordered_groups: list[str] = []
         tags = {t.strip() for t in tag_text.split()}
         self.tags = sorted(tags)
         for t in self.tags:
             self.all_tags.add(t)
-        self.children = []
+        self.children = [KeywordSet(parent=self)]
 
-    def add_group(self, name):
-        """Add a new group as a child of this group."""
+    @property
+    def ordered_groups(self):
+        """The groups in user-defined order."""
+        return [self.groups[name] for name in self._ordered_groups]
+
+    def add_group(self, name, after: str = ''):
+        """Add a new group as a child of this group.
+
+        :after:
+            If set then the new group is added after the group with this name.
+        """
         name, _, rem = name.partition('[')
         tag_text, *_ = rem.partition(']')
         name = name.strip()
@@ -569,6 +594,11 @@ class Group(GroupDebugMixin, Element):
                 tag_text = ' '.join(self.tags) + ' ' + tag_text
             self.groups[name] = Group(
                 name, weakref.proxy(self), tag_text=tag_text)
+            if after:
+                i = self._ordered_groups.index(after)
+                self._ordered_groups[i + 1:i + 1] = [name]
+            else:
+                self._ordered_groups.append(name)
         return self.groups[name]
 
     def add(
@@ -590,7 +620,7 @@ class Group(GroupDebugMixin, Element):
 
     def add_new(self):
         """Add a new snippet at the start of this group."""
-        snippet = MarkdownSnippet(self)
+        snippet = MarkdownSnippet(parent=self)
         self.add(snippet, after=0)
         return snippet
 
@@ -605,10 +635,11 @@ class Group(GroupDebugMixin, Element):
     def clean(self) -> Element | None:                   # type: ignore[return]
         """Clean up this and any child groups.
 
-        Empty children and groups are removed.
+        Empty children and groups are removed and a place-holder added if
+        necessary.
         """
         self.children[:] = [c for c in self.children if not c.is_empty()]
-        for group in self.groups.values():
+        for group in self.ordered_groups:
             group.clean()
         for child in self.children:
             child.clean()
@@ -630,13 +661,13 @@ class Group(GroupDebugMixin, Element):
             first.
         """
         if backwards:
-            for group in reversed(self.groups.values()):
+            for group in reversed(self.ordered_groups):
                 yield from group.basic_walk(backwards=backwards)
                 yield group
             yield from reversed(self.children[1:])
         else:
             yield from self.children[1:]
-            for group in self.groups.values():
+            for group in self.ordered_groups:
                 yield group
                 yield from group.basic_walk(backwards=backwards)
 
@@ -696,9 +727,10 @@ class Root(Group):
     def reset(self):
         """Reset to initialised state.
 
-        This is used proir to a complet relead.
+        This is used prior to a complete relead.
         """
         self.groups = {}
+        self._ordered_groups = []
 
     def walk(
             self, predicate=lambda _el: True, *, first_id: str | None = None,
@@ -743,7 +775,7 @@ class Root(Group):
             The first group. Note that the Root always has at least on e group
             so, in practice, this cannot return itself.
         """
-        for group in self.groups.values():
+        for group in self.ordered_groups:
             return group
         return self                                          # pragma: no cover
 

@@ -16,7 +16,7 @@ from textual.keys import (
     REPLACED_KEYS, _character_to_key, _get_unicode_name_from_key)
 from textual.widgets._markdown import MarkdownBlock
 
-from .widgets import render_text
+from .text import render_text
 
 if TYPE_CHECKING:
     from rich.text import Text

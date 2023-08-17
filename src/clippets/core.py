@@ -2,7 +2,6 @@
 # pylint: disable=too-many-lines
 
 # 3. A user guide will be needed if this is to be made available to others.
-# 5. The keywords support needs a bigger, cleaner palette.
 # 6. Global keywords?
 # 8. Make it work on Macs.
 # 10. Generate frozen versions for all platforms.
@@ -59,8 +58,9 @@ from .snippets import (
     DefaultLoader, Group, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
     SnippetInsertionPointer, is_group, is_snippet, is_snippet_like)
 from .widgets import (
-    DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, MyFooter,
-    MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll, SnippetMenu)
+    AddGroupMenu, DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu,
+    MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
+    SnippetMenu)
 
 from . import patches                                              # noqa: F401
 
@@ -949,8 +949,29 @@ class AppMixin:
         return '\n'.join(s)
 
     ## Editing and duplicating snippets.
+    async def add_group(self, id_str: str):
+        """Add and the edit a new group."""
+
+        async def on_close(v):
+            self.screen.set_focus(None)
+            if  v != 'cancel':
+                new_group = group.parent.add_group(
+                    screen.group_name, after=group.name)
+                new_group.clean()
+                self._selection_stack[-1:] = [
+                    Selection(uid=new_group.uid(), user=True)]
+                self.rebuild_after_edits()
+                w = self.find_widget(new_group)
+                w.scroll_visible(animate=False)
+
+        if id_str.startswith('group-'):
+            group = cast(Group, self.root.find_element_by_uid(id_str))
+            screen = AddGroupMenu(
+                'Add group', self.root, id='add_group-dialog')
+            self.push_screen(screen, on_close)
+
     async def add_snippet(self, id_str: str):
-        """Add and the edit the a new snippet."""
+        """Add and the edit a new snippet."""
 
         def on_edit_complete(text):
             new_snippet.set_text(text)
@@ -1079,6 +1100,11 @@ class AppMixin:
         self.set_visuals()
 
     ## Binding handlers.
+    async def action_add_group(self) -> None:
+        """Add and edit a new group."""
+        if self.selection_uid:
+            await self.add_group(self.selection_uid)
+
     async def action_add_snippet(self) -> None:
         """Add and edit the a new snippet."""
         if self.selection_uid:
@@ -1341,6 +1367,7 @@ class Clippets(AppMixin, App):
         bind('ctrl+u', 'do_undo', description='Undo', priority=True)
         bind('ctrl+r', 'do_redo', description='Redo', priority=True)
         bind('a', 'add_snippet')
+        bind('A', 'add_group')
         bind('d', 'duplicate_snippet')
         bind('e', 'edit_snippet')
         bind('f insert', 'toggle_collapse_group')

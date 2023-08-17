@@ -1,28 +1,20 @@
 """Application specific widgets."""
 from __future__ import annotations
 
-import re
 from collections import defaultdict
 from typing import cast
 
 import rich.repr
-from rich.errors import StyleSyntaxError
-from rich.style import Style
-from rich.text import Span, Text
+from rich.text import Text
 from textual.color import Color
 from textual.containers import Grid, VerticalScroll
 from textual.screen import ModalScreen
+from textual.validation import Function
 from textual.widget import Widget
 from textual.widgets import Button, Footer, Input, Label, Markdown, Static
 
 from . import abc
-from .colors import keyword_colors
-
-# We 'smuggle' keyword information by surrounding them with specific Unicode
-# low quotes. These look quite like commas, making it extremely unlikely that
-# anyone would would use them a snippet text.
-re_keyword = re.compile('\u2e24([^\u2e25]*)\u2e25')
-re_keyword_start = re.compile('\u2e24[^\u2e25]*')
+from .snippets import Root, is_group
 
 
 class AppChild(Widget):
@@ -101,6 +93,7 @@ class PopupDialog(ModalScreen):
         border: solid $primary-lighten-3;
         margin: 0 8 0 8;
         background: $surface;
+        align: center middle;
     }
     #question {
         height: 1;
@@ -189,6 +182,70 @@ class GroupMenu(PopupDialog):
             Button('Cancel', variant='primary', id='cancel'),
             id='dialog', classes='popup',
         )
+
+
+class AddGroupMenu(PopupDialog):
+    """Popup to enter the name of a new group."""
+
+    AUTO_FOCUS = '#field_input'
+    DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
+    #dialog {
+        grid-rows: 3 3;
+        grid-gutter: 1 2;
+        padding: 0 1;
+        height: auto;
+        border: solid $primary-lighten-3;
+        margin: 0 8 0 8;
+        background: $surface;
+        align: center middle;
+    }
+    .popup {
+        grid-size: 2 2;
+        align: center middle;
+    }
+    .field_input {
+        column-span: 2;
+    }
+    '''
+
+    def __init__(self, message: str, root: Root, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.message = message
+        self.root = root
+        self.yes_buttons: list[Button] = []
+        self.group_name: str = ''
+
+    def compose(self):
+        """Build the widget hierarchy."""
+        bg = self.styles.background
+        styles = self.styles
+        styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
+        b1 = Button('Add below', variant='primary', id='add_below')
+        b2 = Button('Cancel', variant='primary', id='cancel')
+        self.yes_buttons.extend([b1])
+        for b in self.yes_buttons:
+            b.disabled = True
+        yield Grid(
+            Input(
+                placeholder='Unique group name', id='field_input',
+                classes='field_input',
+                validators=[
+                    Function(self.is_unique, 'Not a valid and unique name')]),
+            b1, b2,
+            id='dialog', classes='popup freddy')
+
+    def is_unique(self, name):
+        """Check if the name is legal and unique."""
+        name = name.strip()
+        ok = bool(name)
+        for group in self.root.walk(is_group):
+            if group.name == name:
+                ok = False
+                break
+        for b in self.yes_buttons:
+            b.disabled = not ok
+        self.group_name = name if ok else ''
+        return True
 
 
 class FileChangedMenu(PopupDialog):
@@ -309,60 +366,4 @@ class MyFooter(Footer, AppChild):
                 },
             )
             text.append_text(key_text)
-        return text
-
-
-def gen_highlight_spans(
-        text: str, base_style: Style, off: int) -> tuple[list[Span], str]:
-    """Split text into spans based on highlighting."""
-    parts = re_keyword.split(text)
-    spans = []
-    new_parts = []
-    for i, p in enumerate(parts):
-        if i & 1:
-            substr = p[1:]
-            cc = p[0]
-            color = keyword_colors.get(cc, 'green')
-            style = base_style + Style(color=color)
-        else:
-            substr = re_keyword_start.sub('', p)
-            substr = substr.replace('\u2e25(', '')
-            style = base_style
-        if substr:
-            new_parts.append(substr)
-            spans.append(Span(off, off + len(substr), style))
-            off += len(substr)
-
-    return spans, ''.join(new_parts)
-
-
-def force_style(st: str | Style) -> Style:
-    """Convert any string to a Style instance."""
-    if isinstance(st, str):                                  # pragma: no cover
-        try:
-            return Style.parse(st)
-        except StyleSyntaxError:
-            return Style()
-    else:
-        return st
-
-
-def render_text(text: Text | str) -> Text:
-    """Render specially marked up text."""
-    if isinstance(text, str):
-        text = Text(text, spans=[Span(0, len(text), Style())])
-    raw_text = text.plain
-    if '\u2e24' in raw_text:
-        new_spans = []
-        new_parts = []
-        off = 0
-        for span in text.spans:
-            substr = raw_text[span.start:span.end]
-            new_subspans, new_substr = gen_highlight_spans(
-                substr, force_style(span.style), off)
-            new_spans.extend(new_subspans)
-            new_parts.append(new_substr)
-            off += len(new_parts[-1])
-        return Text(''.join(new_parts), spans=new_spans)
-    else:
         return text

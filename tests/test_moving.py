@@ -49,11 +49,22 @@ empty_group_text = '''
       @text@
         Snippet 3
     Second
-    Third
+    Second:Third
       @text@
         Snippet 4
       @text@
         Snippet 5
+'''
+empty_sub_group_text = '''
+    Main
+      @text@
+        Snippet 1
+      @text@
+        Snippet 2
+      @text@
+        Snippet 3
+    Second
+    Second:Third
 '''
 long_infile_text = std_infile_text + '''
       @text@
@@ -100,6 +111,13 @@ def infile_g1(snippet_infile):
 def infile_g0(snippet_infile):
     """Create a input file with an empty group."""
     populate(snippet_infile, empty_group_text)
+    return snippet_infile
+
+
+@pytest.fixture
+def infile_g0x2(snippet_infile):
+    """Create a input file with an empty group and empty sub-group."""
+    populate(snippet_infile, empty_sub_group_text)
     return snippet_infile
 
 
@@ -170,7 +188,6 @@ class TestKeyboardControlled:
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_move_snippet_to_start_of_group(
             self, infile, snapshot_run_dyn):
@@ -199,7 +216,6 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
-
 
     @pytest.mark.asyncio
     async def test_move_snippet_to_end_of_group(
@@ -230,7 +246,6 @@ class TestKeyboardControlled:
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_move_snippet_between_groups(self, infile, snapshot_run):
         """A snippet may be moved to a different group."""
@@ -258,7 +273,6 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
-
 
     @pytest.mark.asyncio
     async def test_move_snippet_to_other_group_start(
@@ -289,7 +303,6 @@ class TestKeyboardControlled:
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_move_snippet_to_other_group_end(self, infile, snapshot_run):
         """A snippet may be moved to the end of a different group."""
@@ -318,12 +331,11 @@ class TestKeyboardControlled:
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_move_can_empty_a_group(self, infile_g1, snapshot_run):
         """A snippet move may leave a gruop empty."""
         actions = (
-            ['down'] * 2          # Move to Snippet 6
+            ['down'] * 2          # Move to Snippet 3
             + ['m']               # Start moving
             + ['enter']           # Complete move
         )
@@ -346,15 +358,14 @@ class TestKeyboardControlled:
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_move_can_insert_in_an_empty_group(
             self, infile_g0, snapshot_run):
-        """A snippet move may leave a gruop empty."""
+        """A snippet move may insert into an empty group."""
         actions = (
-            ['down'] * 2          # Move to Snippet 6
+            ['down'] * 2          # Move to Snippet 3
             + ['m']               # Start moving
-            + ['down'] * 1          # Move insetion point to prev group
+            + ['down'] * 1        # Move insertion point to next group
             + ['enter']           # Complete move
         )
         expect = clean_text('''
@@ -367,7 +378,7 @@ class TestKeyboardControlled:
             Group: Second
             KeywordSet:
             Snippet: 'Snippet 3'
-            Group: Third
+            Group: Second:Third
             KeywordSet:
             Snippet: 'Snippet 4'
             Snippet: 'Snippet 5'
@@ -376,11 +387,66 @@ class TestKeyboardControlled:
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
+    @pytest.mark.asyncio
+    async def test_move_can_insert_in_a_sub_group(
+            self, infile_g0, snapshot_run):
+        """A snippet move may insert into a sub-group."""
+        actions = (
+            ['down'] * 2          # Move to Snippet 3
+            + ['m']               # Start moving
+            + ['down'] * 2        # Move insertion point to sub-group.
+            + ['enter']           # Complete move
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            Group: Second
+            KeywordSet:
+            Group: Second:Third
+            KeywordSet:
+            Snippet: 'Snippet 3'
+            Snippet: 'Snippet 4'
+            Snippet: 'Snippet 5'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile_g0, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
 
     @pytest.mark.asyncio
-    async def test_insertion_point_is_visisble(
+    async def test_move_can_insert_in_an_empty_sub_group(
+            self, infile_g0x2, snapshot_run):
+        """A snippet move may insert into an empty sub-group."""
+        actions = (
+            ['down'] * 2          # Move to Snippet 3
+            + ['m']               # Start moving
+            + ['down'] * 2        # Move insertion point to sub-group.
+            + ['enter']           # Complete move
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            Group: Second
+            KeywordSet:
+            Group: Second:Third
+            KeywordSet:
+            Snippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile_g0x2, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_insertion_point_is_visible(
             self, infile, snapshot_run, n_moves):
-        """The inserrtion point is clearly shown - moving down."""
+        """The insertion point is clearly shown - moving down."""
         actions = (
             ['m']                    # Start moving
             + ['down'] * n_moves     # Move a number of times.
@@ -388,11 +454,10 @@ class TestKeyboardControlled:
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_insertion_point_is_visisble_top_of_1st_gruop(
             self, infile, snapshot_run):
-        """The inserrtion point is clearly shown - top of first group."""
+        """The insertion point is clearly shown - top of first group."""
         actions = (
             ['down']                 # Move to Snippet 2
             + ['m']                  # Start moving
@@ -401,11 +466,10 @@ class TestKeyboardControlled:
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_insertion_point_is_visisble_for_empty_group(
             self, infile_g0, snapshot_run):
-        """The inserrtion point is clearly shown for an empty group."""
+        """The insertion point is clearly shown for an empty group."""
         actions = (
             ['m']                    # Start moving
             + ['down']  * 2          # Move to the empty group.
@@ -413,7 +477,6 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(infile_g0, actions)
         assert snapshot_ok
-
 
     @pytest.mark.asyncio
     async def test_escape_cancels_move(self, infile, snapshot_run):
@@ -426,18 +489,16 @@ class TestKeyboardControlled:
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_view_scrolls_for_insertion_point(
             self, longfile, snapshot_run):
-        """The view scrolls to ensure the inserrtion point remains visible."""
+        """The view scrolls to ensure the insertion point remains visible."""
         actions = (
             ['m']                    # Start moving
             + gen_moves('down', 6)   # Move down a number of times.
         )
         _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.15)
         assert snapshot_ok
-
 
     @pytest.mark.asyncio
     async def test_view_scrolls_for_insertion_only_as_necessary(
@@ -450,11 +511,10 @@ class TestKeyboardControlled:
         _, snapshot_ok = await snapshot_run(longfile, actions)
         assert snapshot_ok
 
-
     @pytest.mark.asyncio
     async def test_view_scrolls_for_insertion_point_up(
             self, longfile, snapshot_run):
-        """The view scrolls to ensure the inserrtion point remains visible."""
+        """The view scrolls to ensure the insertion point remains visible."""
         actions = (
             gen_moves('down', 2)     # Move to snippet 3
             + ['m']                  # Start moving
@@ -463,7 +523,6 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(longfile, actions, post_delay=0.20)
         assert snapshot_ok
-
 
     @pytest.mark.asyncio
     async def test_move_ignore_for_single_snippet(
@@ -475,7 +534,6 @@ class TestKeyboardControlled:
         _, snapshot_ok = await snapshot_run(
             single_snippet, actions, post_delay=0.20)
         assert snapshot_ok
-
 
     @pytest.mark.asyncio
     async def test_move_ignore_for_zero_snippets(
