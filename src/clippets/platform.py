@@ -1,4 +1,5 @@
 """Code that handles platform specific behaviour."""
+from __future__ import annotations
 
 import sys
 import tempfile
@@ -35,7 +36,7 @@ class SharedTempFile(Path):
     # pylint: disable=no-member
     _flavour = getattr(type(Path()), '_flavour', '')
 
-    def __new__(cls, *args, **kwargs) -> 'SharedTempFile':
+    def __new__(cls, *args, **kwargs) -> SharedTempFile:
         """Extend behaviour of Path.__new__.
 
         Create a named temporary file with auto-delete disabled. This allows it

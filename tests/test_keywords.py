@@ -10,7 +10,7 @@ import os
 
 import pytest
 
-from support import populate, epause
+from support import populate
 
 std_infile_text = '''
     Main
@@ -112,11 +112,10 @@ async def test_keywords_can_be_edited(
 @pytest.mark.asyncio
 async def test_ui_is_greyed_out_during_clipboard_editing(
         infile, snapshot_run, edit_text_file):
-    """The main TUI is greayed out during editing of keywords."""
-    populate(edit_text_file, 'Markdown\ntext\n')
+    """The main TUI is greyed out during editing of keywords."""
+    populate(edit_text_file, 'XMarkdown\ntext\n')
     actions = (
         ['f7']                # Edit the first group's keywords.
-        + [epause]
         + ['snapshot:']         # Take snapshot with editor running
         + ['end_edit:']         # Stop the editor.
         + ['wait:0.5:EditorHasExited']
@@ -167,7 +166,6 @@ class TestInternalEditor:
             + ['enter']
             + list('text')
             + ['ctrl+s']
-            + [ epause ]
         )
         kw = 'highlighting text'
         _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)

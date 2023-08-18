@@ -1068,7 +1068,7 @@ class AppMixin:
                 cast(Clippets, self), on_complete)
 
     def action_edit_save_and_quit(self):
-        """Save and quit an internal edirot session."""
+        """Save and quit an internal editor session."""
         if self.edit_session:
             self.edit_session.save()
             self._bindings.keys.update(self.disabled_bindings)

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from support import clean_text, epause, fix_named_temp_file, populate
+from support import clean_text, fix_named_temp_file, populate
 
 from clippets import core
 
@@ -133,23 +133,23 @@ class TestBootstrapping:
 
         def update_file():
             text = std_infile_text.replace(
-                'My second snipper', 'Snippet 2.')
+                'My second snippet', 'Snippet 2.')
             populate(infile, text)
 
-        populate(edit_text_file, 'Snippet 1 - edited')
+        populate(edit_text_file, 'Snippet 1 - edited X')
         actions = (
             ['enter']              # Accept the template.
             + ['e']                # Edit a snippet.
             + ['pause:0.1']
+            + ['before_snapshot:']
             + [update_file]        # Change the file.
-            + ['pause:0.22']
         )
         expect = clean_text('''
             Group: <ROOT>
             KeywordSet:
             Group: Main
             KeywordSet:
-            MarkdownSnippet: 'Snippet 1 - edited'
+            MarkdownSnippet: 'Snippet 1 - edited X'
             MarkdownSnippet: 'My second snippet.'
             Group: Second
             KeywordSet:

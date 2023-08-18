@@ -51,8 +51,8 @@ async def test_change_to_the_file_is_detected(infile, snapshot_run):
 
     actions = (
         ['pause: 0.01']
+        + ['before_snapshot:']
         + [update_file]
-        + ['pause:0.22']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
     assert snapshot_ok

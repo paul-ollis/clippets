@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from support import clean_text, epause, populate
+from support import clean_text, populate
 
 HERE = Path(__file__).parent
 std_infile_text = '''
@@ -627,7 +627,6 @@ class TestInternalEditor:
             + ['end']
             + list(' - edited')
             + ['ctrl+s']
-            + [ epause ]
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -653,7 +652,6 @@ class TestInternalEditor:
             + ['backspace']
             + ['4']
             + ['ctrl+s']
-            + [ epause ]
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -680,7 +678,6 @@ class TestInternalEditor:
             + ['end']
             + list(' - edited')
             + ['ctrl+s']
-            + [ epause ]
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
@@ -695,7 +692,6 @@ class TestInternalEditor:
             + ['end']
             + list(' - edited')
             + ['ctrl+q']
-            + [epause]
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -719,7 +715,6 @@ class TestInternalEditor:
             ['a']               # Add and edit it
             + list('New snippet')
             + ['ctrl+s']
-            + [epause]
         )
         expect = clean_text('''
             Group: <ROOT>
