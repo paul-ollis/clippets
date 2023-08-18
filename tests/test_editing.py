@@ -301,6 +301,18 @@ class TestKeyboardControlled:
         assert snapshot_ok
 
     @pytest.mark.asyncio
+    async def test_a_duplicate_group_cannot_be_added(
+            self, two_group_infile, snapshot_run):
+        """The user is prevented from adding a group with a duplicate name."""
+        actions = (
+            ['left']              # Move to group.
+            + ['A']               # Add a new group.
+            + list('Third')
+        )
+        _, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
     async def test_clipboard_can_be_edited(
             self, infile, edit_text_file, snapshot_run):
         """The prepared clipboard content can be edited."""
@@ -523,7 +535,7 @@ class TestMouseControlled:
         populate(edit_text_file, 'New snippet')
         actions = (
             ['right:snippet-2']       # Open snippet-3 menu.
-            + ['left:add']            # Select edit.
+            + ['left:add_snippet']            # Select edit.
             + ['wait:0.5:EditorHasExited']
         )
         expect = clean_text('''
@@ -548,7 +560,7 @@ class TestMouseControlled:
         populate(edit_text_file, 'New snippet')
         actions = (
             ['right:group-1']         # Open group-1 menu.
-            + ['left:add']            # Select edit.
+            + ['left:add_snippet']            # Select edit.
             + ['wait:0.5:EditorHasExited']
         )
         expect = clean_text('''
@@ -564,6 +576,35 @@ class TestMouseControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_group_can_be_added(
+            self, two_group_infile, snapshot_run):
+        """A new group may be added after another group."""
+        actions = (
+            ['right:group-1']         # Open group-1 menu.
+            + ['left:add_group']      # Select add group.
+            + list('Second')
+            + ['tab']
+            + ['enter']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            Group: Third
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
         assert snapshot_ok
 
 

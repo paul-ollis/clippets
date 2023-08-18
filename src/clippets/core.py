@@ -627,8 +627,10 @@ class AppMixin:
 
         async def on_close(v):
             self.screen.set_focus(None)
-            if  v == 'add':
+            if  v == 'add_snippet':
                 await self.add_snippet(wid)
+            elif  v == 'add_group':
+                await self.add_group(wid)
             elif  v == 'edit':
                 await self.edit_snippet(wid)
             elif  v == 'duplicate':

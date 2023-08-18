@@ -130,7 +130,7 @@ class GreyoutScreen(PopupDialog):
 class SnippetMenu(PopupDialog):
     """Menu providing snippet action choices."""
 
-    AUTO_FOCUS = '#add'
+    AUTO_FOCUS = '#add_snippet'
     DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
     .popup {
         grid-size: 5;
@@ -148,7 +148,7 @@ class SnippetMenu(PopupDialog):
 
         yield Grid(
             Label('Choose action', id='question', classes='question'),
-            Button('Add', variant='primary', id='add'),
+            Button('Add', variant='primary', id='add_snippet'),
             Button('Edit', variant='primary', id='edit'),
             Button('Duplicate', variant='primary', id='duplicate'),
             Button('Move', variant='primary', id='move'),
@@ -160,13 +160,13 @@ class SnippetMenu(PopupDialog):
 class GroupMenu(PopupDialog):
     """Menu providing group action choices."""
 
-    AUTO_FOCUS = '#add'
+    AUTO_FOCUS = '#add_snippet'
     DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
     .popup {
-        grid-size: 2;
+        grid-size: 3;
     }
     .question {
-        column-span: 2;
+        column-span: 3;
     }
     '''
 
@@ -178,7 +178,8 @@ class GroupMenu(PopupDialog):
 
         yield Grid(
             Label('Choose action', id='question', classes='question'),
-            Button('Add', variant='primary', id='add'),
+            Button('Add snippet', variant='primary', id='add_snippet'),
+            Button('Add group', variant='primary', id='add_group'),
             Button('Cancel', variant='primary', id='cancel'),
             id='dialog', classes='popup',
         )

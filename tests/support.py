@@ -152,7 +152,6 @@ async def click(                                                # noqa: PLR0913
         control=control
     )
     await wait_for_idle(pilot)
-    print("SEL", cls, message_arguments)
     if cls is Click:
         app.post_message(MouseDown(**message_arguments))
         app.post_message(MouseUp(**message_arguments))
@@ -449,7 +448,6 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
                     self.app.refresh()
                     await self.pilot._wait_for_screen()
                     self.app.screen._on_timer_update()
-                    await wait_for_idle(self.pilot, self.app)
                 if not self.svg:
                     self.svg = await self.take_screenshot()
                 self.exited = self.app._exit
@@ -476,7 +474,6 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
         if colon:
             await self.apply_cmd_action(cmd, arg)
         else:
-            print("PRESS", repr(action))
             await self.pilot.press(action)
             await wait_for_idle(self.pilot, self.app)
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 # pylint: disable=redefined-outer-name
 # pylint: disable=no-self-use
 
-import os
 from pathlib import Path
 
 import pytest
@@ -234,7 +233,6 @@ async def test_deletion_of_the_file_is_hnandled(infile, snapshot_run):
     actions = (
         ['pause: 0.01']
         + [remove_file]
-        #==+ ['pause:0.22']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
     assert snapshot_ok
