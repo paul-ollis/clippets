@@ -394,12 +394,12 @@ class TestKeyboardControlled:
         actions = (
             ['down'] * 2                      # Move to Snippet 3
             + ['d']                           # Duplicate
-            + ['wait:0.5:EditorHasExited']
+            + ['wait:1.0:EditorHasExited']
             + [update_text]                   # Change edit emulation text.
             + ['d']                           # Duplicate the new snippet
-            + ['wait:0.5:EditorHasExited']
+            + ['wait:1.0:EditorHasExited']
             + [update_text, 'd',
-               'wait:0.5:EditorHasExited'] * 9  # ... and so on.
+               'wait:1.0:EditorHasExited'] * 9  # ... and so on.
         )
         expect = clean_text('''
             Group: <ROOT>

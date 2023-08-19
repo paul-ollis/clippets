@@ -53,7 +53,7 @@ from support import clean_text, populate
 from clippets import snippets
 
 
-def dump(*strings):
+def dump(*strings):                                          # pragma: no cover
     """Dump one ore mor blocks of text."""
     print('--------')
     for text in strings:

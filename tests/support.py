@@ -127,10 +127,7 @@ async def click(                                                # noqa: PLR0913
     # pylint: disable=too-many-arguments
     app = pilot.app
     screen = app.screen
-    if selector is not None:
-        target_widget = screen.query_one(selector)
-    else:
-        target_widget = screen
+    target_widget = screen.query_one(selector)
 
     cls = Click
     bn = 0
@@ -140,11 +137,9 @@ async def click(                                                # noqa: PLR0913
         cls = MouseDown
     if button in ('left', 'right'):
         bn = 1 if button == 'left' else 3
-    elif button == 'up':
-        cls = MouseScrollUp
     elif button == 'down':
         cls = MouseScrollDown
-    else:
+    else:                                                    # pragma: no cover
         msg = f'Mouse button name {button!r} is invalid'
         raise RuntimeError(msg)
     message_arguments = _get_mouse_message_arguments(
@@ -199,27 +194,13 @@ def populate(f, text):
 
 
 @contextmanager
-def suspend_capture(cap_fix):
-    """Temporarily stop output capture."""
-    getattr(cap_fix, '_suspend')()
-    yield
-    getattr(cap_fix, '_resume')()
-
-
-@contextmanager
 def fix_named_temp_file(name: str):
     """Provide a temporary non-existant, named file."""
     p = Path(name)
-    if p.exists():
-        tf = TempTestFile()
-        tf.write(p.read_bytes())
-    else:
-        tf = None
-
+    assert not p.exists()
     yield FixNamedTestFile(name)
-    if tf:
-        p.write_bytes(str(tf))
-        tf.close()
+    if p.exists():
+        p.unlink()                                           # pragma: no cover
 
 
 @dataclass
@@ -251,22 +232,6 @@ class TempTestFile:
         """Get the name of the temporary file."""
         return self._name
 
-    def write(self, *args, **kwargs):
-        """Write to the file."""
-        return self._f.write(*args, **kwargs)
-
-    def read(self, *args, **kwargs):
-        """Read from the file."""
-        return self._f.read(*args, **kwargs)
-
-    def truncate(self, *args):
-        """Truncate the file."""
-        return self._f.truncate(*args)
-
-    def flush(self):
-        """Flush the file."""
-        return self._f.flush()
-
     def backup_paths(self) -> list[Path]:
         """Get Path instances for any backup files."""
         paths = []
@@ -282,7 +247,7 @@ class TempTestFile:
                 bak_path.unlink()
         p = Path(self.name)
         if p.exists():
-            with suppress(OSError):
+            with suppress(OSError):                          # pragma: no cover
                 p.unlink()
         assert not p.exists()
 
@@ -290,10 +255,6 @@ class TempTestFile:
         """Close the file."""
         self._f.close()
         self._cleanup()
-
-    def seek(self, *args, **kwargs):
-        """Seek within the file."""
-        return self._f.seek(*args, **kwargs)
 
     def write_text(self, text):
         """Write given text as the entire file's content."""
@@ -336,12 +297,6 @@ class EditTempFile(TempTestFile):
         self._prev_text = '\n'.join(lines[1:])
 
     @property
-    def has_run(self):
-        """Whether the emulated edit session ran."""
-        self._load()
-        return self._has_run
-
-    @property
     def prev_text(self):
         """The text that was replaced by the last edit."""
         self._load()
@@ -368,7 +323,7 @@ async def wait_for_idle(pilot, app: App | None = None):
             break
         delay = 0 if i < 30 else 0.01                           # noqa: PLR2004
         await asyncio.sleep(delay)
-    else:
+    else:                                                    # pragma: no cover
         msg = 'Call to wait_for_idle: Never reached IDLE state'
         raise RuntimeError(msg)
 
@@ -454,11 +409,12 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
                 self.exited = self.app._exit
                 await self.pilot.press('ctrl+c')
                 if self.watch_file is not None:
-                    self.watch_file.close()
+                    self.watch_file.close()                  # pragma: no cover
                     assert False, 'Edit session was not stopperd.'
-        except Exception as exc:       # pylint: disable=broad-exception-caught
+        # pylint: disable=broad-exception-caught
+        except Exception as exc:                             # pragma: no cover
             tb = traceback.format_exception(exc)
-        except SystemExit as exc:
+        except SystemExit as exc:                            # pragma: no cover
             tb = traceback.format_exception(exc)
         return self.svg, tb, self.app._exit
 
@@ -498,8 +454,8 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
                     return svg
             svg = new_svg
 
-        msg = 'Timed out waiting for stable screen shot'
-        raise RuntimeError(msg)
+        msg = 'Timed out waiting for stable screen shot'     # pragma: no cover
+        raise RuntimeError(msg)                              # pragma: no cover
 
     async def exec_wait(self, arg):
         """Execute a wait action."""
@@ -512,8 +468,8 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
                     return
             await asyncio.sleep(0.01)
 
-        msg = f'Timed out waiting for {message_type_name}'
-        raise RuntimeError(msg)
+        msg = f'Timed out waiting for {message_type_name}'   # pragma: no cover
+        raise RuntimeError(msg)                              # pragma: no cover
 
     async def apply_cmd_action(self, cmd, arg):
         """Apply an action consisting of a command and argument(s)."""
@@ -549,12 +505,10 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
         x_str, _, y_str = offset_str.partition('x')
         if y_str:
             offset = Offset(int(x_str), int(y_str))
-        elif x_str:
-            offset = Offset(int(x_str), 0)
         selector = arg if arg.startswith('.') else f'#{arg}'
         try:
             self.app.screen.query_one(selector)
-        except NoMatches:
+        except NoMatches:                                    # pragma: no cover
             msg = f'Bad widget ID: {arg!r}, screen={self.app.screen}'
             names = set()
             for node in self.app.screen.query(None):

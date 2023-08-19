@@ -21,20 +21,19 @@ from rich.console import Console
 
 from fixtures import (
     clean_data, edit_text_file, save_svg_diffs, set_env, simple_run,
-    snapshot_run, snapshot_run_dyn, snippet_infile, snippet_outfile, tempdir,
-    work_file)
+    snapshot_run, snapshot_run_dyn, snippet_infile, snippet_outfile, tempdir)
 
 pytest_config = sys.modules['_pytest.config']
 
 __all__ = (
     'clean_data',
     'edit_text_file',
+    'set_env',
     'simple_run',
     'snapshot_run',
     'snapshot_run_dyn',
     'snippet_infile',
     'snippet_outfile',
-    'work_file',
 )
 pytest_plugins = ('rich', 'asyncio')
 
@@ -47,7 +46,7 @@ class DiffGroup:
     code: str
 
 
-def prep_diffs(l1, l2):                       # pylint: disable=too-many-locals
+def prep_diffs(l1, l2):                                      # pragma: no cover
     """Prepare a set of diffenerce blocks.
 
     Each block stores a subset of the lines from the before and after lines.
@@ -65,6 +64,8 @@ def prep_diffs(l1, l2):                       # pylint: disable=too-many-locals
     replaced
         Lines that differ between before and after.
     """
+    # pylint: disable=too-many-locals
+
     def app_lines(start, end, get_left=None, get_right=None):
         for _ in range(start, end):
             if get_left:
@@ -111,7 +112,7 @@ def prep_diffs(l1, l2):                       # pylint: disable=too-many-locals
     return diffs
 
 
-def lstr(idx: int):
+def lstr(idx: int):                                          # pragma: no cover
     """Create line number label for a line in a file.
 
     :idx: The line index. If this is negative the label will be blank.
@@ -122,7 +123,7 @@ def lstr(idx: int):
         return f'{idx + 1:>4}:'
 
 
-def _strequals(config, op, left, right):
+def _strequals(config, op, left, right):                     # pragma: no cover
     return (
         op == '==' and isinstance(left, str) and isinstance(right, str)
         and config.pluginmanager.has_plugin('rich')
@@ -130,7 +131,7 @@ def _strequals(config, op, left, right):
     )
 
 
-def pytest_assertrepr_compare(config, op, left, right):
+def pytest_assertrepr_compare(config, op, left, right):      # pragma: no cover
     """Customise certain type comparison reports."""
     # pylint: disable=too-many-locals
     if _strequals(config, op, left, right):
@@ -176,7 +177,7 @@ def pytest_addoption(parser, pluginmanager):
         '--gen-doc', action='store_true',
         help='Generate test documentation.')
 
-    if platform.system() == 'Windows':
+    if platform.system() == 'Windows':                       # pragma: no cover
         os.environ['TEST_COVER_EXCLUDE'] = 'src/clippets/linux.py'
     elif platform.system() == 'Linux':
         os.environ['TEST_COVER_EXCLUDE'] = 'src/clippets/win.py'
@@ -187,24 +188,15 @@ def pytest_configure(config: pytest.Config) -> None:
     """Perform any reuired global configuration."""
 
 
-@contextmanager
-def temp_command_args(args: List[str]):
-    """Temporary update the arguments part od sys.argv."""
-    saved = list(sys.argv)
-    sys.argv[1:] = list(args)
-    yield
-    sys.argv[:] = saved
-
-
 def pytest_sessionstart(session: Session) -> None:
     """Perform post run processing."""
     Path('coverage.json').unlink(missing_ok=True)
 
 
 def pytest_sessionfinish(
-    session: Session,
-    exitstatus: Union[int, ExitCode],
-) -> None:
+        session: Session,
+        exitstatus: Union[int, ExitCode],
+    ) -> None:                                               # pragma: no cover
     """Perform post run processing.
 
     After whole test run finished, right before returning the exit status to
@@ -222,10 +214,10 @@ def pytest_sessionfinish(
 
 
 def pytest_terminal_summary(
-    terminalreporter: TerminalReporter,
-    exitstatus: ExitCode,
-    config: pytest.Config,
-) -> None:
+        terminalreporter: TerminalReporter,
+        exitstatus: ExitCode,
+        config: pytest.Config,
+    ) -> None:                                               # pragma: no cover
     """Add a section to terminal summary reporting.
 
     Displays the link to the snapshot report that was generated in a prior

@@ -34,7 +34,7 @@ class Log:
     def __init__(self, path: Path | str):
         worker = os.environ.get('PYTEST_XDIST_WORKER')
         if worker is None:
-            self._path = Path(path)
+            self._path = Path(path)                          # pragma: no cover
         else:
             self._path = Path(f'{str(path)}-{worker}')
         self._f = self._path.open(mode='wt', encoding='utf8', buffering=1)
@@ -45,7 +45,7 @@ class Log:
         """Emulate file.write."""
         lines = text.splitlines(keepends=True)
         if not lines:
-            return
+            return                                           # pragma: no cover
 
         if not lines[0].endswith('\n'):
             self._partial_line += lines[0]
@@ -56,9 +56,9 @@ class Log:
         self._partial_line = ''
         lines.pop(0)
         if lines and not lines[-1].endswith('\n'):
-            self._partial_line = lines.pop()
+            self._partial_line = lines.pop()                 # pragma: no cover
         for line in lines:
-            self._f.write(f'{tm}: {line}')
+            self._f.write(f'{tm}: {line}')                   # pragma: no cover
 
     def flush(self):
         """Emulate file.flush.
@@ -67,9 +67,9 @@ class Log:
         This behaviour may change to a simple NOP - still thinking about this.
         """
         if self._partial_line:
-            tm = next(ts)
-            self._f.write(f'{tm}: {self._partial_line}\n')
-            self._partial_line = ''
+            tm = next(ts)                                    # pragma: no cover
+            self._f.write(f'{tm}: {self._partial_line}\n')   # pragma: no cover
+            self._partial_line = ''                          # pragma: no cover
         self._f.flush()
 
     def __enter__(self):

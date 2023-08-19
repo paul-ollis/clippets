@@ -37,14 +37,14 @@ new_text = new_content_path.read_text(encoding='utf-8')
 
 # The new text may have leading metedata. Remove it.
 lines = new_text.splitlines()
-while lines and lines[0].startswith('::'):
+while lines and lines[0].startswith('::'):                   # pragma: no cover
     lines.pop(0)
 new_text = '\n'.join(lines)
 
 # Write the new text to the Clippets provided file.
 clippet_temp_path.write_text(new_text, encoding='utf-8')
 
-# Write Useful information to the test infrastructure file.
+# Write useful information to the test infrastructure file.
 info = '::action occurred::\n'
 info += old_text
 new_content_path.write_text(info, encoding='utf-8')

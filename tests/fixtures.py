@@ -1,4 +1,7 @@
-"""Common test fixtures."""
+"""Common test fixtures.
+
+Much of the snapshot code in here is 'borrowed' from Textual's test code.
+"""
 
 import functools
 import os
@@ -36,13 +39,13 @@ class MyTemporaryDirectory(TemporaryDirectory):
 
     def __init__(self, name=None):      # pylint: disable=super-init-not-called
         if name:
-            self.name = name
+            self.name = name                                 # pragma: no cover
         else:
             self.name = mkdtemp(None, None, None)
 
     def cleanup(self):
         """Clean up the temporry directory."""
-        self._rmtree(self.name, ignore_errors=True)
+        self._rmtree(self.name, ignore_errors=True)          # pragma: no cover
 
 
 @dataclass
@@ -117,12 +120,6 @@ def snippet_outfile() -> TempTestFile:
 
 
 @pytest.fixture
-def work_file() -> TempTestFile:
-    """Provide a temporary work file during test execution."""
-    yield from temp_file('work.txt', 'w+t')
-
-
-@pytest.fixture
 def edit_text_file() -> EditTempFile:
     """Provide a temporary work file during test execution."""
     yield from temp_edit_file('work.txt', 'w+t')
@@ -138,12 +135,12 @@ def simple_run():
         runner = AppRunner(
             infile, actions, test_mode=test_mode, options=options)
         if log:
-            with runner.logf:
-                svg, tb, exited = await runner.run()
+            with runner.logf:                                # pragma: no cover
+                _, tb, exited = await runner.run()
         else:
-            svg, tb, exited = await runner.run()
+            _, tb, exited = await runner.run()
         if tb:
-            if not (exited and expect_exit):
+            if not (exited and expect_exit):                 # pragma: no cover
                 print(''.join(tb))
                 assert not tb
         return exited
@@ -163,12 +160,12 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
             infile, actions, test_mode=test_mode, options=options,
             control_editor=control_editor)
         if log:
-            with runner.logf:
+            with runner.logf:                                # pragma: no cover
                 svg, tb, exited = await runner.run()
         else:
             svg, tb, exited = await runner.run()
         if tb:
-            if not (exited and expect_exit):
+            if not (exited and expect_exit):                 # pragma: no cover
                 print(''.join(tb))
                 assert not tb
         return runner, check_svg(snapshot, svg, request, runner.app)
@@ -202,11 +199,11 @@ def node_to_report_path(node):
     path, _, name = node.reportinfo()
     temp = Path(path.parent)
     base = []
-    while temp != temp.parent and temp.name != 'tests':
+    while temp != temp.parent and temp.name != 'tests':      # pragma: no cover
         base.append(temp.name)
         temp = temp.parent
     parts = []
-    if base:
+    if base:                                                 # pragma: no cover
         parts.append('_'.join(reversed(base)))
     parts.append(path.name.replace('.', '_'))
     parts.append(name.replace('[', '_').replace(']', '_'))
@@ -220,7 +217,7 @@ def check_svg(expect, actual, request, app) -> bool:
     expect_svg_text = ''
     console = app.console
     p_app = PseudoApp(PseudoConsole(console.legacy_windows, console.size))
-    if not result:
+    if not result:                                           # pragma: no cover
         # The split and join below is a mad hack, sorry...
         expect_svg_text = '\n'.join(str(expect).splitlines()[1:-1])
         svg_text = actual
@@ -250,7 +247,7 @@ class SvgSnapshotDiff:
     environment: dict
 
 
-def _get_svg_diffs(session: Session):
+def _get_svg_diffs(session: Session):                        # pragma: no cover
     diffs: list[SvgSnapshotDiff] = []
     pass_count = 0
     for data_path in Path(tempdir.name).iterdir():
@@ -269,7 +266,7 @@ def _get_svg_diffs(session: Session):
     return diffs, pass_count
 
 
-def save_svg_diffs(session: Session):
+def save_svg_diffs(session: Session):                        # pragma: no cover
     """Store SVG differences."""
     diffs, pass_count = _get_svg_diffs(session)
     if diffs:
@@ -301,7 +298,7 @@ def save_svg_diffs(session: Session):
 
 tempdir_name = os.environ.get('SNIPPET_TEST_TEMPDIR', '')
 if tempdir_name:
-    tempdir = MyTemporaryDirectory(tempdir_name)
+    tempdir = MyTemporaryDirectory(tempdir_name)             # pragma: no cover
 else:
     tempdir = MyTemporaryDirectory()
     os.environ['SNIPPET_TEST_TEMPDIR'] = tempdir.name
