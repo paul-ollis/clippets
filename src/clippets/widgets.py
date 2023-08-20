@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import partial
 from typing import cast
 
 import rich.repr
@@ -163,10 +164,10 @@ class GroupMenu(PopupDialog):
     AUTO_FOCUS = '#add_snippet'
     DEFAULT_CSS = PopupDialog.DEFAULT_CSS + '''
     .popup {
-        grid-size: 3;
+        grid-size: 4;
     }
     .question {
-        column-span: 3;
+        column-span: 4;
     }
     '''
 
@@ -180,12 +181,13 @@ class GroupMenu(PopupDialog):
             Label('Choose action', id='question', classes='question'),
             Button('Add snippet', variant='primary', id='add_snippet'),
             Button('Add group', variant='primary', id='add_group'),
+            Button('Rename', variant='primary', id='rename_group'),
             Button('Cancel', variant='primary', id='cancel'),
             id='dialog', classes='popup',
         )
 
 
-class AddGroupMenu(PopupDialog):
+class GroupNameMenu(PopupDialog):
     """Popup to enter the name of a new group."""
 
     AUTO_FOCUS = '#field_input'
@@ -209,38 +211,45 @@ class AddGroupMenu(PopupDialog):
     }
     '''
 
-    def __init__(self, message: str, root: Root, *args, **kwargs):
+    def __init__(
+            self, message: str, root: Root, orig_name: str = '',
+            *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.message = message
         self.root = root
         self.yes_buttons: list[Button] = []
         self.group_name: str = ''
+        self.orig_name = orig_name
 
     def compose(self):
         """Build the widget hierarchy."""
         bg = self.styles.background
         styles = self.styles
         styles.background = Color(bg.r, bg.g, bg.b, a=0.6)
-        b1 = Button('Add below', variant='primary', id='add_below')
+        if self.orig_name:
+            b1 = Button('OK', variant='primary', id='add_below')
+        else:
+            b1 = Button('Add below', variant='primary', id='add_below')
         b2 = Button('Cancel', variant='primary', id='cancel')
         self.yes_buttons.extend([b1])
+        input = partial(
+            Input, id='field_input', classes='field_input',
+            validators=[
+                Function(self.is_unique, 'Not a valid and unique name')])
+        if self.orig_name:
+            input = partial(input, self.orig_name)
+        else:
+            input = partial(input, placeholder='Unique group name')
         for b in self.yes_buttons:
             b.disabled = True
-        yield Grid(
-            Input(
-                placeholder='Unique group name', id='field_input',
-                classes='field_input',
-                validators=[
-                    Function(self.is_unique, 'Not a valid and unique name')]),
-            b1, b2,
-            id='dialog', classes='popup freddy')
+        yield Grid(input(), b1, b2, id='dialog', classes='popup freddy')
 
     def is_unique(self, name):
         """Check if the name is legal and unique."""
         name = name.strip()
         ok = bool(name)
         for group in self.root.walk(is_group):
-            if group.name == name:
+            if group.name == name and name != self.orig_name:
                 ok = False
                 break
         for b in self.yes_buttons:

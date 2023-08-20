@@ -579,6 +579,17 @@ class Group(GroupDebugMixin, Element):
         """The groups in user-defined order."""
         return [self.groups[name] for name in self._ordered_groups]
 
+    def rename(self, name):
+        """Change the name of this group."""
+        self.parent.rename_child_group(self.name, name)
+        self.name = name
+
+    def rename_child_group(self, old_name: str, new_name: str):
+        """Update to reflect a name change for a child group."""
+        idx = self._ordered_groups.index(old_name)
+        self._ordered_groups[idx] = new_name
+        self.groups[new_name] = self.groups.pop(old_name)
+
     def add_group(self, name, after: str = ''):
         """Add a new group as a child of this group.
 
@@ -1066,7 +1077,7 @@ def is_type(obj, *, classinfo) -> bool:
     return isinstance(obj, classinfo)
 
 
-# Useful partial functions for tree walking.
+# Useful predicate functions for tree walking.
 is_snippet = partial(is_type, classinfo=Snippet)
 is_snippet_like = partial(is_type, classinfo=(Snippet, PlaceHolder))
 is_group = partial(is_type, classinfo=Group)

@@ -301,6 +301,35 @@ class TestKeyboardControlled:
         assert snapshot_ok
 
     @pytest.mark.asyncio
+    async def test_a_new_group_can_be_renamed(
+            self, two_group_infile, snapshot_run):
+        """An existing group may be renamed."""
+        actions = (
+            ['left']              # Move to group.
+            + ['down']            # Move to bottom group.
+            + ['r']               # Choose to rename the group.
+            + ['backspace'] * 5
+            + list('Second')
+            + ['tab']
+            + ['enter']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
     async def test_a_duplicate_group_cannot_be_added(
             self, two_group_infile, snapshot_run):
         """The user is prevented from adding a group with a duplicate name."""
@@ -605,6 +634,47 @@ class TestMouseControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_new_group_can_be_renamed(
+            self, two_group_infile, snapshot_run):
+        """An existing group may be renamed."""
+        actions = (
+            ['right:group-2']         # Open group-1 menu.
+            + ['left:rename_group']   # Select add group.
+            + ['backspace'] * 5
+            + list('Second')
+            + ['tab']
+            + ['enter']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_a_group_rename_allows_original_name(
+            self, two_group_infile, snapshot_run):
+        """The esiting name is permittedwhen renaming a group."""
+        actions = (
+            ['right:group-2']         # Open group-1 menu.
+            + ['left:rename_group']   # Select add group.
+            + ['backspace'] * 5
+            + list('Third')
+        )
+        _, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert snapshot_ok
 
 

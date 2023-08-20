@@ -58,7 +58,7 @@ from .snippets import (
     DefaultLoader, Group, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
     SnippetInsertionPointer, is_group, is_snippet, is_snippet_like)
 from .widgets import (
-    AddGroupMenu, DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu,
+    DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
     SnippetMenu)
 
@@ -624,13 +624,34 @@ class AppMixin:
 
     async def on_right_click(self, ev) -> None:
         """Process a mouse right-click."""
+        if w := cast(Widget, getattr(ev, 'snippet', None)):
+            await self.on_right_click_snippet(w)
+        elif w := cast(Widget, getattr(ev, 'group', None)):
+            await self.on_right_click_group(w)
 
+    async def on_right_click_group(self, w: Widget) -> None:
+        """Handle a mouse right-click on a group."""
         async def on_close(v):
             self.screen.set_focus(None)
             if  v == 'add_snippet':
                 await self.add_snippet(wid)
             elif  v == 'add_group':
                 await self.add_group(wid)
+            elif  v == 'rename_group':
+                await self.rename_group(wid)
+
+        wid = cast(str, w.id)
+        snippet = self.root.find_element_by_uid(wid)
+        if snippet:
+            self.push_screen(GroupMenu(id='snippet-menu'), on_close)
+
+    async def on_right_click_snippet(self, w: Widget) -> None:
+        """Process a mouse right-click on a snippet."""
+
+        async def on_close(v):
+            self.screen.set_focus(None)
+            if  v == 'add_snippet':
+                await self.add_snippet(wid)
             elif  v == 'edit':
                 await self.edit_snippet(wid)
             elif  v == 'duplicate':
@@ -638,21 +659,15 @@ class AppMixin:
             elif  v == 'move':
                 self.action_start_moving_snippet(wid)
 
-        if w := cast(Widget, getattr(ev, 'snippet', None)):
-            wid = cast(str, w.id)
-            snippet = self.root.find_element_by_uid(wid)
-            if snippet:
-                self.push_screen(SnippetMenu(id='snippet-menu'), on_close)
-        elif w := cast(Widget, getattr(ev, 'group', None)):
-            wid = cast(str, w.id)
-            snippet = self.root.find_element_by_uid(w.id)
-            if snippet:
-                self.push_screen(GroupMenu(id='snippet-menu'), on_close)
+        wid = cast(str, w.id)
+        snippet = self.root.find_element_by_uid(wid)
+        if snippet:
+            self.push_screen(SnippetMenu(id='snippet-menu'), on_close)
 
     ## Handling of keyboard operations.
     def fix_selection(self, *, kill_filter: bool = False):
         """Update the keyboard selected focus when widgets get hidden."""
-        # Do nothing if the filter input is focusses and should remain so.
+        # Do nothing if the filter input is focused and should remain so.
         sel = self._selection_stack[-1]
         if sel.uid == 'filter':
             if kill_filter:
@@ -682,9 +697,9 @@ class AppMixin:
         self.action_select_move(inc=0)
 
     def action_select_move(
-                self, inc: int, mode: str ='vertically', *, push: bool = False,
-                user: bool = True,
-            ) -> bool:
+            self, inc: int, mode: str ='vertically', *, push: bool = False,
+            user: bool = True,
+        ) -> bool:
         """Move the selection up, down, left or right.
 
         If inc is zero then no movement will occur if the currentl selection is
@@ -734,7 +749,7 @@ class AppMixin:
             return self.select_move_horizontally(inc, user=user)
 
     def select_move_vertically(
-                self, inc: int, *, push: bool = False, user: bool) -> bool:
+            self, inc: int, *, push: bool = False, user: bool) -> bool:
         """Move the selection to the next available snippet.
 
         :inc:  -1 => move up, 1 => move down.
@@ -968,7 +983,7 @@ class AppMixin:
 
         if id_str.startswith('group-'):
             group = cast(Group, self.root.find_element_by_uid(id_str))
-            screen = AddGroupMenu(
+            screen = GroupNameMenu(
                 'Add group', self.root, id='add_group-dialog')
             self.push_screen(screen, on_close)
 
@@ -1078,6 +1093,23 @@ class AppMixin:
         if self.edit_session:
             self.edit_session.quit()
             self._bindings.keys.update(self.disabled_bindings)
+
+    async def rename_group(self, id_str: str):
+        """Rename a group."""
+
+        async def on_close(v):
+            self.screen.set_focus(None)
+            if  v != 'cancel':
+                if screen.group_name != group.name:
+                    group.rename(screen.group_name)
+                    self.rebuild_after_edits()
+
+        if id_str.startswith('group-'):
+            group = cast(Group, self.root.find_element_by_uid(id_str))
+            screen = GroupNameMenu(
+                'Add group', self.root, orig_name=group.name,
+                id='add_group-dialog')
+            self.push_screen(screen, on_close)
 
     ## Snippet position movement.
     def action_start_moving_snippet(self, id_str: str | None = None) -> None:
@@ -1212,6 +1244,11 @@ class AppMixin:
             return True
         else:
             return False
+
+    async def action_rename_group(self) -> None:
+        """Rename an existing group."""
+        if self.selection_uid:
+            await self.rename_group(self.selection_uid)
 
     def action_stop_moving(self) -> None:
         """Stop moving a snippet - cancelling the move operation."""
@@ -1374,6 +1411,7 @@ class Clippets(AppMixin, App):
         bind('e', 'edit_snippet')
         bind('f insert', 'toggle_collapse_group')
         bind('m', 'start_moving_snippet', description='Move snippet')
+        bind('r', 'rename_group')
         bind('f7', 'edit_keywords', description='Edit keywords')
 
         bind = partial(self.key_handler.bind, contexts=('filter',), show=True)
