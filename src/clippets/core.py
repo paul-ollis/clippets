@@ -173,13 +173,16 @@ class EditorScreen(Screen):
         vs = MyVerticalScroll(id='editor_view_sc', classes='editor_result')
         vs.can_focus = False
         vs.can_focus_children = False
+        vs.border_title = 'Rendered output'
         with vs:
             self.preview = MyMarkdown(id='result')
             self.preview.can_focus = False
             self.preview.can_focus_children = False
             yield self.preview
-        yield TextArea(
+        ta =  TextArea(
             on_changed=self.on_changed, id='editor_sc',classes='editor_sc')
+        ta.border_title = 'Edit area'
+        yield ta
         yield MyFooter()
 
     def on_mount(self):
@@ -202,7 +205,7 @@ class HelpScreen(Screen):
         super().__init__(*args, **kwargs)
 
     def compose(self) -> ComposeResult:
-        """Tada."""
+        """Build the widget tree for the editor screen."""
         yield Header(id='header')
         yield Static(BANNER, classes='banner')
         yield from markup.generate()
