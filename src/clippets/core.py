@@ -521,12 +521,15 @@ class AppMixin:
         w.remove_class('kb_focussed')
         self.set_visuals()
 
+    def find_widget_by_uid(self, uid: str) -> Widget:
+        """Find the widget for a given element."""
+        if uid not in self.lookup:
+            self.lookup[uid] = self.query_one(f'#{uid}')
+        return self.lookup[uid]
+
     def find_widget(self, el) -> Widget:
         """Find the widget for a given element."""
-        uid = el.uid()
-        if uid not in self.lookup:
-            self.lookup[uid] = self.query_one(f'#{el.uid()}')
-        return self.lookup[uid]
+        return self.find_widget_by_uid(el.uid())
 
     ## Management of dynanmic display features.
     def set_visuals(self) -> None:
@@ -704,11 +707,13 @@ class AppMixin:
         ) -> bool:
         """Move the selection up, down, left or right.
 
-        If inc is zero then no movement will occur if the currentl selection is
-        valid. If the current selection is valid then a value of inc=-1 is
-        tried and if that fails then inc=1 is tried. If neither adjustment
-        works then (inc=-1, mode='horizontally') is used, which is guaranteed
-        to work.
+        Special behaviour occurs if inc is zero.
+
+        - no movement will occur if the currentl selection is valid.
+        - If the current selection is invalid then a value of inc=-1 is
+          tried and if that fails then inc=1 is tried.
+        - If neither adjustment works then (inc=-1, mode='horizontally') is
+          used, which is guaranteed to work.
 
         :inc:  -1 => move left or up, 1 => move right or down and zero means
                stay put if possible.
@@ -816,12 +821,17 @@ class AppMixin:
         sel_id = self._selection_stack[-1].uid
         group = cast(Group, self.root.find_element_by_uid(sel_id))
         next_group = group.step_group(backwards=inc < 0)
-        if next_group is not None:
-            w = self.find_widget(next_group)
-            self._selection_stack[-1] = Selection(
-                uid=next_group.uid(), user=user)
-            self.set_visuals()
-            w.scroll_visible(animate=False)
+        while next_group is not None:
+            next_widget = self.find_widget(next_group)
+            if next_widget.display:
+                w = self.find_widget(next_group)
+                self._selection_stack[-1] = Selection(
+                    uid=next_group.uid(), user=user)
+                self.set_visuals()
+                w.scroll_visible(animate=False)
+                return
+            else:
+                next_group = next_group.step_group(backwards=inc < 0)
 
     def select_move_horizontally(self, inc: int, *, user: bool):
         """Move the selection to/from group mode."""
@@ -894,6 +904,7 @@ class AppMixin:
                 w_snippet = cast(SnippetWidget, self.find_widget(el))
                 w_snippet.display = bool(matcher.search(el.text)) and opened
         self.fix_selection()
+        self.ensure_selection_visible()
 
     ## UNCLASSIFIED
     def is_fully_collapsed(self):
@@ -1135,6 +1146,12 @@ class AppMixin:
         if not self.action_move_insertion_point('up'):
             self.action_move_insertion_point('down')
         self.set_visuals()
+
+    def ensure_selection_visible(self):
+        """Make sure that the selected snippet/group is visible."""
+        if self.selection_uid:
+            w = self.find_widget_by_uid(self.selection_uid)
+            w.scroll_visible(animate=False)
 
     ## Binding handlers.
     async def action_add_group(self) -> None:

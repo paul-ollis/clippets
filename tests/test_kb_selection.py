@@ -44,6 +44,16 @@ nested_infile_text = '''
         Snippet 14
 '''
 
+extended_nested_infile_text = nested_infile_text + '''
+    Second
+      @text@
+        Snippet 1
+      @text@
+        Snippet 2
+      @text@
+        Snippet 3
+'''
+
 @pytest.fixture
 def longfile(snippet_infile):
     """Create a standard input file for scrolling tests."""
@@ -55,6 +65,13 @@ def longfile(snippet_infile):
 def nested_file(snippet_infile):
     """Create a standard input file for scrolling tests."""
     populate(snippet_infile, nested_infile_text)
+    return snippet_infile
+
+
+@pytest.fixture
+def ext_nested_file(snippet_infile):
+    """Create a standard input file for scrolling tests."""
+    populate(snippet_infile, extended_nested_infile_text)
     return snippet_infile
 
 
@@ -169,6 +186,31 @@ async def test_down_moves_within_groups_and_scrolls(longfile, snapshot_run):
         + ['down'] * 3                     # Move to the last group.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_down_skip_hidden_groups(ext_nested_file, snapshot_run):
+    """The down key skips over hidden (by folding) names."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['f9']                           # Close all groups.
+        + ['down']                         # Move to the last group.
+    )
+    _, snapshot_ok = await snapshot_run(ext_nested_file, actions)
+    assert snapshot_ok
+
+
+@pytest.mark.asyncio
+async def test_unfold_after_group_move_scrolls(ext_nested_file, snapshot_run):
+    """Unfolding after a move, will scroll as required."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['f9']                           # Close all groups.
+        + ['down']                         # Move to the last group.
+        + ['f9']                           # Close all groups.
+    )
+    _, snapshot_ok = await snapshot_run(ext_nested_file, actions)
     assert snapshot_ok
 
 
