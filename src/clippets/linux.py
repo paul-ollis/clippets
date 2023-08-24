@@ -1,11 +1,13 @@
 """Linux specific code."""
 # ruff: noqa: N816
 
+from __future__ import annotations
+
 import contextlib
 import os
 import subprocess
 import sys
-from typing import Tuple
+from functools import partial
 
 import markdown
 
@@ -65,18 +67,23 @@ def get_editor_command(env_var_name: str, default: str | None = None) -> str:
     return os.getenv(env_var_name, default)
 
 
-def get_winpos() -> Tuple[int, int]:                         # pragma: no cover
+def get_winpos() -> tuple[int, int]:                         # pragma: no cover
     """Get the screen position of the terminal."""
-    res = subprocess.run(
-        ['/usr/bin/xwininfo', '-name', 'Snippet-wrangler'],
-        capture_output=True, check=False)
-    for rawline in res.stdout.decode().splitlines():
+    capture = partial(
+        subprocess.run, capture_output=True, check=False, text=True)
+    res = capture(['/usr/bin/xprop', '-root', '32x', '_NET_ACTIVE_WINDOW'])
+    _, _, wid = res.stdout.rpartition(' ')
+    res = capture(['/usr/bin/xwininfo', '-id', wid])
+    for rawline in res.stdout.splitlines():
         line = rawline.strip()
         if line.startswith('Absolute upper-left X:'):
             x = int(line.partition(':')[-1].strip())
         elif line.startswith('Absolute upper-left Y:'):
             y = int(line.partition(':')[-1].strip())
-    return x, y
+    try:
+        return x, y
+    except UnboundLocalError:
+        return 0, 0
 
 
 def dump_clipboard(_text='', _f=None):
