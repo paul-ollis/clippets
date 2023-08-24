@@ -197,3 +197,26 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_group_ignores_add_group_order(
+            self, infile, snapshot_run):
+        """With selected group, adding is ignored (group order active)."""
+        actions = (
+            ['left']                      # Select group.
+            + ['enter']                   # Try to add
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok
+
+    @pytest.mark.asyncio
+    async def test_group_ignores_add_insertion_order(
+            self, infile, snapshot_run):
+        """With selected group, adding is ignored (insertion order active)."""
+        actions = (
+            [ 'f8' ]                      # Switch to add/insertion order.
+            + ['left']                    # Select group.
+            + ['enter']                   # Try to add
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok

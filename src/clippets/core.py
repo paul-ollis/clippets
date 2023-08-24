@@ -470,7 +470,7 @@ class AppMixin:
         for name in list(self.MODES):
             if name != '_default':
                 self.MODES.pop(name)
-        self.chosen: list[str] = []
+        self.added: list[str] = []
         self.collapsed: set[str] = set()
         self.edited_text = ''
         self.filter: re.Pattern | Matcher = Matcher('')
@@ -574,7 +574,7 @@ class AppMixin:
         for snippet in self.walk(predicate=is_snippet):
             id_str = snippet.uid()
             w = self.find_widget(snippet)
-            if id_str in self.chosen:
+            if id_str in self.added:
                 w.add_class('selected')
             else:
                 w.remove_class('selected')
@@ -606,10 +606,10 @@ class AppMixin:
         if snippet := getattr(ev, 'snippet', None):
             self.push_undo()
             id_str = snippet.id
-            if id_str in self.chosen:
-                self.chosen.remove(id_str)
+            if id_str in self.added:
+                self.added.remove(id_str)
             else:
-                self.chosen.append(id_str)
+                self.added.append(id_str)
             self.update_selected()
             self.update_result()
 
@@ -934,7 +934,7 @@ class AppMixin:
         if self.edited_text:
             self.undo_buffer.append(([], self.edited_text))
         else:
-            self.undo_buffer.append((list(self.chosen), ''))
+            self.undo_buffer.append((list(self.added), ''))
         self.edited_text = ''
 
     ## Clipboard representaion widget management.
@@ -953,14 +953,14 @@ class AppMixin:
 
         s = []
         if self.sel_order:
-            for id_str in self.chosen:
+            for id_str in self.added:
                 snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
                 s.extend(snippet.md_lines())
                 s.append('')
         else:
             for snippet in self.walk(predicate=is_snippet):
                 id_str = snippet.uid()
-                if id_str in self.chosen:
+                if id_str in self.added:
                     s.extend(snippet.md_lines())
                     s.append('')
         if s:
@@ -1149,7 +1149,7 @@ class AppMixin:
 
     def action_clear_selection(self) -> None:
         """Clear all snippets from the selection."""
-        self.chosen[:] = []
+        self.added[:] = []
         self.update_result()
         self.update_selected()
 
@@ -1166,16 +1166,16 @@ class AppMixin:
     def action_do_redo(self) -> None:
         """Redo the last undo action."""
         if self.redo_buffer:
-            self.undo_buffer.append((self.chosen, self.edited_text))
-            self.chosen, self.edited_text = self.redo_buffer.pop()
+            self.undo_buffer.append((self.added, self.edited_text))
+            self.added, self.edited_text = self.redo_buffer.pop()
             self.update_result()
             self.update_selected()
 
     def action_do_undo(self) -> None:
         """Undo the last change."""
         if self.undo_buffer:
-            self.redo_buffer.append((self.chosen, self.edited_text))
-            self.chosen, self.edited_text = self.undo_buffer.pop()
+            self.redo_buffer.append((self.added, self.edited_text))
+            self.added, self.edited_text = self.undo_buffer.pop()
             self.update_result()
             self.update_selected()
 
@@ -1304,15 +1304,16 @@ class AppMixin:
                 self.set_visuals()
         self.filter_view()
 
-    def action_toggle_select(self):
-        """Handle any key that is used to select a snippet."""
-        if self.root.find_element_by_uid(self.selection_uid) is not None:
+    def action_toggle_add(self):
+        """Handle any key that is used to add/remove a snippet."""
+        element = self.root.find_element_by_uid(self.selection_uid)
+        if isinstance(element, Snippet):
             self.push_undo()
             id_str = self.selection_uid
-            if id_str in self.chosen:
-                self.chosen.remove(id_str)
+            if id_str in self.added:
+                self.added.remove(id_str)
             else:
-                self.chosen.append(id_str)
+                self.added.append(id_str)
             self.update_selected()
             self.update_result()
 
@@ -1430,7 +1431,7 @@ class Clippets(AppMixin, App):
         bind('f2', 'edit_clipboard', description='Edit')
         bind('f3', 'clear_selection', description='Clear')
         bind('f9', 'toggle_collapse_all', description='(Un)fold')
-        bind('enter space', 'toggle_select', description='Toggle select')
+        bind('enter space', 'toggle_add', description='Toggle select')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
         bind = partial(self.key_handler.bind, contexts=('moving',), show=True)
