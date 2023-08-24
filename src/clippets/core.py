@@ -56,7 +56,8 @@ from .platform import (
     put_to_clipboard, terminal_title)
 from .snippets import (
     DefaultLoader, Group, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
-    SnippetInsertionPointer, is_group, is_snippet, is_snippet_like)
+    SnippetInsertionPointer, has_uid, is_element, is_group, is_snippet,
+    is_snippet_like)
 from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
@@ -230,7 +231,7 @@ class MainScreen(Screen):
     def __init__(self, root: Root, uid: str):
         super().__init__(name='main', id=uid)
         self.root = root
-        self.walk = partial(root.walk)
+        self.walk = root.walk
         self.widgets: dict[str, Widget] = {}
 
     def compose(self) -> ComposeResult:
@@ -258,7 +259,7 @@ class MainScreen(Screen):
         self.widgets = {}
         all_tags = {
             t: i for i, t in enumerate(sorted(Group.all_tags))}
-        for el in self.walk():
+        for el in self.walk(predicate=is_element):
             el.dirty = True
             uid = el.uid()
             if isinstance(el, Group):
@@ -479,11 +480,9 @@ class AppMixin:
         self.sel_order = False
         self.undo_buffer: deque = deque(maxlen=20)
         self.lookup: dict[str, Widget] = {}
-        self.walk = partial(self.root.walk)
-        self.walk_groups = partial(self.walk, predicate=is_group)
+        self.walk = root.walk
         self.resolver_q: asyncio.Queue = asyncio.Queue()
         self.populater_q: asyncio.Queue = asyncio.Queue()
-        self.walk_snippets = partial(self.walk, is_snippet)
         self.walk_snippet_like = partial(self.walk, is_snippet_like)
         self.populater: asyncio.Task | None = None
         self.edit_session: EditSession | None = None
@@ -536,7 +535,7 @@ class AppMixin:
         """Set and clear widget classes that control snippet highlighting."""
         filter_focussed = (fw := self.focused) and fw.id == 'filter'
         _, selected_widget = self.selection
-        for el in (el for el in self.walk() if el.uid()):
+        for el in self.walk(predicate=has_uid):
             w = self.find_widget(el)
             w.remove_class('kb_focussed')
             w.remove_class('mouse_hover')
@@ -569,7 +568,7 @@ class AppMixin:
 
     def update_selected(self) -> None:
         """Update the 'selected' flag following mouse movement."""
-        for snippet in self.walk_snippets():
+        for snippet in self.walk(predicate=is_snippet):
             id_str = snippet.uid()
             w = self.find_widget(snippet)
             if id_str in self.chosen:
@@ -870,7 +869,7 @@ class AppMixin:
         matcher = self.filter
         stack: list[Element] = []
         opened = True
-        for el in self.walk():
+        for el in self.walk(predicate=has_uid):
             if isinstance(el, Group):
                 while stack and stack[-1].depth() >= el.depth():
                     stack.pop()
@@ -896,12 +895,12 @@ class AppMixin:
     ## UNCLASSIFIED
     def is_fully_collapsed(self):
         """Test whether all groups are collapsed."""
-        groups = self.walk_groups()
+        groups = self.walk(predicate=is_group)
         return all(group.uid() in self.collapsed for group in groups)
 
     def is_fully_open(self, tag: str = ''):
         """Test whether all groups are open."""
-        groups = self.walk_groups()
+        groups = self.walk(predicate=is_group)
         if tag:
             groups = (g for g in groups if tag in g.tags)
         return all(group.uid() not in self.collapsed for group in groups)
@@ -956,7 +955,7 @@ class AppMixin:
                 s.extend(snippet.md_lines())
                 s.append('')
         else:
-            for snippet in self.walk_snippets():
+            for snippet in self.walk(predicate=is_snippet):
                 id_str = snippet.uid()
                 if id_str in self.chosen:
                     s.extend(snippet.md_lines())
@@ -1054,7 +1053,9 @@ class AppMixin:
         if self.populater:
             self.populater_q.put_nowait('pop')
         else:
-            populate_fg(self.walk_snippets, self.find_widget)
+            populate_fg(
+                partial(self.walk, predicate=is_snippet),
+                self.find_widget)
 
         self.update_result()
         self.set_visuals()
@@ -1099,10 +1100,9 @@ class AppMixin:
 
         async def on_close(v):
             self.screen.set_focus(None)
-            if  v != 'cancel':
-                if screen.group_name != group.name:
-                    group.rename(screen.group_name)
-                    self.rebuild_after_edits()
+            if  v != 'cancel' and screen.group_name != group.name:
+                group.rename(screen.group_name)
+                self.rebuild_after_edits()
 
         if id_str.startswith('group-'):
             group = cast(Group, self.root.find_element_by_uid(id_str))
@@ -1114,7 +1114,7 @@ class AppMixin:
     ## Snippet position movement.
     def action_start_moving_snippet(self, id_str: str | None = None) -> None:
         """Start moving a snippet to a different position in the tree."""
-        for i, _ in enumerate(self.walk_snippets()):
+        for i, _ in enumerate(self.walk(predicate=is_snippet)):
             if i == 1:
                 break
         else:
@@ -1199,12 +1199,14 @@ class AppMixin:
             if new_words != kw.words:
                 kw.words = new_words
                 self.backup_and_save()
-                for snippet in self.walk_snippets():
+                for snippet in self.walk(predicate=is_snippet):
                     snippet.reset()
                 if self.populater:
                     self.populater_q.put_nowait('pop')
                 else:                                        # pragma: no cover
-                    populate_fg(self.walk_snippets, self.find_widget)
+                    populate_fg(
+                        partial(self.walk, predicate=is_snippet),
+                        self.find_widget)
                 self.root.update_keywords()
 
         el, _ = self.selection
@@ -1313,7 +1315,8 @@ class AppMixin:
 
     def action_toggle_tag(self, tag) -> None:
         """Toggle open/closed state of groups with a given tag."""
-        tagged_groups = (g for g in self.walk_groups() if tag in g.tags)
+        tagged_groups = (
+            g for g in self.walk(predicate=is_group) if tag in g.tags)
         fully_open = self.is_fully_open(tag)
         for group in tagged_groups:
             if fully_open:
@@ -1346,13 +1349,13 @@ class Clippets(AppMixin, App):
         else:
             self.loader = DefaultLoader(
                 DEFAULT_CONTENTS, args.snippet_file)
-        groups, title, err = self.loader.load()
+        root, title, err = self.loader.load()
         if err:
             raise StartupError(err)
 
         if title:
             self.TITLE = title                   # pylint: disable=invalid-name
-        super().__init__(groups)
+        super().__init__(cast(Root, root))
         self.args = args
         self.key_handler = KeyHandler(self)
         self.init_bindings()
@@ -1508,13 +1511,18 @@ class Clippets(AppMixin, App):
         """Start the process of populating the snippet widgets."""
         main_screen = cast(MainScreen, self.MODES['main'])
         if self.args.sync_mode:
-            populate_fg(self.walk_snippets, main_screen.lookup_widget)
+            populate_fg(
+                partial(self.walk, predicate=is_snippet),
+                main_screen.lookup_widget)
         else:
             if not self.resolver:
                 self.resolver = asyncio.create_task(resolve(
-                    self.resolver_q, self.lookup, self.walk, self.query_one))
+                    self.resolver_q, self.lookup,
+                    partial(self.walk, predicate=has_uid),
+                    self.query_one))
                 self.populater = asyncio.create_task(populate(
-                    self.populater_q, self.walk_snippets,
+                    self.populater_q,
+                    partial(self.walk, predicate=is_snippet),
                     main_screen.lookup_widget))
             self.resolver_q.put_nowait('rebuild')
             self.populater_q.put_nowait('pop')

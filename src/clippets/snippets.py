@@ -14,12 +14,23 @@ from functools import partial
 from io import StringIO
 from pathlib import Path
 from typing import (
-    Callable, ClassVar, Iterable, Literal, Sequence, TypeAlias, cast)
+    Callable, ClassVar, Iterable, Iterator, Literal, Sequence, TYPE_CHECKING,
+    TypeAlias, TypeVar, Union, cast)
 
 from markdown_strings import esc_format
 
 from . import colors
 from .text import render_text
+
+if TYPE_CHECKING:
+    from rich.text import Text
+
+class Sentinel:                        # pylint: disable=too-few-public-methods
+    """A class to define sentinel values."""
+
+
+SENTINAL = Sentinel()
+SnippetLike = Union['Snippet', 'PlaceHolder']
 
 
 class SnippetInsertionPointer:
@@ -31,37 +42,36 @@ class SnippetInsertionPointer:
     """
 
     def __init__(self, snippet: Snippet):
-        self._snippet = snippet
+        self._snippet: SnippetLike = snippet
         self.after = False
-        self._prev_snippet: bool | None | Snippet = False
-        self._next_snippet: bool | None | Snippet = False
+        self._prev_snippet: Sentinel | None | SnippetLike = SENTINAL
+        self._next_snippet: Sentinel | None | SnippetLike = SENTINAL
 
     @property
-    def snippet(self):
+    def snippet(self) -> SnippetLike:
         """The snippet part of this pointer."""
         return self._snippet
 
     @snippet.setter
-    def snippet(self, value):
+    def snippet(self, value: SnippetLike):
         self._snippet = value
-        self._prev_snippet = False
-        self._next_snippet = False
+        self._prev_snippet = SENTINAL
+        self._next_snippet = SENTINAL
 
     @property
-    def prev_snippet(self):
+    def prev_snippet(self) -> SnippetLike | None:
         """The previous snippet within this snippet's group."""
-        if self._prev_snippet is False:
+        if self._prev_snippet is SENTINAL:
             self._prev_snippet = self.snippet.neighbour(
-                backwards=True, within_group=True, predicate=is_snippet_like)
-        return self._prev_snippet
+                backwards=True, within_group=True)
+        return cast(SnippetLike | None, self._prev_snippet)
 
     @property
-    def next_snippet(self):
+    def next_snippet(self) -> SnippetLike | None:
         """The next snippet within this snippet's group."""
-        if self._next_snippet is False:
-            self._next_snippet = self.snippet.neighbour(
-                within_group=True, predicate=is_snippet_like)
-        return self._next_snippet
+        if self._next_snippet is SENTINAL:
+            self._next_snippet = self.snippet.neighbour(within_group=True)
+        return cast(SnippetLike | None, self._next_snippet)
 
     @property
     def addr(self) -> tuple[str, bool]:
@@ -84,8 +94,7 @@ class SnippetInsertionPointer:
                 self.after = True
                 return
             new_snippet = snippet.neighbour(
-                backwards=backwards, within_group=False,
-                predicate=is_snippet_like)
+                backwards=backwards, within_group=False)
             if new_snippet:
                 self.snippet = new_snippet
                 if isinstance(new_snippet, PlaceHolder):
@@ -140,9 +149,8 @@ class Element:
 
     Many subclasses of Element provide a unique ID, available using a ``uid``
     method. Such UIDs follow a simple naming convention, which other parts of
-    the Clippet's code relies on. Snippet instances have UIDs of
-    the form <snippet>-<n>, for example, 'snippet-6'. The important ID forms
-    are:
+    the Clippet's code relies on. Snippets instances, for example, have UIDs of
+    the form <snippet>-<n> (*e.g.* 'snippet-6'). The important ID forms are:
 
     snippet-<n>
         A simple (text) `Snippet` or a `MarkdownSnippet`.
@@ -174,21 +182,21 @@ class Element:
         self.dirty = True
 
     @property
-    def root(self):
+    def root(self) -> Root:
         """The root group of the tree containing this element."""
         return self.parent.root
 
-    def uid(self):
+    def uid(self) -> str:
         """Derive a unique ID for this element."""
         return self._uid
 
-    def depth(self):
+    def depth(self) -> int:
         """Calculete the depth of this element within the snippet tree."""
         if self.parent:
             return self.parent.depth() + 1
         return 0
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """Detemine if this snippet is empty."""
         return len(self.source_lines) == 0
 
@@ -203,7 +211,7 @@ class Element:
         id_part = f' {self.uid()}' if debug else ''
         return f'{self.__class__.__name__}{id_part}:{spc}{body}'
 
-    def body_repr(self):                          # pylint: disable=no-self-use
+    def body_repr(self) -> str:                   # pylint: disable=no-self-use
         """Format a simple representation of this element's body.
 
         This is intended for test support. The exact format may change between
@@ -211,7 +219,7 @@ class Element:
         """
         return ''                                            # pragma: no cover
 
-    def file_text(self):                          # pylint: disable=no-self-use
+    def file_text(self) -> str:                   # pylint: disable=no-self-use
         """Generate the text that should be written to a file."""
         return ''
 
@@ -226,8 +234,7 @@ class Element:
     def neighbour(
             self, *,
             backwards: bool = False,
-            within_group: bool = False,
-            predicate=lambda _el: True) -> Snippet | None:
+            within_group: bool = False) -> SnippetLike | None:
         """Get this element's immediate neighbour.
 
         :backwards:    If set then find preceding neighbour.
@@ -235,8 +242,9 @@ class Element:
         :predicate:    Funciton to test whether a given element should be
                        considered a neighbour.
         """
-        snippets = self.root.walk(
-            predicate=predicate, first_id=self.uid(), backwards=backwards)
+        snippets: Iterator[Snippet | PlaceHolder] = self.root.walk(
+            predicate=is_snippet_like, first_id=self.uid(),
+            backwards=backwards)
         for i, snippet in enumerate(snippets):
             if i == 1:
                 if within_group and snippet.parent is not self.parent:
@@ -246,7 +254,7 @@ class Element:
         return None
 
     @classmethod
-    def _uid_base_name(cls):
+    def _uid_base_name(cls) -> str:
         return cls.__name__.lower()
 
 
@@ -267,7 +275,7 @@ class TextualElement(Element):
     id_source = itertools.count()
     marker:str = ''
 
-    def add(self, line):
+    def add(self, line) -> None:
         """Add a line to this element."""
         self._source_lines.append(line)
 
@@ -294,7 +302,7 @@ class TextualElement(Element):
         """
         return f'{self.body!r}'
 
-    def file_text(self):
+    def file_text(self) -> str:
         """Generate the text that should be written to a file."""
         s = [f'  {self.marker}']
         for line in self.source_lines:
@@ -315,7 +323,7 @@ class PreservedText(TextualElement):
     id_source = itertools.count()
     has_uid: bool = False
 
-    def file_text(self):
+    def file_text(self) -> str:
         """Generate the text that should be written to a file."""
         return '\n'.join(self.source_lines) + '\n'
 
@@ -331,8 +339,15 @@ class Snippet(TextualElement):
         self._marked_lines = []
 
     @property
-    def marked_lines(self):
-        """The snippet's lines, with keywords marked up."""
+    def marked_lines(self) -> list[str]:
+        """The snippet's lines, with keywords marked up.
+
+        Keywords are surrounded by the Unicode characters u2e24 and 2e25. These
+        look very similar to comma, so they are extremely unlikely to appear in
+        non-marked up text. Immediately following the u2e24 characte is a
+        single letter that is a key indicating the colour that will be used to
+        highligh the keyword.
+        """
         keywords = self.parent.keywords()
         if not self._marked_lines:
             if keywords:
@@ -356,12 +371,17 @@ class Snippet(TextualElement):
         return self._marked_lines
 
     @property
-    def marked_text(self):
-        """The snippet's text, with keywords marked up."""
+    def marked_text(self) -> Text | str:
+        """The snippet's text, with keywords marked up, rendered as Text.
+
+        :return:
+            The method returns a Text instamce, but subclasses may simply
+            return a string.
+        """
         lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
         return render_text('\n'.join(lines))
 
-    def reset(self):
+    def reset(self) -> None:
         """Clear any cached state."""
         self._marked_lines = []
         self.dirty = True
@@ -370,7 +390,7 @@ class Snippet(TextualElement):
         """Test if a snippet is the last in its group."""
         return self.parent.is_last_snippet(self)
 
-    def md_lines(self):
+    def md_lines(self) -> list[str]:
         """Provide snippet lines in Markdown format.
 
         This escapes anything that looks like Markdown syntax.
@@ -390,12 +410,12 @@ class Snippet(TextualElement):
         self.parent.add(inst, after=self)
         return inst
 
-    def set_text(self, text):
+    def set_text(self, text) -> None:
         """Set the text for this snippet."""
         self._marked_lines = []
         self.source_lines = text.splitlines()
 
-    def clean(self) -> Element | None:
+    def clean(self) -> PreservedText | None:
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
@@ -426,7 +446,7 @@ class MarkdownSnippet(Snippet):
 
     marker = '@md@'
 
-    def md_lines(self):
+    def md_lines(self) -> list[str]:
         """Provide snippet lines in Markdown format.
 
         This simply provides unmodified lines.
@@ -434,13 +454,13 @@ class MarkdownSnippet(Snippet):
         return self.body.splitlines()
 
     @property
-    def marked_text(self):
+    def marked_text(self) -> str:
         """The snippet's text, with keywords marked up."""
         lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
         return '\n'.join(lines)
 
     @classmethod
-    def _uid_base_name(cls):
+    def _uid_base_name(cls) -> Literal['snippet']:
         return 'snippet'
 
 
@@ -454,7 +474,7 @@ class KeywordSet(TextualElement):
         super().__init__(*args, **kwargs)
         self.words = set()
 
-    def add(self, line):
+    def add(self, line) -> None:
         """Add a entry to this set of keywords.
 
         The line is split at spaces to obtain the set of keywords.
@@ -464,7 +484,7 @@ class KeywordSet(TextualElement):
         self.words.update(new_words)
 
     @property
-    def text(self):
+    def text(self) -> str:
         """Build the plain text for this snippet."""
         return '\n'.join(sorted(self.words))
 
@@ -476,7 +496,7 @@ class KeywordSet(TextualElement):
         text = '\n'.join(s)
         return text.rstrip() + '\n'
 
-    def body_repr(self):
+    def body_repr(self) -> str:
         """Format a simple representation of this element's body.
 
         This is intended for test support. The exact format may change between
@@ -484,12 +504,12 @@ class KeywordSet(TextualElement):
         """
         return f'{" ".join(sorted(self.words))}'
 
-    def is_empty(self):
+    def is_empty(self) -> bool:
         """Detemine if this keyword set is empty."""
         return not self.words
 
     @classmethod
-    def combine(cls, parent, *keyword_sets):
+    def combine(cls, parent, *keyword_sets) -> KeywordSet:
         """Combine multiple KeywordSet instances into just one."""
         words = set(itertools.chain(*[kws.words for kws in keyword_sets]))
         kws = cls(parent=parent)
@@ -512,9 +532,13 @@ class GroupDebugMixin:
     groups: dict[str, Group]
     children: list[Element]
     parent: Group
-    ordered_groups: list[Group]
 
-    def outline_repr(self, end='\n'):
+    @property
+    def ordered_groups(self) -> list[Group]:
+        """The groups in user-defined order."""
+        return []                                            # pragma: no cover
+
+    def outline_repr(self, end='\n') -> str:
         """Format a simple group-only outline representation of the tree.
 
         This is intended for test support. The exact format may change between
@@ -526,7 +550,7 @@ class GroupDebugMixin:
         return '\n'.join(s) + end
 
     @property
-    def repr_full_name(self):
+    def repr_full_name(self) -> str:
         """The full repr name of this group."""
         if self.parent and self.parent.parent:
             pfull_name = self.parent.repr_full_name if self.parent else ''
@@ -537,7 +561,7 @@ class GroupDebugMixin:
         else:
             return self.name
 
-    def full_repr(self, end='\n', *, debug: bool = False):
+    def full_repr(self, end='\n', *, debug: bool = False) -> str:
         """Format a simple outline representation of the tree.
 
         This is intended for test support. The exact format may change between
@@ -575,22 +599,22 @@ class Group(GroupDebugMixin, Element):
         self.children = [KeywordSet(parent=self)]
 
     @property
-    def ordered_groups(self):
+    def ordered_groups(self) -> list[Group]:
         """The groups in user-defined order."""
         return [self.groups[name] for name in self._ordered_groups]
 
-    def rename(self, name):
+    def rename(self, name) -> None:
         """Change the name of this group."""
         self.parent.rename_child_group(self.name, name)
         self.name = name
 
-    def rename_child_group(self, old_name: str, new_name: str):
+    def rename_child_group(self, old_name: str, new_name: str) -> None:
         """Update to reflect a name change for a child group."""
         idx = self._ordered_groups.index(old_name)
         self._ordered_groups[idx] = new_name
         self.groups[new_name] = self.groups.pop(old_name)
 
-    def add_group(self, name, after: str = ''):
+    def add_group(self, name, after: str = '') -> Group:
         """Add a new group as a child of this group.
 
         :after:
@@ -615,7 +639,8 @@ class Group(GroupDebugMixin, Element):
     def add(
             self, child,
             after: Element | Literal[0] | None = None,
-            before: Element | None = None):
+            before: Element | None = None,
+        ) -> None:
         """Add a new element as a child of this group."""
         children = self.children
         if after == 0:
@@ -629,13 +654,13 @@ class Group(GroupDebugMixin, Element):
         self.children[p:p] = [child]
         child.parent = self
 
-    def add_new(self):
+    def add_new(self) -> Snippet:
         """Add a new snippet at the start of this group."""
         snippet = MarkdownSnippet(parent=self)
         self.add(snippet, after=0)
         return snippet
 
-    def remove(self, child):
+    def remove(self, child) -> None:
         """Remove a child element from this group."""
         with suppress(ValueError):
             self.children.remove(child)
@@ -664,7 +689,7 @@ class Group(GroupDebugMixin, Element):
             if not snippets:
                 self.children.append(PlaceHolder(parent=self))
 
-    def basic_walk(self, *, backwards: bool = False):
+    def basic_walk(self, *, backwards: bool = False) -> Iterator[Element]:
         """Iterate over the entire tree of groups and snippets.
 
         :backwards:
@@ -683,13 +708,13 @@ class Group(GroupDebugMixin, Element):
                 yield from group.basic_walk(backwards=backwards)
 
     @property
-    def root(self):
+    def root(self) -> Root:
         """The root group of the tree containin this group."""
         if self.parent is None:
             return self
         return self.parent.root
 
-    def snippets(self):
+    def snippets(self) -> Iterator[Snippet]:
         """Iterate over all child snippets."""
         yield from (el for el in self.children[1:] if isinstance(el, Snippet))
 
@@ -714,7 +739,7 @@ class Group(GroupDebugMixin, Element):
         return self.keyword_set().words
 
     @property
-    def full_name(self):
+    def full_name(self) -> str:
         """The full name of this group."""
         pfull_name = self.parent.full_name if self.parent else ''
         if pfull_name:
@@ -724,7 +749,7 @@ class Group(GroupDebugMixin, Element):
         else:
             return ''
 
-    def file_text(self):
+    def file_text(self) -> str:
         """Generate the text that should be written to a file."""
         if self.tags:
             return f'{self.full_name} [{" ".join(self.tags)}]\n'
@@ -732,10 +757,13 @@ class Group(GroupDebugMixin, Element):
             return f'{self.full_name}\n'
 
 
+ELT = TypeVar('ELT')
+
+
 class Root(Group):
     """A group that acts as  the root of the snippet tree."""
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset to initialised state.
 
         This is used prior to a complete relead.
@@ -744,8 +772,10 @@ class Root(Group):
         self._ordered_groups = []
 
     def walk(
-            self, predicate=lambda _el: True, *, first_id: str | None = None,
-            after_id: str | None = None, backwards: bool = False):
+            self, predicate: Callable[[Element], type[ELT] | None],
+            *, first_id: str | None = None,
+            after_id: str | None = None, backwards: bool = False,
+        ) -> Iterator[ELT]:
         """Iterate over the entire tree of groups and snippets.
 
         :predicate:
@@ -768,7 +798,7 @@ class Root(Group):
 
     def find_element_by_uid(self, uid) -> Element | None:
         """Find an element with the given UID."""
-        for el in self.walk():
+        for el in self.walk(predicate=is_element):
             if el.uid() == uid:
                 return el
         return None
@@ -776,7 +806,7 @@ class Root(Group):
     def first_snippet(self) -> Snippet | None:
         """Get the first snippet, if any."""
         for el in self.walk(predicate=is_snippet):
-            return el
+            return cast(Snippet, el)
         return None
 
     def first_group(self) -> Group:
@@ -790,7 +820,7 @@ class Root(Group):
             return group
         return self                                          # pragma: no cover
 
-    def update_keywords(self):
+    def update_keywords(self) -> None:
         """Update the keyword tracker with any changes."""
         all_keywords: set[str] = set()
         for group in self.walk(is_group):
@@ -799,8 +829,9 @@ class Root(Group):
 
 
 def walk_group_tree(
-        basic_walk, predicate=lambda _el: True, first_id: str | None = None,
-        after_id: str | None = None):
+        basic_walk, predicate: Callable[[Element], type[ELT] | None],
+        first_id: str | None = None, after_id: str | None = None,
+    ) -> Iterator[ELT]:
     """Perform a walk."""
     it = basic_walk()
     if first_id or after_id:
@@ -831,18 +862,18 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         self.load_time: float = 0.0
         self.stop_event = asyncio.Event()
 
-    def start_monitoring(self, on_change_callback: Callable):
+    def start_monitoring(self, on_change_callback: Callable) -> None:
         """Start a task that monitors for change to the loaded file."""
         self.monitor_task = asyncio.create_task(
             self.monitor(on_change_callback), name='monitor_file')
 
-    async def stop_monitoring(self):
+    async def stop_monitoring(self) -> None:
         """Stop monitoring for changes to the loaded file."""
         if self.monitor_task:
             self.stop_event.set()
             await self.monitor_task
 
-    async def monitor(self, on_change_callback: Callable):
+    async def monitor(self, on_change_callback: Callable) -> None:
         """Task that monitors for changes to the loaded file."""
         async def pause(delay) -> bool:
             await asyncio.wait([stop_waiter], timeout=delay)
@@ -859,7 +890,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
                 if not await pause(2.0):
                     break
 
-    def store(self):
+    def store(self) -> None:
         """Store the current element if not empty."""
         # pylint: disable=assignment-from-no-return
         el = self.el
@@ -870,7 +901,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
             self.cur_group.add(preserved_text)
         self.el = PreservedText(parent=self.cur_group)
 
-    def handle_comment(self, line):
+    def handle_comment(self, line) -> bool:
         """Handle a comment line."""
         if line.startswith('#'):
             if not isinstance(self.el, PreservedText):
@@ -881,7 +912,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         else:
             return False
 
-    def handle_title(self, line):
+    def handle_title(self, line) -> bool:
         """Handle a title line."""
         if line.startswith('@title:'):
             self.store()
@@ -892,7 +923,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         else:
             return False
 
-    def handle_group(self, line):
+    def handle_group(self, line) -> bool:
         """Handle a group start line."""
         r_group = re.compile(r'([^ ].*)')
         m = r_group.match(line)
@@ -908,7 +939,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         else:
             return False
 
-    def handle_marker(self, line):
+    def handle_marker(self, line) -> bool:
         """Handle a marker line."""
         r_marker = re.compile(r'^ +?@(.*)@ *$')
         m = r_marker.match(line)
@@ -924,18 +955,18 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         else:
             return False
 
-    def load(self):
+    def load(self) -> tuple[Root | None, str, str]:
         """Load a tree of snippets from a file."""
-        exc = None
+        exc: OSError | None = None
         try:
             f = self.path.open(mode='rt', encoding='utf8')
         except OSError as exc:
             msg = f'Could not open {self.path}: {exc.strerror}'
-            return None, None, msg
+            return None, '', msg
         else:
             return self._do_load(f)
 
-    def _do_load(self, f):
+    def _do_load(self, f) -> tuple[Root, str, str]:
         self.load_time = self.mtime
         reset_for_reload()
         self.root.reset()
@@ -960,12 +991,12 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
             el.reset()
         return self.root, self.root.title, ''
 
-    def save(self, root):
+    def save(self, root) -> None:
         """Save a snippet tree to the file."""
         with self.path.open('wt', encoding='utf8') as f:
             if root.title:
                 f.write(f'@title: {root.title}\n')
-            for el in root.walk():
+            for el in root.walk(predicate=is_element):
                 f.write(el.file_text())
                 if isinstance(el, Group):
                     kws = el.keyword_set()
@@ -992,11 +1023,11 @@ class DefaultLoader(Loader):
         self.f = StringIO(content)
         self.on_change_callback: Callable[[], None] | None = None
 
-    def load(self):
+    def load(self) -> tuple[Root, str, str]:
         """Load a tree of snippets from a file."""
         return self._do_load(self.f)
 
-    async def become_manifest(self):
+    async def become_manifest(self) -> Loader:
         """Create a Loader from a default loader."""
         loader = Loader(str(self.path), root=self.root)
         loader.save(self.root)
@@ -1005,20 +1036,20 @@ class DefaultLoader(Loader):
             loader.start_monitoring(self.on_change_callback)
         return loader
 
-    def start_monitoring(self, on_change_callback: Callable):
+    def start_monitoring(self, on_change_callback: Callable) -> None:
         """Just store the callback.."""
         self.on_change_callback = on_change_callback
 
-    async def stop_monitoring(self):
+    async def stop_monitoring(self) -> None:
         """Do nothing for the default loader."""
 
 
-def save(path, root):
+def save(path, root) -> None:
     """Save a snippet tree to a file."""
     with Path(path).open('wt', encoding='utf8') as f:
         if root.title:
             f.write(f'@title: {root.title}\n')
-        for el in root.walk():
+        for el in root.walk(predicate=is_element):
             f.write(el.file_text())
             if isinstance(el, Group):
                 kws = el.keyword_set()
@@ -1026,7 +1057,7 @@ def save(path, root):
                     f.write(kws.file_text())
 
 
-def backup_file(path):
+def backup_file(path) -> None:
     """Create a new backup of path.
 
     Up to 10 numbered backups are maintained.
@@ -1046,7 +1077,7 @@ def backup_file(path):
         shutil.copy(path, dirpath / names[0])
 
 
-def reset_for_reload():
+def reset_for_reload() -> None:
     """Perform a 'system' reset.
 
     This is used when the entire snippet tree is be being reloaded.
@@ -1060,7 +1091,7 @@ def reset_for_reload():
     Group.id_source = itertools.count(1)
 
 
-def reset_for_tests():
+def reset_for_tests() -> None:
     """Perform a 'system' reset for test purposes.
 
     This is not intended for non-testing use.
@@ -1068,16 +1099,26 @@ def reset_for_tests():
     reset_for_reload()
 
 
-def is_type(obj, *, classinfo) -> bool:
-    """Test if an object is an instance of the given types.
-
-    This simply wraps the built-in ``isinstance``, but plays nicely with
-    functools.partial.
-    """
-    return isinstance(obj, classinfo)
+def is_element(obj: Element) -> type[Element] | None:
+    """Test if object is a Element."""
+    return Element if isinstance(obj, Element) else None
 
 
-# Useful predicate functions for tree walking.
-is_snippet = partial(is_type, classinfo=Snippet)
-is_snippet_like = partial(is_type, classinfo=(Snippet, PlaceHolder))
-is_group = partial(is_type, classinfo=Group)
+def has_uid(obj: Element) -> type[Element] | None:
+    """Test if object is a Element."""
+    return Element if obj.uid() else None
+
+
+def is_snippet(obj: Element) -> type[Snippet] | None:
+    """Test if object is a Snippet."""
+    return Snippet if isinstance(obj, Snippet) else None
+
+
+def is_group(obj: Element) -> type[Group] | None:
+    """Test if object is a Group."""
+    return Group if isinstance(obj, Group) else None
+
+
+def is_snippet_like(obj: Element) -> type[PlaceHolder] | None:
+    """Test if object is a Group."""
+    return PlaceHolder if isinstance(obj, (PlaceHolder, Snippet)) else None
