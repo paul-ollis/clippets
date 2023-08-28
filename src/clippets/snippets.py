@@ -15,7 +15,7 @@ from io import StringIO
 from pathlib import Path
 from typing import (
     Callable, ClassVar, Iterable, Iterator, Literal, Sequence, TYPE_CHECKING,
-    TypeAlias, TypeVar, Union, cast)
+    TypeAlias, TypeVar, cast)
 
 from markdown_strings import esc_format
 
@@ -29,8 +29,8 @@ class Sentinel:                        # pylint: disable=too-few-public-methods
     """A class to define sentinel values."""
 
 
+ELT = TypeVar('ELT')
 SENTINAL = Sentinel()
-SnippetLike = Union['Snippet', 'PlaceHolder']
 
 
 class SnippetInsertionPointer:
@@ -42,6 +42,7 @@ class SnippetInsertionPointer:
     """
 
     def __init__(self, snippet: Snippet):
+        self.source: Snippet = snippet
         self._snippet: SnippetLike = snippet
         self.after = False
         self._prev_snippet: Sentinel | None | SnippetLike = SENTINAL
@@ -62,7 +63,7 @@ class SnippetInsertionPointer:
     def prev_snippet(self) -> SnippetLike | None:
         """The previous snippet within this snippet's group."""
         if self._prev_snippet is SENTINAL:
-            self._prev_snippet = self.snippet.neighbour(
+            self._prev_snippet = self.snippet.walk_to_next(
                 backwards=True, within_group=True)
         return cast(SnippetLike | None, self._prev_snippet)
 
@@ -70,7 +71,7 @@ class SnippetInsertionPointer:
     def next_snippet(self) -> SnippetLike | None:
         """The next snippet within this snippet's group."""
         if self._next_snippet is SENTINAL:
-            self._next_snippet = self.snippet.neighbour(within_group=True)
+            self._next_snippet = self.snippet.walk_to_next(within_group=True)
         return cast(SnippetLike | None, self._next_snippet)
 
     @property
@@ -78,7 +79,7 @@ class SnippetInsertionPointer:
         """The insertaion point in the form (uid, insert_after)."""
         return self.snippet.uid(), self.after
 
-    def move(self, *, skip: Snippet, backwards: bool = False) -> bool:
+    def move(self, *, backwards: bool = False) -> bool:
         """Move to the next insertion point.
 
         :return:
@@ -90,20 +91,21 @@ class SnippetInsertionPointer:
                 if self.after:
                     self.after = False
                     return
-            elif not self.after and snippet.is_last():
+            elif not self.after and snippet.is_last_in_group:
                 self.after = True
                 return
-            new_snippet = snippet.neighbour(
+            new_snippet = snippet.walk_to_next(
                 backwards=backwards, within_group=False)
             if new_snippet:
                 self.snippet = new_snippet
                 if isinstance(new_snippet, PlaceHolder):
                     self.after = False
-                elif new_snippet.is_last():
+                elif new_snippet.is_last_in_group:
                     self.after = backwards
                 else:
                     self.after = False
 
+        skip = self.source
         saved = self.snippet, self.after
         addr = self.addr
         for _ in range(3):
@@ -127,8 +129,9 @@ class SnippetInsertionPointer:
         else:
             return False
 
-    def move_snippet(self, snippet) -> bool:
-        """Move a given snippet to this insertion point."""
+    def move_source(self) -> bool:
+        """Move the source snippet to this insertion point."""
+        snippet = self.source
         if self.is_next_to(snippet):
             return False                                     # pragma: no cover
         snippet.parent.remove(snippet)
@@ -144,13 +147,13 @@ class SnippetInsertionPointer:
         return f'Pointer({self.snippet.uid()}, {self.after})'
 
 
-class Element:
-    """An element in a tree of groups and snippets.
+class GroupChild:
+    """Base for any class that mey be contained within a group tree.
 
-    Many subclasses of Element provide a unique ID, available using a ``uid``
-    method. Such UIDs follow a simple naming convention, which other parts of
-    the Clippet's code relies on. Snippets instances, for example, have UIDs of
-    the form <snippet>-<n> (*e.g.* 'snippet-6'). The important ID forms are:
+    GroupChild instances provide a unique ID, available using a ``uid`` method.
+    Such UIDs follow a simple naming convention, which other parts of the
+    Clippet's code relies on. Snippets instances, for example, have UIDs of the
+    form <snippet>-<n> (*e.g.* 'snippet-6'). The important ID forms are:
 
     snippet-<n>
         A simple (text) `Snippet` or a `MarkdownSnippet`.
@@ -158,47 +161,52 @@ class Element:
         A snippet `Group`.
     """
 
-    id_source = itertools.count()
-    has_uid: bool = True
+    id_source: Iterator[int] | None = None
 
     def __init__(self, parent: Group):
         self.parent: Group = parent
-        if self.has_uid:
-            n = next(self.id_source)
-            self._uid = f'{self._uid_base_name()}-{n}'
+        self.dirty = True
+        if self.id_source:
+            self._uid = f'{self._uid_base_name()}-{next(self.id_source)}'
         else:
             self._uid = ''
-        self._source_lines: list[str] = []
-        self.dirty = True
-
-    @property
-    def source_lines(self) -> Sequence[str]:
-        """The source lines for this element."""
-        return tuple(self._source_lines)
-
-    @source_lines.setter
-    def source_lines(self, value: Iterable[str]):
-        self._source_lines = list(value)
-        self.dirty = True
 
     @property
     def root(self) -> Root:
-        """The root group of the tree containing this element."""
+        """The root of the containing tree."""
         return self.parent.root
 
-    def uid(self) -> str:
-        """Derive a unique ID for this element."""
-        return self._uid
+    @property
+    def index(self):
+        """The index of this element within its parent container."""
+        return self.parent.index_of(self)
+
+    @property
+    def rindex(self):
+        """The reverse index of this element within its parent container."""
+        return self.parent.rindex_of(self)
 
     def depth(self) -> int:
         """Calculete the depth of this element within the snippet tree."""
-        if self.parent:
-            return self.parent.depth() + 1
-        return 0
+        return self.parent.depth() + 1
 
-    def is_empty(self) -> bool:
-        """Detemine if this snippet is empty."""
-        return len(self.source_lines) == 0
+    def uid(self) -> str:
+        """Provide a unique ID for this element."""
+        return self._uid
+
+    def is_empty(self) -> bool:                   # pylint: disable=no-self-use
+        """Detemine if this child."""
+        return True
+
+    @property
+    def is_first_in_group(self) -> bool:
+        """True if this child is the first in its group."""
+        return self.parent.rindex_of(self) == 0
+
+    @property
+    def is_last_in_group(self) -> bool:
+        """True if this child is the last in its group."""
+        return self.parent.rindex_of(self) == -1
 
     def full_repr(self, *, end='\n', debug: bool = False):
         """Format a simple representation of this element.
@@ -219,60 +227,130 @@ class Element:
         """
         return ''                                            # pragma: no cover
 
+    def clean(self) -> PreservedText | None:      # pylint: disable=no-self-use
+        """Put this in the right place."""
+        return None
+
+    def _walk_to_next(
+            self, *,
+            backwards: bool = False,
+            within_group: bool = False,
+            predicate: Callable[[GroupChild], type[GroupChild] | None],
+            ) -> GroupChild | None:
+        """Tree walk to the next nearest child of comparable type.
+
+        This basically walks the tree until this child is found then the walk
+        is continued until an equivalent child is found.
+
+        :backwards:
+            When set the walk is donwin reverse.
+        :within_group:
+            If set then do not walk up out of the containing group.
+        :return:
+            The next child or ``None``.
+        """
+        elements: Iterator[GroupChild] = self.root.walk(
+            predicate=predicate, after=self, backwards=backwards)
+        for element in elements:
+            if within_group and element.parent is not self.parent:
+                return None
+            else:
+                return element
+        return None
+
+    @classmethod
+    def _uid_base_name(cls) -> str:
+        """Provide a base name for UID strings."""
+        return cls.__name__.lower()
+
+
+class Element:
+    """An element in a tree of groups and snippets.
+
+    This holds information relating to the input file's contents.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._source_lines: list[str] = []
+
+    @property
+    def source_lines(self) -> Sequence[str]:
+        """The source lines for this element."""
+        return tuple(self._source_lines)
+
+    @source_lines.setter
+    def source_lines(self, value: Iterable[str]):
+        self._source_lines = list(value)
+        self.dirty = True
+
+    def is_empty(self) -> bool:
+        """Detemine if this element is empty."""
+        return len(self.source_lines) == 0
+
     def file_text(self) -> str:                   # pylint: disable=no-self-use
         """Generate the text that should be written to a file."""
         return ''
 
-    def clean(self) -> Element | None:                   # type: ignore[return]
+    def clean(self) -> PreservedText | None:
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
         """
         self.source_lines = [
             line.expandtabs().rstrip() for line in self.source_lines]
+        return None
 
-    def neighbour(
+
+class SnippetLike(GroupChild):
+    """A base for all the Snippet and PlaceHolder classes."""
+
+    def walk_to_next(
             self, *,
             backwards: bool = False,
             within_group: bool = False) -> SnippetLike | None:
-        """Get this element's immediate neighbour.
+        """Tree walk to the next nearest snippet or PlaceHolder.
 
-        :backwards:    If set then find preceding neighbour.
-        :within_group: If set then do not check neighbouring groups.
-        :predicate:    Funciton to test whether a given element should be
-                       considered a neighbour.
+        This basically walks the tree until this snippet is found then the walk
+        is continued until the next Snippet or a PlaceHolder is found.
+
+        :backwards:
+            When set the walk is made in reverse order.
+        :within_group:
+            If set then do not walk up out of the containing group.
+        :return:
+            The next child or ``None``.
         """
-        snippets: Iterator[Snippet | PlaceHolder] = self.root.walk(
-            predicate=is_snippet_like, first_id=self.uid(),
-            backwards=backwards)
-        for i, snippet in enumerate(snippets):
-            if i == 1:
-                if within_group and snippet.parent is not self.parent:
-                    return None
-                else:
-                    return snippet
-        return None
-
-    @classmethod
-    def _uid_base_name(cls) -> str:
-        return cls.__name__.lower()
+        return cast(SnippetLike, self._walk_to_next(
+            backwards=backwards, within_group=within_group,
+            predicate=is_snippet_like))
 
 
-class PlaceHolder(Element):
+class PlaceHolder(Element, SnippetLike):
     """A place holder used in empty groups."""
 
-    id_source = itertools.count()
+    id_source: Iterator[int] | None = itertools.count()
 
-    @staticmethod
-    def is_last() -> bool:
-        """Return false."""
+    @property
+    def is_last_in_group(self) -> bool:
+        """Always false.
+
+        A PlaceHolder is never considered to be first or last within a group.
+        """
+        return False                                         # pragma: no cover
+
+    @property
+    def is_first_in_group(self) -> bool:
+        """Always false.
+
+        A PlaceHolder is never considered to be first or last within a group.
+        """
         return False                                         # pragma: no cover
 
 
 class TextualElement(Element):
     """An `Element` that holds text."""
 
-    id_source = itertools.count()
     marker:str = ''
 
     def add(self, line) -> None:
@@ -311,7 +389,7 @@ class TextualElement(Element):
         return text.rstrip() + '\n'
 
 
-class PreservedText(TextualElement):
+class PreservedText(TextualElement, GroupChild):
     """Input file text that is preserved, but non-functional.
 
     This includes:
@@ -320,18 +398,21 @@ class PreservedText(TextualElement):
     = Comment blocks.
     """
 
-    id_source = itertools.count()
-    has_uid: bool = False
+    id_source: Iterator[int] | None = None
 
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
         return '\n'.join(self.source_lines) + '\n'
 
 
-class Snippet(TextualElement):
-    """A plain text snippet."""
+class Snippet(TextualElement, SnippetLike):
+    """A single, multiline snippet of text.
 
-    id_source = itertools.count()
+    This is used fro plain-text snippets and is also the base class for the
+    `MarkdownSnippet`.
+    """
+
+    id_source: Iterator[int] | None = itertools.count()
     marker = '@text@'
 
     def __init__(self, *args, **kwargs):
@@ -386,10 +467,6 @@ class Snippet(TextualElement):
         self._marked_lines = []
         self.dirty = True
 
-    def is_last(self) -> bool:
-        """Test if a snippet is the last in its group."""
-        return self.parent.is_last_snippet(self)
-
     def md_lines(self) -> list[str]:
         """Provide snippet lines in Markdown format.
 
@@ -423,8 +500,8 @@ class Snippet(TextualElement):
         removed.
 
         :return:
-            Any trailing lines that were removed  are returned in a new
-            `PreservedText` instance.
+            Any trailing lines that were removed are returned in a new
+            `PreservedText` instance. Otherwise ``None`` is returned.
         """
         super().clean()
         lines = self._source_lines
@@ -439,6 +516,11 @@ class Snippet(TextualElement):
             return p
         else:
             return None
+
+    @classmethod
+    def _uid_base_name(cls) -> Literal['snippet']:
+        """Provide base name for all types of Snippet."""
+        return 'snippet'
 
 
 class MarkdownSnippet(Snippet):
@@ -459,15 +541,11 @@ class MarkdownSnippet(Snippet):
         lines = textwrap.dedent('\n'.join(self.marked_lines)).splitlines()
         return '\n'.join(lines)
 
-    @classmethod
-    def _uid_base_name(cls) -> Literal['snippet']:
-        return 'snippet'
 
-
-class KeywordSet(TextualElement):
+class KeywordSet(TextualElement, GroupChild):
     """An element holding a set of keywords."""
 
-    id_source = itertools.count()
+    id_source: Iterator[int] | None = itertools.count()
     marker = '@keywords@'
 
     def __init__(self, *args, **kwargs):
@@ -530,7 +608,7 @@ class GroupDebugMixin:
     uid: Callable[[], str]
     name: str
     groups: dict[str, Group]
-    children: list[Element]
+    children: list[GroupChild]
     parent: Group
 
     @property
@@ -579,11 +657,11 @@ class GroupDebugMixin:
         return '\n'.join(s) + end
 
 
-class Group(GroupDebugMixin, Element):
+class Group(GroupDebugMixin, Element, GroupChild):
     """A group of snippets and/or sub groups."""
 
     # pylint: disable=too-many-public-methods
-    id_source = itertools.count()
+    id_source: Iterator[int] | None = itertools.count()
     all_tags: ClassVar[set[str]] = set()
 
     def __init__(self, name, parent=None, tag_text=''):
@@ -596,12 +674,20 @@ class Group(GroupDebugMixin, Element):
         self.tags = sorted(tags)
         for t in self.tags:
             self.all_tags.add(t)
-        self.children = [KeywordSet(parent=self)]
+        self.children: list[GroupChild] = [KeywordSet(parent=self)]
 
     @property
     def ordered_groups(self) -> list[Group]:
         """The groups in user-defined order."""
         return [self.groups[name] for name in self._ordered_groups]
+
+    @property
+    def parents(self):
+        """An immutable sequence of this groups ancestors."""
+        if self.parent:
+            return self.parent, *self.parent.parents
+        else:
+            return ()
 
     def rename(self, name) -> None:
         """Change the name of this group."""
@@ -637,9 +723,9 @@ class Group(GroupDebugMixin, Element):
         return self.groups[name]
 
     def add(
-            self, child,
-            after: Element | Literal[0] | None = None,
-            before: Element | None = None,
+            self, child: GroupChild,
+            after: GroupChild | Literal[0] | None = None,
+            before: GroupChild | None = None,
         ) -> None:
         """Add a new element as a child of this group."""
         children = self.children
@@ -653,6 +739,21 @@ class Group(GroupDebugMixin, Element):
             p = len(children)
         self.children[p:p] = [child]
         child.parent = self
+
+    def add_group_as_group(
+            self, child: Group,
+            after: Group | None = None,
+            before: Group | None = None,
+        ) -> None:
+        """Add a esisting group as a child of this group."""
+        ordered_groups = self._ordered_groups
+        if after:
+            p = ordered_groups.index(after.name) + 1
+        elif before:
+            p = ordered_groups.index(before.name)
+        ordered_groups[p:p] = [child.name]
+        child.parent = self
+        self.groups[child.name] = child
 
     def add_new(self) -> Snippet:
         """Add a new snippet at the start of this group."""
@@ -668,7 +769,12 @@ class Group(GroupDebugMixin, Element):
         if not snippets:
             self.children.append(PlaceHolder(parent=self))
 
-    def clean(self) -> Element | None:                   # type: ignore[return]
+    def remove_group(self, child) -> None:
+        """Remove a child element from this group."""
+        self.groups.pop(child.name)
+        self._ordered_groups.remove(child.name)
+
+    def clean(self) -> PreservedText | None:
         """Clean up this and any child groups.
 
         Empty children and groups are removed and a place-holder added if
@@ -688,8 +794,9 @@ class Group(GroupDebugMixin, Element):
             snippets = [el for el in self.children if isinstance(el, Snippet)]
             if not snippets:
                 self.children.append(PlaceHolder(parent=self))
+        return None
 
-    def basic_walk(self, *, backwards: bool = False) -> Iterator[Element]:
+    def basic_walk(self, *, backwards: bool = False) -> Iterator[GroupChild]:
         """Iterate over the entire tree of groups and snippets.
 
         :backwards:
@@ -707,13 +814,6 @@ class Group(GroupDebugMixin, Element):
                 yield group
                 yield from group.basic_walk(backwards=backwards)
 
-    @property
-    def root(self) -> Root:
-        """The root group of the tree containin this group."""
-        if self.parent is None:
-            return self
-        return self.parent.root
-
     def snippets(self) -> Iterator[Snippet]:
         """Iterate over all child snippets."""
         yield from (el for el in self.children[1:] if isinstance(el, Snippet))
@@ -721,9 +821,38 @@ class Group(GroupDebugMixin, Element):
     def step_group(self, *, backwards: bool = False) -> Group | None:
         """Get the group before or after this onw."""
         for el in self.root.walk(
-                predicate=is_group, after_id=self.uid(), backwards=backwards):
+                predicate=is_group, after=self, backwards=backwards):
             return el
         return None
+
+    def index_of(self, el: GroupChild) -> int:
+        """Calculate the index of an element within its contaning group.
+
+        :return:
+            A value between 0 and len(<container>) - 1.
+        """
+        seq: Sequence[GroupChild]
+        if isinstance(el, Snippet):                              # noqa: SIM108
+            seq = self.children
+        else:
+            seq = self.ordered_groups
+        return seq.index(el)
+
+    def rindex_of(self, el: GroupChild) -> int:
+        """Calculate the reverse index of an element.
+
+        Like `index_of`, but counting backward from the last element starting
+        at -1.
+
+        :return:
+            A value between -len(<container>) and - 1.
+        """
+        if isinstance(el, Group):
+            groups = self.ordered_groups
+            return groups.index(el) - len(groups)
+        else:
+            snippets =  self.children
+            return snippets.index(el) - len(snippets)
 
     def is_last_snippet(self, snippet: Snippet) -> bool:
         """Test if a snippet is the last in this gruop."""
@@ -737,6 +866,40 @@ class Group(GroupDebugMixin, Element):
     def keywords(self) -> set[str]:
         """Provide all the keywords applicable to this group's snippets."""
         return self.keyword_set().words
+
+    @property
+    def next_group(self) -> Group | None:
+        """The group after this one."""
+        groups = self.parent.ordered_groups
+        idx = groups.index(self) + 1
+        return groups[idx] if idx < len(groups) else None
+
+    @property
+    def prev_group(self) -> Group | None:
+        """The group after this one."""
+        groups = self.parent.ordered_groups
+        idx = groups.index(self) - 1
+        return groups[idx] if idx >= 0 else None
+
+    def walk_to_next(
+            self, *,
+            backwards: bool = False,
+            within_group: bool = False) -> Group | None:
+        """Tree walk to the next nearest snippet or PlaceHolder.
+
+        This basically walks the tree until this snippet is found then the walk
+        is continued until the next Snippet or a PlaceHolder is found.
+
+        :backwards:
+            When set the walk is made in reverse order.
+        :within_group:
+            If set then do not walk up out of the containing group.
+        :return:
+            The next child or ``None``.
+        """
+        return cast(Group, self._walk_to_next(
+            backwards=backwards, within_group=within_group,
+            predicate=is_group))
 
     @property
     def full_name(self) -> str:
@@ -757,48 +920,53 @@ class Group(GroupDebugMixin, Element):
             return f'{self.full_name}\n'
 
 
-ELT = TypeVar('ELT')
-
-
 class Root(Group):
-    """A group that acts as  the root of the snippet tree."""
+    """A group that acts as the root of the snippet tree."""
+
+    @property
+    def root(self) -> Root:
+        """This instance; *i.e.* the root of this tree."""
+        return self
+
+    def depth(self) -> Literal[0]:
+        """Return 0, the depth tree root."""
+        return 0
 
     def reset(self) -> None:
         """Reset to initialised state.
 
         This is used prior to a complete relead.
         """
-        self.groups = {}
+        self.groups: dict[str, Group] = {}
         self._ordered_groups = []
 
     def walk(
-            self, predicate: Callable[[Element], type[ELT] | None],
-            *, first_id: str | None = None,
-            after_id: str | None = None, backwards: bool = False,
+            self, predicate: Callable[[GroupChild], type[ELT] | None],
+            *, after: GroupChild | None = None, backwards: bool = False,
         ) -> Iterator[ELT]:
         """Iterate over the entire tree of groups and snippets.
 
         :predicate:
             A function  taking an 'Element' as it only argument. Only elements
             for which this returns a true value are visited.
-        :first_id:
-            If not an empty string, Skip all elements before the one with this
-            ID.
-        :after_id:
-            If not an empty string, Skip all elements upto and including
-            the one with this ID. This and the `first_id` argument are mutually
-            exclusive
+        :after:
+            If provided,skip all elements upto and including this one.
         :backwards:
             If set the walk in reverse order; i.e. last snippt is visited
             first.
         """
-        yield from walk_group_tree(
-            partial(self.basic_walk, backwards=backwards),
-            predicate=predicate, first_id=first_id, after_id=after_id)
+        basic_walk = self.basic_walk(backwards=backwards)
+        if after:
+            for el in basic_walk:
+                if el is after:
+                    break
+        for el in basic_walk:
+            if predicate(el):
+                yield cast(ELT, el)
 
-    def find_element_by_uid(self, uid) -> Element | None:
-        """Find an element with the given UID."""
-        for el in self.walk(predicate=is_element):
+    def find_group_child(self, uid) -> GroupChild | None:
+        """Find an group child element with the given UID."""
+        for el in self.walk(predicate=is_group_child):
             if el.uid() == uid:
                 return el
         return None
@@ -827,30 +995,17 @@ class Root(Group):
             all_keywords |= group.keywords()
         colors.keywords.apply_changes(all_keywords)
 
-
-def walk_group_tree(
-        basic_walk, predicate: Callable[[Element], type[ELT] | None],
-        first_id: str | None = None, after_id: str | None = None,
-    ) -> Iterator[ELT]:
-    """Perform a walk."""
-    it = basic_walk()
-    if first_id or after_id:
-        for el in it:
-            if el.uid() == after_id:
-                break
-            if el.uid() == first_id:
-                if predicate(el):
-                    yield el
-                break
-    for el in it:
-        if predicate(el):
-            yield el
+    @property
+    def total_group_count(self) -> int:
+        """The total number of groups."""
+        return len(list(self.walk(predicate=is_group)))
 
 
+# TODO: Not Python 3.8 compatible.
 ParsedElement: TypeAlias = PreservedText | Snippet | KeywordSet
 
 
-class Loader:                    # pylint: disable=too-many-instance-attributes
+class Loader:
     """Encapsulation of snippet loading machinery."""
 
     def __init__(self, path: str, *, root: Root | None = None):
@@ -892,7 +1047,6 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
 
     def store(self) -> None:
         """Store the current element if not empty."""
-        # pylint: disable=assignment-from-no-return
         el = self.el
         preserved_text = el.clean()
         if not el.is_empty():
@@ -996,7 +1150,7 @@ class Loader:                    # pylint: disable=too-many-instance-attributes
         with self.path.open('wt', encoding='utf8') as f:
             if root.title:
                 f.write(f'@title: {root.title}\n')
-            for el in root.walk(predicate=is_element):
+            for el in root.walk(predicate=is_group_child):
                 f.write(el.file_text())
                 if isinstance(el, Group):
                     kws = el.keyword_set()
@@ -1049,7 +1203,7 @@ def save(path, root) -> None:
     with Path(path).open('wt', encoding='utf8') as f:
         if root.title:
             f.write(f'@title: {root.title}\n')
-        for el in root.walk(predicate=is_element):
+        for el in root.walk(predicate=is_group_child):
             f.write(el.file_text())
             if isinstance(el, Group):
                 kws = el.keyword_set()
@@ -1082,13 +1236,10 @@ def reset_for_reload() -> None:
 
     This is used when the entire snippet tree is be being reloaded.
     """
-    Element.id_source = itertools.count()
-    PlaceHolder.id_source = itertools.count()
-    TextualElement.id_source = itertools.count()
-    PreservedText.id_source = itertools.count()
-    Snippet.id_source = itertools.count()
-    KeywordSet.id_source = itertools.count()
     Group.id_source = itertools.count(1)
+    KeywordSet.id_source = itertools.count()
+    PlaceHolder.id_source = itertools.count()
+    Snippet.id_source = itertools.count()
 
 
 def reset_for_tests() -> None:
@@ -1099,26 +1250,21 @@ def reset_for_tests() -> None:
     reset_for_reload()
 
 
-def is_element(obj: Element) -> type[Element] | None:
+def is_group_child(obj: GroupChild) -> type[GroupChild] | None:
     """Test if object is a Element."""
-    return Element if isinstance(obj, Element) else None
+    return GroupChild if isinstance(obj, GroupChild) else None
 
 
-def has_uid(obj: Element) -> type[Element] | None:
-    """Test if object is a Element."""
-    return Element if obj.uid() else None
-
-
-def is_snippet(obj: Element) -> type[Snippet] | None:
+def is_snippet(obj: GroupChild) -> type[Snippet] | None:
     """Test if object is a Snippet."""
     return Snippet if isinstance(obj, Snippet) else None
 
 
-def is_group(obj: Element) -> type[Group] | None:
+def is_group(obj: GroupChild) -> type[Group] | None:
     """Test if object is a Group."""
     return Group if isinstance(obj, Group) else None
 
 
-def is_snippet_like(obj: Element) -> type[PlaceHolder] | None:
+def is_snippet_like(obj: GroupChild) -> type[SnippetLike] | None:
     """Test if object is a Group."""
-    return PlaceHolder if isinstance(obj, (PlaceHolder, Snippet)) else None
+    return SnippetLike if isinstance(obj, SnippetLike) else None

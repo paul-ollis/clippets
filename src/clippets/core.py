@@ -55,9 +55,9 @@ from .platform import (
     SharedTempFile, dump_clipboard, get_editor_command, get_winpos,
     put_to_clipboard, terminal_title)
 from .snippets import (
-    DefaultLoader, Group, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
-    SnippetInsertionPointer, has_uid, is_element, is_group, is_snippet,
-    is_snippet_like)
+    DefaultLoader, Group, GroupChild, Loader, MarkdownSnippet, PlaceHolder,
+    Root, Snippet, SnippetInsertionPointer, is_group, is_group_child,
+    is_snippet, is_snippet_like)
 from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
@@ -66,7 +66,6 @@ from .widgets import (
 from . import patches                                              # noqa: F401
 
 if TYPE_CHECKING:
-    from .snippets import Element
     from textual.binding import _Bindings
     from textual.timer import Timer
 
@@ -96,19 +95,7 @@ SnippetWidget = Union[MyMarkdown, MyText, Static]
 
 
 class StartupError(Exception):
-    """Error raise when Clippets cannot start."""
-
-
-@dataclass
-class MoveInfo:
-    """Details of snippet being moved.
-
-    @uid:      The ID of snippet being moved.
-    @dest_uid: The ID of the insertion point snippet.
-    """
-
-    source: Snippet
-    dest: SnippetInsertionPointer
+    """Error raised when Clippets cannot start."""
 
 
 def only_in_context(name: str):
@@ -262,7 +249,7 @@ class MainScreen(Screen):
         self.widgets = {}
         all_tags = {
             t: i for i, t in enumerate(sorted(Group.all_tags))}
-        for el in self.walk(predicate=is_element):
+        for el in self.walk(predicate=is_display_node):
             el.dirty = True
             uid = el.uid()
             if isinstance(el, Group):
@@ -478,7 +465,7 @@ class AppMixin:
         self.hover_uid = None
         first_el = self.root.first_snippet() or self.root.first_group()
         self._selection_stack = [Selection(uid=first_el.uid(), user=False)]
-        self.move_info: MoveInfo | None = None
+        self.move_info: SnippetInsertionPointer | None = None
         self.redo_buffer: deque = deque(maxlen=20)
         self.sel_order = False
         self.undo_buffer: deque = deque(maxlen=20)
@@ -503,10 +490,10 @@ class AppMixin:
         return self._selection_stack[-1].uid
 
     @property
-    def selection(self) -> tuple[Element, Widget] | tuple[None, None]:
+    def selection(self) -> tuple[GroupChild, Widget] | tuple[None, None]:
         """The currently selected element and widget."""
         el_id = self._selection_stack[-1].uid
-        el = self.root.find_element_by_uid(el_id)
+        el = self.root.find_group_child(el_id)
         if el is not None:
             return el, self.find_widget(el)
         else:
@@ -541,7 +528,7 @@ class AppMixin:
         """Set and clear widget classes that control snippet highlighting."""
         filter_focussed = (fw := self.focused) and fw.id == 'filter'
         _, selected_widget = self.selection
-        for el in self.walk(predicate=has_uid):
+        for el in self.walk(predicate=is_display_node):
             w = self.find_widget(el)
             w.remove_class('kb_focussed')
             w.remove_class('mouse_hover')
@@ -550,12 +537,12 @@ class AppMixin:
             if isinstance(el, PlaceHolder):
                 w.display = False
             if self.move_info is not None:
-                source, dest = self.move_info.source, self.move_info.dest
-                if w.id != source.uid():
-                    uid, after = dest.addr
-                    if uid != source.uid() and uid == w.id:
+                pointer = self.move_info
+                if w.id != pointer.source.uid():
+                    uid, after = pointer.addr
+                    if uid != pointer.source.uid() and uid == w.id:
                         w.add_class('dest_below' if after else 'dest_above')
-                    if isinstance(dest.snippet, PlaceHolder):
+                    if isinstance(pointer.snippet, PlaceHolder):
                         w.display = True
             else:
                 if w == selected_widget and not filter_focussed:
@@ -590,7 +577,7 @@ class AppMixin:
             if ev.meta:
                 w = getattr(ev, 'snippet', None)
                 if w:
-                    snippet = self.root.find_element_by_uid(w.id)
+                    snippet = self.root.find_group_child(w.id)
                     if snippet:
                         self.action_start_moving_snippet(snippet.uid())
             elif not ev.meta:
@@ -646,7 +633,7 @@ class AppMixin:
                 await self.rename_group(wid)
 
         wid = cast(str, w.id)
-        snippet = self.root.find_element_by_uid(wid)
+        snippet = self.root.find_group_child(wid)
         if snippet:
             self.push_screen(GroupMenu(id='snippet-menu'), on_close)
 
@@ -665,7 +652,7 @@ class AppMixin:
                 self.action_start_moving_snippet(wid)
 
         wid = cast(str, w.id)
-        snippet = self.root.find_element_by_uid(wid)
+        snippet = self.root.find_group_child(wid)
         if snippet:
             self.push_screen(SnippetMenu(id='snippet-menu'), on_close)
 
@@ -790,7 +777,7 @@ class AppMixin:
         snippet, _ = self.selection
         if snippet is not None:
             for next_snippet in self.root.walk(
-                    predicate=is_snippet, after_id=snippet.uid(),
+                    predicate=is_snippet, after=snippet,
                     backwards=inc < 0):
                 next_widget = self.find_widget(next_snippet)
                 if next_widget.display:
@@ -819,7 +806,7 @@ class AppMixin:
             True if a widget was succesffuly selected.
         """
         sel_id = self._selection_stack[-1].uid
-        group = cast(Group, self.root.find_element_by_uid(sel_id))
+        group = cast(Group, self.root.find_group_child(sel_id))
         next_group = group.step_group(backwards=inc < 0)
         while next_group is not None:
             next_widget = self.find_widget(next_group)
@@ -839,7 +826,7 @@ class AppMixin:
         if inc == -1:
             if not sel_id.startswith('snippet-'):
                 return
-            group = cast(Group, self.root.find_element_by_uid(sel_id)).parent
+            group = cast(Group, self.root.find_group_child(sel_id)).parent
             self._selection_stack.append(
                 Selection(uid=group.uid(), user=user))
             w = self.find_widget(group)
@@ -849,9 +836,9 @@ class AppMixin:
             if not sel_id.startswith('group-'):
                 return
             group_id = self._selection_stack.pop().uid
-            group = cast(Group, self.root.find_element_by_uid(group_id))
+            group = cast(Group, self.root.find_group_child(group_id))
             sel_id = self._selection_stack[-1].uid
-            snippet = cast(Snippet, self.root.find_element_by_uid(sel_id))
+            snippet = cast(Snippet, self.root.find_group_child(sel_id))
             if snippet.parent is not group:
                 for snippet in group.snippets():
                     w = self.find_widget(snippet)
@@ -880,9 +867,9 @@ class AppMixin:
                 w.display = flag
 
         matcher = self.filter
-        stack: list[Element] = []
+        stack: list[GroupChild] = []
         opened = True
-        for el in self.walk(predicate=has_uid):
+        for el in self.walk(predicate=is_group_child):
             if isinstance(el, Group):
                 while stack and stack[-1].depth() >= el.depth():
                     stack.pop()
@@ -965,7 +952,7 @@ class AppMixin:
         s = []
         if self.sel_order:
             for id_str in self.added:
-                snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+                snippet = cast(Snippet, self.root.find_group_child(id_str))
                 s.extend(snippet.md_lines())
                 s.append('')
         else:
@@ -995,7 +982,7 @@ class AppMixin:
                 w.scroll_visible(animate=False)
 
         if id_str.startswith('group-'):
-            group = cast(Group, self.root.find_element_by_uid(id_str))
+            group = cast(Group, self.root.find_group_child(id_str))
             screen = GroupNameMenu(
                 'Add group', self.root, id='add_group-dialog')
             self.push_screen(screen, on_close)
@@ -1012,10 +999,10 @@ class AppMixin:
             w.scroll_visible(animate=False)
 
         if id_str.startswith('snippet-'):
-            snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+            snippet = cast(Snippet, self.root.find_group_child(id_str))
             new_snippet = snippet.add_new()
         elif id_str.startswith('group-'):
-            group = cast(Group, self.root.find_element_by_uid(id_str))
+            group = cast(Group, self.root.find_group_child(id_str))
             new_snippet = group.add_new()
         await self.run_editor(
             new_snippet.text, 'Currently editing a new snippet',
@@ -1038,7 +1025,7 @@ class AppMixin:
             w.scroll_visible(animate=False)
 
         if id_str.startswith('snippet-'):
-            snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+            snippet = cast(Snippet, self.root.find_group_child(id_str))
             new_snippet = snippet.duplicate()
             await self.run_editor(
                 new_snippet.text, 'Currently editing a duplicate snippet',
@@ -1053,7 +1040,7 @@ class AppMixin:
                 self.rebuild_after_edits()
 
         if id_str.startswith('snippet-'):
-            snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
+            snippet = cast(Snippet, self.root.find_group_child(id_str))
             await self.run_editor(
                 snippet.text, 'Currently editing a snippet', on_edit_complete)
 
@@ -1119,7 +1106,7 @@ class AppMixin:
                 self.rebuild_after_edits()
 
         if id_str.startswith('group-'):
-            group = cast(Group, self.root.find_element_by_uid(id_str))
+            group = cast(Group, self.root.find_group_child(id_str))
             screen = GroupNameMenu(
                 'Add group', self.root, orig_name=group.name,
                 id='add_group-dialog')
@@ -1140,9 +1127,8 @@ class AppMixin:
         w = self.query_one(f'#{id_str}')
         w.add_class('moving')
 
-        snippet = cast(Snippet, self.root.find_element_by_uid(id_str))
-        dest = SnippetInsertionPointer(snippet)
-        self.move_info = MoveInfo(snippet, dest)
+        snippet = cast(Snippet, self.root.find_group_child(id_str))
+        self.move_info = SnippetInsertionPointer(snippet)
         if not self.action_move_insertion_point('up'):
             self.action_move_insertion_point('down')
         self.set_visuals()
@@ -1172,12 +1158,12 @@ class AppMixin:
 
     def action_complete_move(self):
         """Complete a snippet move operation."""
-        info = self.move_info
+        pointer = self.move_info
         self.action_stop_moving()
-        if info and info.dest.move_snippet(info.source):
+        if pointer and pointer.move_source():
             self.rebuild_after_edits()
             self._selection_stack[:] = [
-                Selection(uid=info.source.uid(), user=True)]
+                Selection(uid=pointer.source.uid(), user=True)]
             self.set_visuals()
 
     def action_do_redo(self) -> None:
@@ -1257,11 +1243,10 @@ class AppMixin:
 
         :direction: Either 'up' or 'down'.
         """
-        info = cast(MoveInfo, self.move_info)
-        snippet, dest = info.source, info.dest
-        if dest.move(backwards=direction == 'up', skip=snippet):
+        pointer = self.move_info
+        if pointer is not None and pointer.move(backwards=direction == 'up'):
             self.set_visuals()
-            w = self.find_widget(dest.snippet)
+            w = self.find_widget(pointer.snippet)
             w.scroll_visible(animate=False)
             return True
         else:
@@ -1303,10 +1288,10 @@ class AppMixin:
         sel = self._selection_stack[-1]
         if sel.uid.startswith('snippet-'):
             group = cast(
-                Snippet, self.root.find_element_by_uid(sel.uid)).parent
+                Snippet, self.root.find_group_child(sel.uid)).parent
             using_snippet = True
         elif sel.uid.startswith('group-'):
-            group = cast(Group, self.root.find_element_by_uid(sel.uid))
+            group = cast(Group, self.root.find_group_child(sel.uid))
             using_snippet = False
         else:
             return                                           # pragma: no cover
@@ -1323,7 +1308,7 @@ class AppMixin:
 
     def action_toggle_add(self):
         """Handle any key that is used to add/remove a snippet."""
-        element = self.root.find_element_by_uid(self.selection_uid)
+        element = self.root.find_group_child(self.selection_uid)
         if isinstance(element, Snippet):
             self.push_undo()
             id_str = self.selection_uid
@@ -1539,7 +1524,7 @@ class Clippets(AppMixin, App):
             if not self.resolver:
                 self.resolver = asyncio.create_task(resolve(
                     self.resolver_q, self.lookup,
-                    partial(self.walk, predicate=has_uid),
+                    partial(self.walk, predicate=is_group_child),
                     self.query_one))
                 self.populater = asyncio.create_task(populate(
                     self.populater_q,
@@ -1737,6 +1722,12 @@ def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         '--sync-mode', action='store_true', help=argparse.SUPPRESS)
     return parser.parse_args(sys_args or sys.argv[1:])
+
+
+def is_display_node(obj: GroupChild) -> type[GroupChild] | None:
+    """Test if object is a Snippet."""
+    display_node_types = Snippet, Group, PlaceHolder
+    return GroupChild if isinstance(obj, display_node_types) else None
 
 
 def main():                                                  # pragma: no cover
