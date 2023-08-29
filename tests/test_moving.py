@@ -186,7 +186,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_snippet_to_start_of_group(
@@ -215,7 +215,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_snippet_to_end_of_group(
@@ -244,7 +244,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_snippet_between_groups(self, infile, snapshot_run):
@@ -272,7 +272,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_snippet_to_other_group_start(
@@ -301,7 +301,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_snippet_to_other_group_end(self, infile, snapshot_run):
@@ -329,7 +329,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_can_empty_a_group(self, infile_g1, snapshot_run):
@@ -356,7 +356,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile_g1, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_can_insert_in_an_empty_group(
@@ -385,7 +385,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile_g0, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_can_insert_in_a_sub_group(
@@ -414,7 +414,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile_g0, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_can_insert_in_an_empty_sub_group(
@@ -441,7 +441,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile_g0x2, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_insertion_point_is_visible(
@@ -452,7 +452,7 @@ class TestKeyboardControlled:
             + ['down'] * n_moves     # Move a number of times.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_insertion_point_is_visisble_top_of_1st_gruop(
@@ -464,7 +464,7 @@ class TestKeyboardControlled:
             + ['up']                 # Move up to top of first group.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_insertion_point_is_visisble_for_empty_group(
@@ -475,7 +475,7 @@ class TestKeyboardControlled:
             + ['down']  * 2          # Move to the empty group.
         )
         _, snapshot_ok = await snapshot_run(infile_g0, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_escape_cancels_move(self, infile, snapshot_run):
@@ -486,7 +486,7 @@ class TestKeyboardControlled:
             + ['escape']             # Cancel moving
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_view_scrolls_for_insertion_point(
@@ -497,7 +497,7 @@ class TestKeyboardControlled:
             + gen_moves('down', 6)   # Move down a number of times.
         )
         _, snapshot_ok = await snapshot_run(longfile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_view_scrolls_for_insertion_only_as_necessary(
@@ -508,7 +508,7 @@ class TestKeyboardControlled:
             + gen_moves('down', 5)   # Move down a number of times.
         )
         _, snapshot_ok = await snapshot_run(longfile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_view_scrolls_for_insertion_point_up(
@@ -521,7 +521,7 @@ class TestKeyboardControlled:
             + gen_moves('up', 6)     # Move to snippet 2.
         )
         _, snapshot_ok = await snapshot_run(longfile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_ignore_for_single_snippet(
@@ -532,7 +532,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(
             single_snippet, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_ignore_for_zero_snippets(
@@ -543,7 +543,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(
             zero_snippets, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestMouseControlled:
@@ -577,7 +577,7 @@ class TestMouseControlled:
             ['right:snippet-5']
         )
         _, snapshot_ok = await snapshot_run_dyn(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_right_click_brings_up_context_menu_for_group(
@@ -587,7 +587,7 @@ class TestMouseControlled:
             ['right:group-1']         # Open group context menu.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_right_context_menu_can_be_quit(
@@ -598,7 +598,7 @@ class TestMouseControlled:
             + ['left:cancel']         # Then just quit.
         )
         _, snapshot_ok = await snapshot_run_dyn(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_group_context_menu_can_be_quit(
@@ -609,7 +609,7 @@ class TestMouseControlled:
             + ['left:cancel']         # Then just quit.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_snippet_within_group(
@@ -622,7 +622,7 @@ class TestMouseControlled:
         )
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert std_result == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_meta_left_initiates_a_move(
@@ -634,7 +634,7 @@ class TestMouseControlled:
         )
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert std_result == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_move_snippet_within_group_kb_buttons(
@@ -648,4 +648,4 @@ class TestMouseControlled:
         )
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert std_result == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'

@@ -55,15 +55,15 @@ from .platform import (
     SharedTempFile, dump_clipboard, get_editor_command, get_winpos,
     put_to_clipboard, terminal_title)
 from .snippets import (
-    DefaultLoader, Group, GroupChild, Loader, MarkdownSnippet, PlaceHolder,
-    Root, Snippet, SnippetInsertionPointer, is_group, is_group_child,
-    is_snippet, is_snippet_like)
+    CannotMove, DefaultLoader, Group, GroupChild, Loader, MarkdownSnippet,
+    PlaceHolder, Root, Snippet, SnippetInsertionPointer, is_group,
+    is_group_child, is_snippet, is_snippet_like)
 from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
     SnippetMenu)
 
-from . import patches                                              # noqa: F401
+from . import patches
 
 if TYPE_CHECKING:
     from textual.binding import _Bindings
@@ -465,7 +465,7 @@ class AppMixin:
         self.hover_uid = None
         first_el = self.root.first_snippet() or self.root.first_group()
         self._selection_stack = [Selection(uid=first_el.uid(), user=False)]
-        self.move_info: SnippetInsertionPointer | None = None
+        self.pointer: Pointer | None = None
         self.redo_buffer: deque = deque(maxlen=20)
         self.sel_order = False
         self.undo_buffer: deque = deque(maxlen=20)
@@ -536,13 +536,13 @@ class AppMixin:
             w.remove_class('dest_below')
             if isinstance(el, PlaceHolder):
                 w.display = False
-            if self.move_info is not None:
-                pointer = self.move_info
-                if w.id != pointer.source.uid():
-                    uid, after = pointer.addr
-                    if uid != pointer.source.uid() and uid == w.id:
+            p = self.pointer
+            if p is not None:
+                if w.id != p.source.uid():
+                    uid, after = p.addr
+                    if uid != p.source.uid() and uid == w.id:
                         w.add_class('dest_below' if after else 'dest_above')
-                    if isinstance(pointer.snippet, PlaceHolder):
+                    if isinstance(p.child, PlaceHolder):
                         w.display = True
             else:
                 if w == selected_widget and not filter_focussed:
@@ -1115,22 +1115,17 @@ class AppMixin:
     ## Snippet position movement.
     def action_start_moving_snippet(self, id_str: str | None = None) -> None:
         """Start moving a snippet to a different position in the tree."""
-        for i, _ in enumerate(self.walk(predicate=is_snippet)):
-            if i == 1:
-                break
-        else:
-            # We have fewer than 2 snippets, moving is impossible.
-            # TODO: What about when groups are collapsed?
-            return
 
         id_str = id_str or self.selection_uid
-        w = self.query_one(f'#{id_str}')
-        w.add_class('moving')
 
         snippet = cast(Snippet, self.root.find_group_child(id_str))
-        self.move_info = SnippetInsertionPointer(snippet)
-        if not self.action_move_insertion_point('up'):
-            self.action_move_insertion_point('down')
+        try:
+            self.pointer = SnippetInsertionPointer(snippet)
+        except CannotMove:
+            return
+
+        w = self.query_one(f'#{id_str}')
+        w.add_class('moving')
         self.set_visuals()
 
     def ensure_selection_visible(self):
@@ -1158,7 +1153,7 @@ class AppMixin:
 
     def action_complete_move(self):
         """Complete a snippet move operation."""
-        pointer = self.move_info
+        pointer = self.pointer
         self.action_stop_moving()
         if pointer and pointer.move_source():
             self.rebuild_after_edits()
@@ -1217,7 +1212,7 @@ class AppMixin:
 
         el, _ = self.selection
         group = cast(Group, el.parent if isinstance(el, Snippet) else el)
-        kw = group.keyword_set()
+        kw = group.keyword_set
         await self.run_editor(
             kw.text, 'Currently editing group keywords', on_edit_complete)
 
@@ -1243,10 +1238,10 @@ class AppMixin:
 
         :direction: Either 'up' or 'down'.
         """
-        pointer = self.move_info
+        pointer = self.pointer
         if pointer is not None and pointer.move(backwards=direction == 'up'):
             self.set_visuals()
-            w = self.find_widget(pointer.snippet)
+            w = self.find_widget(pointer.child)
             w.scroll_visible(animate=False)
             return True
         else:
@@ -1259,10 +1254,10 @@ class AppMixin:
 
     def action_stop_moving(self) -> None:
         """Stop moving a snippet - cancelling the move operation."""
-        if self.move_info:
-            w = self.find_widget(self.move_info.source)
+        if self.pointer:
+            w = self.find_widget(self.pointer.source)
             w.remove_class('moving')
-        self.move_info = None
+        self.pointer = None
         self.set_visuals()
 
     def action_toggle_order(self) -> None:
@@ -1391,7 +1386,7 @@ class Clippets(AppMixin, App):
     def context_name(self) -> str:
         """Provide a name identifying the current context."""
         if self.screen.id == 'main':
-            if self.move_info is not None:
+            if self.pointer is not None:
                 return 'moving'
             elif self.selection_uid == 'filter':
                 return 'filter'

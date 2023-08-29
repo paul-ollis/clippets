@@ -54,7 +54,7 @@ class TestMouseControlled:
             + ['hover:snippet-2']         # Hover over Snippet A2
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_selected_snippets_also_show_highlight(
@@ -69,7 +69,7 @@ class TestMouseControlled:
             + ['hover:snippet-1']         # Hover over Snippet 2
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_highlight_disappears_as_necessary(
@@ -79,7 +79,7 @@ class TestMouseControlled:
             ['hover:group-3']            # Hover over Child A
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestBootstrapping:
@@ -96,7 +96,7 @@ class TestBootstrapping:
         )
         with fix_named_temp_file('test-snippets.txt') as infile:
             _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_user_can_quit_for_nonexistant_file(
@@ -124,7 +124,7 @@ class TestBootstrapping:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert not runner.exited
         assert 'My first snippet.' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_defaulted_file_is_monitored_for_changes(
@@ -140,9 +140,9 @@ class TestBootstrapping:
         actions = (
             ['enter']              # Accept the template.
             + ['e']                # Edit a snippet.
-            + ['pause:0.1']
-            + ['before_snapshot:']
+            + ['wait:0.5:EditorHasExited']
             + [update_file]        # Change the file.
+            + ['pause:0.2']
         )
         expect = clean_text('''
             Group: <ROOT>
@@ -160,7 +160,7 @@ class TestBootstrapping:
         assert not runner.exited
         assert 'My first snippet.' == edit_text_file.prev_text
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_failure_to_read_file_is_handled(

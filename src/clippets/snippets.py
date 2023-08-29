@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import itertools
 import re
 import shutil
@@ -10,7 +11,6 @@ import sys
 import textwrap
 import weakref
 from contextlib import suppress
-from functools import partial
 from io import StringIO
 from pathlib import Path
 from typing import (
@@ -33,118 +33,162 @@ ELT = TypeVar('ELT')
 SENTINAL = Sentinel()
 
 
-class SnippetInsertionPointer:
-    """A 'pointer' of where to insert a snippet within a snippet tree.
+class CannotMove(Exception):
+    """Inidication that a snippet of gruop cannot be moved."""
 
-    An insertion point can be before or after a snippet. Within a group, an
-    insertion point below one snippet is equal to an insertion point above the
-    following snippet.
+
+class FixedPointer:
+    """A 'pointer' of where to insert a child within a group tree.
+
+    An insertion point can be before or after a child. Within a group, an
+    insertion point below one child is equal to an insertion point above the
+    following child.
+
+    Instances of this are considered immutable but subclasses may be mutable.
     """
 
-    def __init__(self, snippet: Snippet):
-        self.source: Snippet = snippet
-        self._snippet: SnippetLike = snippet
-        self.after = False
-        self._prev_snippet: Sentinel | None | SnippetLike = SENTINAL
-        self._next_snippet: Sentinel | None | SnippetLike = SENTINAL
+    def __init__(self, child: GroupChild, *, after: bool):
+        self.child: GroupChild = child
+        self.after = after
 
     @property
-    def snippet(self) -> SnippetLike:
-        """The snippet part of this pointer."""
-        return self._snippet
-
-    @snippet.setter
-    def snippet(self, value: SnippetLike):
-        self._snippet = value
-        self._prev_snippet = SENTINAL
-        self._next_snippet = SENTINAL
+    def prev_in_group(self) -> GroupChild | None:
+        """The previous child within this child's group."""
+        return self.child.prev_in_group
 
     @property
-    def prev_snippet(self) -> SnippetLike | None:
-        """The previous snippet within this snippet's group."""
-        if self._prev_snippet is SENTINAL:
-            self._prev_snippet = self.snippet.walk_to_next(
-                backwards=True, within_group=True)
-        return cast(SnippetLike | None, self._prev_snippet)
-
-    @property
-    def next_snippet(self) -> SnippetLike | None:
-        """The next snippet within this snippet's group."""
-        if self._next_snippet is SENTINAL:
-            self._next_snippet = self.snippet.walk_to_next(within_group=True)
-        return cast(SnippetLike | None, self._next_snippet)
+    def next_in_group(self) -> GroupChild | None:
+        """The next child within this child's group."""
+        return self.child.next_in_group
 
     @property
     def addr(self) -> tuple[str, bool]:
         """The insertaion point in the form (uid, insert_after)."""
-        return self.snippet.uid(), self.after
+        return self.child.uid(), self.after
+
+    def __eq__(self, other: object):
+        """Test for equality wwith another pointer."""
+        if not isinstance(other, FixedPointer):
+            return False
+
+        is_equal = False
+        if self.child is other.child:
+            is_equal = (
+                isinstance(self.child, PlaceHolder)
+                or self.after == other.after)
+        elif self.after and not other.after:
+            is_equal = self.next_in_group is other.child
+        elif not self.after and other.after:
+            is_equal = other.next_in_group is self.child
+
+        return is_equal
+
+    def __ne__(self, other: object):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.child.uid()}, {self.after})'
+
+
+class Pointer(FixedPointer):
+    """Base for the SnippetInsertionPointer and GroupInsertionPointer.
+
+    This always points to a position that is different to the one occupied by
+    the supplied ``child``, raising CannotMove during construction if this
+    condition cannot be met.
+
+    :child:
+        The child that is planned to be moved.
+    """
+
+    def __init__(self, child: GroupChild):
+        super().__init__(child, after=False)
+        self.source: GroupChild = child
+        self.invalid_pointers = (
+            FixedPointer(child, after=False), FixedPointer(child, after=True))
+        if not (self.move(backwards=True) or self.move(backwards=False)):
+            raise CannotMove
 
     def move(self, *, backwards: bool = False) -> bool:
-        """Move to the next insertion point.
+        """Move to the next available insertion point.
 
+        :backwards:
+            If set then move the insertion point backwards.
         :return:
             True if movement occurred.
         """
-        def do_move():
-            snippet = self.snippet
-            if backwards:
-                if self.after:
-                    self.after = False
-                    return
-            elif not self.after and snippet.is_last_in_group:
-                self.after = True
-                return
-            new_snippet = snippet.walk_to_next(
-                backwards=backwards, within_group=False)
-            if new_snippet:
-                self.snippet = new_snippet
-                if isinstance(new_snippet, PlaceHolder):
-                    self.after = False
-                elif new_snippet.is_last_in_group:
-                    self.after = backwards
-                else:
-                    self.after = False
-
-        skip = self.source
-        saved = self.snippet, self.after
-        addr = self.addr
-        for _ in range(3):
-            do_move()
-            if addr != self.addr and not self.is_next_to(skip):
+        p = self._copy()
+        a, b = self.invalid_pointers
+        while self._simplistic_move(backwards=backwards):
+            # pylint: disable=consider-using-in
+            if self != p and self != a and self != b:
+                self.normalise()
                 return True
-
-        self.snippet, self.after = saved
+        self._restore_from(p)
         return False
 
-    def is_next_to(self, snippet: Snippet) -> bool:
-        """Test if a this pointer is adjacent to a snippet."""
-        if self.snippet.parent is not snippet.parent:
-            return False
-        elif self.snippet is snippet:
+    def normalise(self):
+        """Normalise by making 'after == False', if possible."""
+        if isinstance(self.child, PlaceHolder):
+            self.after = False
+        elif self.after:
+            next_child = self.next_in_group
+            if next_child:
+                self.child = next_child
+                self.after = False
+
+    def _simplistic_move(self, *, backwards: bool = False) -> bool:
+        """Move to the next insertion point.
+
+        This performs the smallest possible move, which may results in an
+        equivalent position.
+
+        :backwards:
+            If set then move the insertion point backwards.
+        :return:
+            True if an apparent movement occurred.
+        """
+        if backwards and self.after:
+            self.after = False
             return True
-        elif self.prev_snippet is snippet:
-            return not self.after
-        elif self.next_snippet is snippet:
-            return self.after
+        elif not backwards and not self.after:
+            self.after = True
+            return True
         else:
-            return False
+            next_child = self.child.walk_to_next(
+                backwards=backwards, within_group=False)
+            if next_child:
+                self.child = next_child
+                self.after = backwards
+                return True
+        return False
+
+    def _copy(self):
+        """Make a copy of this pointer."""
+        return copy.copy(self)
+
+    def _restore_from(self, inst: FixedPointer):
+        """Restore this pointer's state from another pointer."""
+        self.__dict__.update(inst.__dict__)
+
+
+class SnippetInsertionPointer(Pointer):
+    """A 'pointer' of where to insert a snippet within the tree."""
+
+    def __init__(self, snippet: Snippet):
+        super().__init__(snippet)
 
     def move_source(self) -> bool:
-        """Move the source snippet to this insertion point."""
-        snippet = self.source
-        if self.is_next_to(snippet):
-            return False                                     # pragma: no cover
-        snippet.parent.remove(snippet)
-        snippet.parent.clean()
+        """Move the source child to this insertion point."""
+        child = self.source
+        child.parent.remove(child)
+        child.parent.clean()
         if self.after:
-            self.snippet.parent.add(snippet, after=self.snippet)
+            self.child.parent.add(child, after=self.child)
         else:
-            self.snippet.parent.add(snippet, before=self.snippet)
-        self.snippet.parent.clean()
+            self.child.parent.add(child, before=self.child)
+        self.child.parent.clean()
         return True
-
-    def __repr__(self):
-        return f'Pointer({self.snippet.uid()}, {self.after})'
 
 
 class GroupChild:
@@ -227,9 +271,18 @@ class GroupChild:
         """
         return ''                                            # pragma: no cover
 
-    def clean(self) -> PreservedText | None:      # pylint: disable=no-self-use
+    def clean(self) -> None:
         """Put this in the right place."""
-        return None
+
+    @property
+    def next_in_group(self) -> GroupChild | None:
+        """The child after this one."""
+        return self.parent.next_child(self)
+
+    @property
+    def prev_in_group(self) -> GroupChild | None:
+        """The child after this one."""
+        return self.parent.prev_child(self)
 
     def _walk_to_next(
             self, *,
@@ -237,18 +290,7 @@ class GroupChild:
             within_group: bool = False,
             predicate: Callable[[GroupChild], type[GroupChild] | None],
             ) -> GroupChild | None:
-        """Tree walk to the next nearest child of comparable type.
-
-        This basically walks the tree until this child is found then the walk
-        is continued until an equivalent child is found.
-
-        :backwards:
-            When set the walk is donwin reverse.
-        :within_group:
-            If set then do not walk up out of the containing group.
-        :return:
-            The next child or ``None``.
-        """
+        """Tree walk to the next nearest child of comparable type."""
         elements: Iterator[GroupChild] = self.root.walk(
             predicate=predicate, after=self, backwards=backwards)
         for element in elements:
@@ -257,6 +299,30 @@ class GroupChild:
             else:
                 return element
         return None
+
+    def walk_to_next(
+            self, *,
+            backwards: bool = False,
+            within_group: bool = False) -> GroupChild | None:
+        """Tree walk to the next nearest child of comparable type.
+
+        This basically walks the tree until this child is found then the walk
+        is continued until a child of the sam basic type is found.
+
+        :backwards:
+            When set the walk is donwin reverse.
+        :within_group:
+            If set then do not walk up out of the containing group.
+        :return:
+            The next child or ``None``.
+        """
+        return cast(SnippetLike, self._walk_to_next(
+            backwards=backwards, within_group=within_group,
+            predicate=self.is_like_me))
+
+    def is_like_me(self, child: GroupChild) -> type[GroupChild] | None:
+        """Test if the child is the of the same basic type."""
+        return GroupChild if isinstance(child, self.__class__) else None
 
     @classmethod
     def _uid_base_name(cls) -> str:
@@ -273,6 +339,8 @@ class Element:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._source_lines: list[str] = []
+        self.leading_text: list[str] = []
+        self.trailing_text: list[str] = []
 
     @property
     def source_lines(self) -> Sequence[str]:
@@ -284,22 +352,29 @@ class Element:
         self._source_lines = list(value)
         self.dirty = True
 
+    def add_leading_text(self, lines: Sequence[str]):
+        """Extend the leading text for this element."""
+        self.leading_text.extend(lines)
+
+    def add_trailing_text(self, lines: Sequence[str]):
+        """Extend the trailing text for this element."""
+        self.trailing_text.extend(lines)
+
     def is_empty(self) -> bool:
-        """Detemine if this element is empty."""
+        """Determine if this element is empty."""
         return len(self.source_lines) == 0
 
     def file_text(self) -> str:                   # pylint: disable=no-self-use
         """Generate the text that should be written to a file."""
         return ''
 
-    def clean(self) -> PreservedText | None:
+    def clean(self) -> None:
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
         """
         self.source_lines = [
             line.expandtabs().rstrip() for line in self.source_lines]
-        return None
 
 
 class SnippetLike(GroupChild):
@@ -382,11 +457,11 @@ class TextualElement(Element):
 
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
-        s = [f'  {self.marker}']
-        for line in self.source_lines:
-            s.append(f'    {line}')
-        text = '\n'.join(s)
-        return text.rstrip() + '\n'
+        s = [f'{line}\n' for line in self.leading_text]
+        s.append(f'  {self.marker}\n')
+        s.extend(f'    {line}\n' for line in self.source_lines)
+        s.extend(f'{line}\n' for line in self.trailing_text)
+        return ''.join(s)
 
 
 class PreservedText(TextualElement, GroupChild):
@@ -395,7 +470,7 @@ class PreservedText(TextualElement, GroupChild):
     This includes:
 
     - Additional vertical space.
-    = Comment blocks.
+    - Comment blocks.
     """
 
     id_source: Iterator[int] | None = None
@@ -492,30 +567,18 @@ class Snippet(TextualElement, SnippetLike):
         self._marked_lines = []
         self.source_lines = text.splitlines()
 
-    def clean(self) -> PreservedText | None:
+    def clean(self) -> None:
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
         Trailing blank lines are deleted and common leading white space
         removed.
-
-        :return:
-            Any trailing lines that were removed are returned in a new
-            `PreservedText` instance. Otherwise ``None`` is returned.
         """
         super().clean()
         lines = self._source_lines
-        removed = []
         while lines and not lines[-1].strip():
-            removed.append(lines.pop())
+            self.add_trailing_text([lines.pop()])
         self._source_lines[:] = textwrap.dedent('\n'.join(lines)).splitlines()
-        if removed:
-            p = PreservedText(parent=self.parent)
-            while removed:
-                p.add(removed.pop())
-            return p
-        else:
-            return None
 
     @classmethod
     def _uid_base_name(cls) -> Literal['snippet']:
@@ -569,8 +632,7 @@ class KeywordSet(TextualElement, GroupChild):
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
         s = [f'  {self.marker}']
-        for line in self.text.splitlines():
-            s.append(f'    {line}')
+        s.extend(f'    {line}' for line in self.text.splitlines())
         text = '\n'.join(s)
         return text.rstrip() + '\n'
 
@@ -610,6 +672,7 @@ class GroupDebugMixin:
     groups: dict[str, Group]
     children: list[GroupChild]
     parent: Group
+    keyword_set: KeywordSet
 
     @property
     def ordered_groups(self) -> list[Group]:
@@ -623,8 +686,7 @@ class GroupDebugMixin:
         releases.
         """
         s = [self.name]
-        for g in self.ordered_groups:
-            s.append(g.outline_repr(end=''))
+        s.extend(g.outline_repr(end='') for g in self.ordered_groups)
         return '\n'.join(s) + end
 
     @property
@@ -649,11 +711,11 @@ class GroupDebugMixin:
             s = [f'Group: {self.repr_full_name} {self.uid()}']
         else:
             s = [f'Group: {self.repr_full_name}']
-        for c in self.children:
-            if not isinstance(c, PlaceHolder):
-                s.append(c.full_repr(end='', debug=debug))
-        for g in self.ordered_groups:
-            s.append(g.full_repr(end='', debug=debug))
+        s.append(self.keyword_set.full_repr(end='', debug=debug))
+        s.extend(
+            c.full_repr(end='', debug=debug) for c in self.children
+            if not isinstance(c, PlaceHolder))
+        s.extend(g.full_repr(end='', debug=debug) for g in self.ordered_groups)
         return '\n'.join(s) + end
 
 
@@ -675,6 +737,7 @@ class Group(GroupDebugMixin, Element, GroupChild):
         for t in self.tags:
             self.all_tags.add(t)
         self.children: list[GroupChild] = [KeywordSet(parent=self)]
+        self.keyword_set: KeywordSet
 
     @property
     def ordered_groups(self) -> list[Group]:
@@ -730,7 +793,7 @@ class Group(GroupDebugMixin, Element, GroupChild):
         """Add a new element as a child of this group."""
         children = self.children
         if after == 0:
-            p = 1
+            p = 0
         elif after:
             p = children.index(after) + 1
         elif before:
@@ -774,7 +837,7 @@ class Group(GroupDebugMixin, Element, GroupChild):
         self.groups.pop(child.name)
         self._ordered_groups.remove(child.name)
 
-    def clean(self) -> PreservedText | None:
+    def clean(self) -> None:
         """Clean up this and any child groups.
 
         Empty children and groups are removed and a place-holder added if
@@ -787,14 +850,32 @@ class Group(GroupDebugMixin, Element, GroupChild):
             child.clean()
         keyword_sets = {c for c in self.children if isinstance(c, KeywordSet)}
         self.children = [c for c in self.children if c not in keyword_sets]
-        kws = KeywordSet.combine(self, *keyword_sets)
-        self.children[0:0] = [kws]
+        self.keyword_set = KeywordSet.combine(self, *keyword_sets)
 
         if self.parent:
             snippets = [el for el in self.children if isinstance(el, Snippet)]
             if not snippets:
                 self.children.append(PlaceHolder(parent=self))
-        return None
+
+    def next_child(self, child: GroupChild) -> GroupChild | None:
+        """Get the next child, of the same basic type, after this one."""
+        children: Sequence[GroupChild]
+        if isinstance(child, Group):
+            children = self.ordered_groups
+        else:
+            children = self.children
+        idx = children.index(child) + 1
+        return children[idx] if idx < len(children) else None
+
+    def prev_child(self, child: GroupChild) -> GroupChild | None:
+        """Get the previous child, of the same basic type, before this one."""
+        children: Sequence[GroupChild]
+        if isinstance(child, Group):
+            children = self.ordered_groups
+        else:
+            children = self.children
+        idx = children.index(child) - 1
+        return children[idx] if idx >= 0 else None
 
     def basic_walk(self, *, backwards: bool = False) -> Iterator[GroupChild]:
         """Iterate over the entire tree of groups and snippets.
@@ -807,16 +888,16 @@ class Group(GroupDebugMixin, Element, GroupChild):
             for group in reversed(self.ordered_groups):
                 yield from group.basic_walk(backwards=backwards)
                 yield group
-            yield from reversed(self.children[1:])
+            yield from reversed(self.children)
         else:
-            yield from self.children[1:]
+            yield from self.children
             for group in self.ordered_groups:
                 yield group
                 yield from group.basic_walk(backwards=backwards)
 
     def snippets(self) -> Iterator[Snippet]:
         """Iterate over all child snippets."""
-        yield from (el for el in self.children[1:] if isinstance(el, Snippet))
+        yield from (el for el in self.children if isinstance(el, Snippet))
 
     def step_group(self, *, backwards: bool = False) -> Group | None:
         """Get the group before or after this onw."""
@@ -859,13 +940,9 @@ class Group(GroupDebugMixin, Element, GroupChild):
         snippets = [el for el in self.children if isinstance(el, Snippet)]
         return bool(snippets) and snippets[-1] is snippet
 
-    def keyword_set(self) -> KeywordSet:
-        """Find the keyword set, for this group."""
-        return cast(KeywordSet, self.children[0])
-
     def keywords(self) -> set[str]:
         """Provide all the keywords applicable to this group's snippets."""
-        return self.keyword_set().words
+        return self.keyword_set.words
 
     @property
     def next_group(self) -> Group | None:
@@ -914,10 +991,14 @@ class Group(GroupDebugMixin, Element, GroupChild):
 
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
+        s = [f'{line}\n' for line in self.leading_text]
         if self.tags:
-            return f'{self.full_name} [{" ".join(self.tags)}]\n'
+            s.append(f'{self.full_name} [{" ".join(self.tags)}]\n')
         else:
-            return f'{self.full_name}\n'
+            s.append(f'{self.full_name}\n')
+        s.extend(f'    {line}\n' for line in self.source_lines)
+        s.extend(f'{line}\n' for line in self.trailing_text)
+        return ''.join(s)
 
 
 class Root(Group):
@@ -1002,7 +1083,7 @@ class Root(Group):
 
 
 # TODO: Not Python 3.8 compatible.
-ParsedElement: TypeAlias = PreservedText | Snippet | KeywordSet
+ParsedElement: TypeAlias = PreservedText | Snippet | KeywordSet | Group
 
 
 class Loader:
@@ -1012,10 +1093,12 @@ class Loader:
         self.path = Path(path)
         self.root = root or Root('<ROOT>')
         self.el: ParsedElement = Snippet(parent=self.root)
+        self.last_added: ParsedElement | None = None
         self.cur_group: Group = Group('')
         self.monitor_task: asyncio.Task | None = None
         self.load_time: float = 0.0
         self.stop_event = asyncio.Event()
+        self.leading_text: list[str] = []
 
     def start_monitoring(self, on_change_callback: Callable) -> None:
         """Start a task that monitors for change to the loaded file."""
@@ -1048,11 +1131,15 @@ class Loader:
     def store(self) -> None:
         """Store the current element if not empty."""
         el = self.el
-        preserved_text = el.clean()
+        el.clean()
         if not el.is_empty():
-            self.cur_group.add(el)
-        if preserved_text:
-            self.cur_group.add(preserved_text)
+            if isinstance(el, PreservedText):
+                self.leading_text.extend(el.source_lines)
+            else:
+                el.add_leading_text(self.leading_text)
+                self.leading_text = []
+                self.cur_group.add(el)
+                self.last_added = el
         self.el = PreservedText(parent=self.cur_group)
 
     def handle_comment(self, line) -> bool:
@@ -1086,8 +1173,11 @@ class Loader:
             text = m.group()
             sub_groups = [g.strip() for g in text.split(':')]
             self.cur_group = self.root.add_group(sub_groups.pop(0))
+            self.cur_group.add_leading_text(self.leading_text)
+            self.leading_text = []
             while sub_groups:
                 self.cur_group = self.cur_group.add_group(sub_groups.pop(0))
+            self.last_added = self.cur_group
             self.el = PreservedText(parent=self.cur_group)
             return True
         else:
@@ -1143,6 +1233,10 @@ class Loader:
 
         for el in self.root.walk(predicate=is_snippet):
             el.reset()
+        if self.last_added:
+            self.last_added.add_trailing_text(self.leading_text)
+        else:
+            self.root.add_trailing_text(self.leading_text)
         return self.root, self.root.title, ''
 
     def save(self, root) -> None:
@@ -1153,7 +1247,7 @@ class Loader:
             for el in root.walk(predicate=is_group_child):
                 f.write(el.file_text())
                 if isinstance(el, Group):
-                    kws = el.keyword_set()
+                    kws = el.keyword_set
                     if not kws.is_empty():
                         f.write(kws.file_text())
         self.load_time = self.mtime
@@ -1206,7 +1300,7 @@ def save(path, root) -> None:
         for el in root.walk(predicate=is_group_child):
             f.write(el.file_text())
             if isinstance(el, Group):
-                kws = el.keyword_set()
+                kws = el.keyword_set
                 if not kws.is_empty():
                     f.write(kws.file_text())
 

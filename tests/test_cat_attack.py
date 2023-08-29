@@ -85,7 +85,7 @@ async def test_normal_mode(infile, snapshot_run):
     actions = sorted(all_keys - valid_normal_action_keys)
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -97,7 +97,7 @@ async def test_normal_mode_group(infile, snapshot_run):
     )
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -109,7 +109,7 @@ async def test_snippet_menu(infile, snapshot_run):
     )
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -121,7 +121,7 @@ async def test_group_menu(infile, snapshot_run):
     )
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -133,7 +133,7 @@ async def test_move_mode(infile, snapshot_run):
     )
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -145,4 +145,4 @@ async def test_help_mode(infile, snapshot_run):
     )
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'

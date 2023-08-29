@@ -58,7 +58,7 @@ async def test_keywords_highlight_in_plaintext_snippets(
     actions = ()
     kw = 'user'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -67,7 +67,7 @@ async def test_keywords_highlight_in_md_snippets(infile, snapshot_run_dyn):
     actions = ()
     kw = 'even only'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -76,7 +76,7 @@ async def test_keywords_work_only_on_whole_words(infile, snapshot_run_dyn):
     actions = ()
     kw = 'correct word'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -88,7 +88,7 @@ async def test_keywords_augment_md_highlighting(infile, snapshot_run_dyn):
     actions = ()
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -106,7 +106,7 @@ async def test_keywords_can_be_edited(
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
     assert 'highlighting\ntext' == edit_text_file.prev_text
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -124,7 +124,7 @@ async def test_ui_is_greyed_out_during_clipboard_editing(
     _, snapshot_ok = await snapshot_run(
         infile(kw), actions, control_editor=True)
     assert 'highlighting\ntext' == edit_text_file.prev_text
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -141,7 +141,7 @@ async def test_select_group_used_if_no_snippets(
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
     assert 'highlighting\ntext' == edit_text_file.prev_text
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestInternalEditor:
@@ -169,4 +169,4 @@ class TestInternalEditor:
         )
         kw = 'highlighting text'
         _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'

@@ -53,7 +53,7 @@ async def test_help_can_be_displayed(infile, snapshot_run):
         ['f1']            # Open the help
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -63,7 +63,7 @@ async def test_footer_click_show_help(infile, snapshot_run):
         ['left:.footer']            # Open the help
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -73,4 +73,4 @@ async def test_help_can_be_hidden(infile, snapshot_run):
         ['f1'] * 2        # Open the help then close it.
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'

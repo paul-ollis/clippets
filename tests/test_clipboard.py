@@ -53,7 +53,7 @@ class TestMouseControlled:
             + ['left:snippet-0']          # Then snippet 1
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_f8_switches_to_insertion_order(
@@ -65,7 +65,7 @@ class TestMouseControlled:
             + ['f8']                      # Then toggle the order
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_f8_acts_as_a_toggle(
@@ -78,7 +78,7 @@ class TestMouseControlled:
             + ['f8']                      # Then toggle it back
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_snippets_can_be_removed(
@@ -90,7 +90,7 @@ class TestMouseControlled:
             + ['left:snippet-1']          # Add remove snippet 2
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_snippets_can_be_used_as_plaintext(
@@ -101,7 +101,7 @@ class TestMouseControlled:
             + ['left:snippet-0']          # Then snippet 1
         )
         _, snapshot_ok = await snapshot_run(infile, actions, options=['--raw'])
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestKeyboardControlled:
@@ -118,7 +118,7 @@ class TestKeyboardControlled:
             + ['enter']
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_f8_switches_to_insertion_order(
@@ -132,7 +132,7 @@ class TestKeyboardControlled:
             + ['f8']                      # Then toggle the order
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_f8_acts_as_a_toggle(
@@ -147,7 +147,7 @@ class TestKeyboardControlled:
             + ['f8']                      # Then toggle it back
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_snippets_can_be_removed(
@@ -162,7 +162,7 @@ class TestKeyboardControlled:
             + ['enter']
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_f3_clears_the_clipboard(self, infile, snapshot_run):
@@ -175,7 +175,7 @@ class TestKeyboardControlled:
             + ['f3']                      # Then remove all snippets.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_the_clipboard_view_shows_a_scrollbar(
@@ -185,7 +185,7 @@ class TestKeyboardControlled:
             ['enter', 'down'] * 5         # Add snippets.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_the_clipboard_can_be_scrolled(
@@ -196,7 +196,7 @@ class TestKeyboardControlled:
             + ['down:view'] * 5
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_group_ignores_add_group_order(
@@ -207,7 +207,7 @@ class TestKeyboardControlled:
             + ['enter']                   # Try to add
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_group_ignores_add_insertion_order(
@@ -219,4 +219,4 @@ class TestKeyboardControlled:
             + ['enter']                   # Try to add
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'

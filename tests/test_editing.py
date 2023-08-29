@@ -86,7 +86,7 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert 'Snippet 2' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_snippet_can_be_duplicated(
@@ -111,7 +111,7 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert 'Snippet 3' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_edit_dup_etc_ignored_for_group(
@@ -134,7 +134,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_snippet_can_be_added_after_a_snippet(
@@ -159,7 +159,7 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_snippet_can_be_added_at_group_start(
@@ -184,7 +184,7 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_snippet_can_be_added_to_an_empty_group(
@@ -205,7 +205,7 @@ class TestKeyboardControlled:
         runner, snapshot_ok = await snapshot_run(empty_group_infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_group_can_be_added(
@@ -234,12 +234,12 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_snippet_can_be_moved_into_new_group(
             self, two_group_infile, snapshot_run):
-        """A new group may be added after another."""
+        """A snippet may be moved into a newly created group."""
         actions = (
             ['left']              # Move to group.
             + ['A']               # Add a new group.
@@ -268,7 +268,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_group_can_be_added_at_end(
@@ -298,7 +298,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_group_can_be_renamed(
@@ -327,7 +327,7 @@ class TestKeyboardControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_duplicate_group_cannot_be_added(
@@ -339,7 +339,7 @@ class TestKeyboardControlled:
             + list('Third')
         )
         _, snapshot_ok = await snapshot_run(two_group_infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_clipboard_can_be_edited(
@@ -354,7 +354,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert 'Snippet 2' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_clipboard_edit_can_be_undone(
@@ -370,7 +370,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert 'Snippet 2' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_clipboard_edit_undo_can_be_redone(
@@ -387,7 +387,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert 'Snippet 2' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_clipboard_edit_can_restored_by_undo_after_new_add(
@@ -409,7 +409,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert 'Snippet 2' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_up_to_10_backups_are_made(
@@ -454,7 +454,7 @@ class TestKeyboardControlled:
         assert 10 == len(infile.backup_paths())                 # noqa: PLR2004
         assert expect == runner.app.root.full_repr()
         assert 'Snippet 13' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_ui_is_greyed_out_during_snippet_editing(
@@ -470,7 +470,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(
             infile, actions, control_editor=True)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_ui_is_greyed_out_during_snippet_duplication(
@@ -486,7 +486,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(
             infile, actions, control_editor=True)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_ui_is_greyed_out_during_clipboard_editing(
@@ -502,7 +502,7 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(
             infile, actions, control_editor=True)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestMouseControlled:
@@ -530,7 +530,7 @@ class TestMouseControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert 'Snippet 2' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_snippet_can_be_duplicated(
@@ -555,7 +555,7 @@ class TestMouseControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert 'Snippet 3' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_snippet_can_be_added_after_a_snippet(
@@ -580,7 +580,7 @@ class TestMouseControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_snippet_can_be_added_at_group_start(
@@ -605,7 +605,7 @@ class TestMouseControlled:
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_group_can_be_added(
@@ -634,7 +634,7 @@ class TestMouseControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_group_can_be_renamed(
@@ -662,7 +662,7 @@ class TestMouseControlled:
         ''')
         runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_group_rename_allows_original_name(
@@ -675,7 +675,7 @@ class TestMouseControlled:
             + list('Third')
         )
         _, snapshot_ok = await snapshot_run(two_group_infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestInternalEditor:
@@ -709,7 +709,7 @@ class TestInternalEditor:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_snippet_can_be_duplicated(
@@ -735,7 +735,7 @@ class TestInternalEditor:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_clipboard_can_be_edited(
@@ -750,7 +750,7 @@ class TestInternalEditor:
             + ['ctrl+s']
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_editing_can_be_abandoned(
@@ -774,7 +774,7 @@ class TestInternalEditor:
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_a_new_snippet_can_be_added_to_and_empty_group(
@@ -796,4 +796,4 @@ class TestInternalEditor:
         runner, snapshot_ok = await snapshot_run(empty_group_infile, actions)
         assert expect == runner.app.root.full_repr()
         assert '' == edit_text_file.prev_text
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'

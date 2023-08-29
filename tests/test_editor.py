@@ -55,7 +55,7 @@ async def test_mouse_can_place_the_cursor(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -69,7 +69,7 @@ async def test_mouse_can_make_selection(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -87,7 +87,7 @@ async def test_can_copy_and_paste(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -105,7 +105,7 @@ async def test_can_cut_and_paste(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -120,7 +120,7 @@ async def test_printable_key_replace_selection(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -138,7 +138,7 @@ async def test_paste_replace_selection(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -153,7 +153,7 @@ async def test_ctrl_a_selects_everything(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -167,7 +167,7 @@ async def test_page_down_key_is_handled(long_infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(long_infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -182,7 +182,7 @@ async def test_page_up_key_is_handled(long_infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(long_infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -199,7 +199,7 @@ async def test_right_arrow_key_scrolls_appropriately(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -218,7 +218,7 @@ async def test_left_arrow_key_scrolls_appropriately(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -234,7 +234,7 @@ async def test_ctrl_home_moves_cursor_to_start_of_buffer(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(long_infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -249,7 +249,7 @@ async def test_ctrl_end_moves_cursor_to_end_of_buffer(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(long_infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -269,7 +269,7 @@ async def test_arrow_keys_move_the_cursor(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -284,7 +284,7 @@ async def test_ctrl_right_key_moves_word_wise(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -299,7 +299,7 @@ async def test_ctrl_right_stops_end_end_of_last_line(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -314,7 +314,7 @@ async def test_ctrl_left_key_moves_word_wise(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -329,7 +329,7 @@ async def test_ctrl_left_stops_at_start_of_first_line(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -344,7 +344,7 @@ async def test_right_arrow_wraps(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -360,7 +360,7 @@ async def test_right_arrow_stops_at_end_of_last_line(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -375,7 +375,7 @@ async def test_left_arrow_wraps(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -388,7 +388,7 @@ async def test_left_arrow_stops_at_start_of_first_line(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -403,7 +403,7 @@ async def test_up_arrow_stops_at_start_of_buffer(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -419,7 +419,7 @@ async def test_down_arrow_stops_at_end_of_buffer(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -435,7 +435,7 @@ async def test_enter_starts_new_line(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -451,7 +451,7 @@ async def test_enter_splits_a_line(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -469,7 +469,7 @@ async def test_enter_keeps_indent(
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -483,7 +483,7 @@ async def test_tab_key_inserts_4_spaces(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -499,7 +499,7 @@ async def test_backspace_deletes_previous_character(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -513,7 +513,7 @@ async def test_backspace_deletes_the_selection(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -530,7 +530,7 @@ async def test_del_deletes_previous_character(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -544,4 +544,4 @@ async def test_del_deletes_the_selection(infile, snapshot_run):
         + ['ctrl+q']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'

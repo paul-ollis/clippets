@@ -50,12 +50,11 @@ async def test_change_to_the_file_is_detected(infile, snapshot_run):
         populate(infile, text)
 
     actions = (
-        ['pause: 0.01']
-        + ['before_snapshot:']
-        + [update_file]
+        [update_file]
+        + ['pause: 0.2']
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -82,7 +81,7 @@ async def test_change_to_the_file_can_be_loadd(infile, snapshot_run):
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -110,7 +109,7 @@ async def test_change_to_the_file_can_be_ignored(infile, snapshot_run):
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -150,7 +149,7 @@ async def test_folded_groups_fold_are_lost(infile, snapshot_run):
     populate(infile, multi_group_infile)
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -178,7 +177,7 @@ async def test_selection_is_adjusted_if_necessary(infile, snapshot_run):
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -198,7 +197,7 @@ async def test_display_scrolls_if_necessary(infile, snapshot_run):
     )
     populate(infile, long_infile_text)
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -221,7 +220,7 @@ async def test_zero_snippets_is_handled(infile, snapshot_run):
     ''')
     runner, snapshot_ok = await snapshot_run(infile, actions)
     assert expect == runner.app.root.full_repr()
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -235,4 +234,4 @@ async def test_deletion_of_the_file_is_hnandled(infile, snapshot_run):
         + [remove_file]
     )
     _, snapshot_ok = await snapshot_run(infile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'

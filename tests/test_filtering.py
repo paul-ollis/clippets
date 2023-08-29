@@ -72,7 +72,7 @@ class TestMouseControlled:
             + ['left:group-5']            # Fold the fifth group
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_groups_can_be_opened(self, infile, snapshot_run):
@@ -84,7 +84,7 @@ class TestMouseControlled:
             + ['left:group-5']            # Open the fifth group
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_fold_can_move_selection(self, infile, snapshot_run):
@@ -94,7 +94,7 @@ class TestMouseControlled:
                                           # selection to move.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_fold_can_move_selection_up(self, infile, snapshot_run):
@@ -105,7 +105,7 @@ class TestMouseControlled:
                                           # selection to move.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_open_can_move_selection(self, infile, snapshot_run):
@@ -117,7 +117,7 @@ class TestMouseControlled:
                                           # the selection to be restored.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_sel_move_kills_restore(self, infile, snapshot_run):
@@ -130,7 +130,7 @@ class TestMouseControlled:
                                           # the selection to be restored.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_nested_groups_can_be_folded(self, infile, snapshot_run):
@@ -140,7 +140,7 @@ class TestMouseControlled:
             + ['left:group-2']            # Fold the second (parent) group
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_nested_group_fold_state_is_preserved(
@@ -152,7 +152,7 @@ class TestMouseControlled:
             + ['left:group-2']            # Re-open the parent group
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize(
@@ -165,7 +165,7 @@ class TestMouseControlled:
             [f'left:tag-tag-{tag}']     # Fold all tagged groups
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     @pytest.mark.parametrize("tag", ['a-0', 'b-1', 'c-0'])
@@ -177,7 +177,7 @@ class TestMouseControlled:
             + [f'left:tag-tag-{tag}']   # Fold all tagged groups
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_tags_open_if_partially_closed(self, infile, snapshot_run):
@@ -188,7 +188,7 @@ class TestMouseControlled:
             + ['left:tag-tag-c-3']    # Open all tag-c groups
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_f9_closes_unless_all_open(self, infile, snapshot_run):
@@ -201,7 +201,7 @@ class TestMouseControlled:
             + ['f9']              # Close all remaining folds
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_f9_opens_if_all_manually_closed(self, infile, snapshot_run):
@@ -215,7 +215,7 @@ class TestMouseControlled:
             + ['f9']              # Open all folds
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestKeyboardControlled:
@@ -231,7 +231,7 @@ class TestKeyboardControlled:
             ['f9']              # Fold the entire tree
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_entire_tree_can_be_expanded(self, infile, snapshot_run):
@@ -241,7 +241,7 @@ class TestKeyboardControlled:
             + ['f9']            # Expand the entire tree
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_groups_can_be_folded(self, infile, snapshot_run):
@@ -254,7 +254,7 @@ class TestKeyboardControlled:
             + ['f']                       # Close group.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_fold_works_when_snippet_selected(
@@ -269,7 +269,7 @@ class TestKeyboardControlled:
             + ['f']                       # Close group.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_unfold_reverts_snippet_selected(
@@ -286,7 +286,7 @@ class TestKeyboardControlled:
             + ['f']                       # Reopen the group.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_ins_key_toggles_folds(self, infile, snapshot_run):
@@ -301,7 +301,7 @@ class TestKeyboardControlled:
             + ['insert']                  # Re-open the third gruop.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_field_down_selects_snippets(
@@ -312,7 +312,7 @@ class TestKeyboardControlled:
             + ['2']             # Select only snippets containting '2'.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_ctrl_f_drops_focus(
@@ -328,7 +328,7 @@ class TestKeyboardControlled:
             + ['ctrl+f']        # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_down_drops_focus(
@@ -344,7 +344,7 @@ class TestKeyboardControlled:
             + ['down']          # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_up_drops_focus(
@@ -360,7 +360,7 @@ class TestKeyboardControlled:
             + ['up']            # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_field_can_hide_everything(
@@ -371,7 +371,7 @@ class TestKeyboardControlled:
             + list('spam')      # Hide all the snippets.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_ctrl_f_drops_focus_when_all_hidden(
@@ -383,7 +383,7 @@ class TestKeyboardControlled:
             + ['ctrl+f']        # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_ctrl_b_clears_the_filter(
@@ -396,7 +396,7 @@ class TestKeyboardControlled:
             + ['ctrl+b']        # Clear the filter.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_uses_regular_expressions(
@@ -407,7 +407,7 @@ class TestKeyboardControlled:
             + list('[AB]')      # Select only snippets containting 'A' or 'B'.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
     async def test_filter_malformed_re_falls_back_to_plaintext_matching(
@@ -422,4 +422,4 @@ class TestKeyboardControlled:
             + list('[AB')       # Enter mal-formed expression.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok
+        assert snapshot_ok, 'Snapshot does not match stored version'

@@ -84,7 +84,7 @@ async def test_view_scrolls_as_necessary_on_down(
         ['down'] * d_moves                 # Move down a number of times.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -94,7 +94,7 @@ async def test_view_only_scrolls_down_as_necessary(longfile, snapshot_run):
         ['down'] * 6                       # Move down a number of times.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -108,7 +108,7 @@ async def test_view_scrolls_as_necessary_on_up(
     )
 
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -119,7 +119,7 @@ async def test_move_down_skips_closed_groups(longfile, snapshot_run):
         + ['down'] * 3                     # Move down to snippet 6.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -131,7 +131,7 @@ async def test_move_up_skips_closed_groups(longfile, snapshot_run):
         + ['up']                           # Move down to snippet 3.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -144,7 +144,7 @@ async def test_no_snippets_is_handled(longfile, snapshot_run):
         ['down']                           # Try to move down.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -154,7 +154,7 @@ async def test_left_moves_to_group_names(longfile, snapshot_run):
         ['left']                           # Move into the group names.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -165,7 +165,7 @@ async def test_left_stops_within_groups(longfile, snapshot_run):
         + ['left']                         # Pressing again does nothing.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -175,7 +175,7 @@ async def test_right_stops_within_snippets(longfile, snapshot_run):
         ['right']                          # Try to move righ in snippets.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -186,7 +186,7 @@ async def test_down_moves_within_groups_and_scrolls(longfile, snapshot_run):
         + ['down'] * 3                     # Move to the last group.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -198,7 +198,7 @@ async def test_down_skip_hidden_groups(ext_nested_file, snapshot_run):
         + ['down']                         # Move to the last group.
     )
     _, snapshot_ok = await snapshot_run(ext_nested_file, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -211,7 +211,7 @@ async def test_unfold_after_group_move_scrolls(ext_nested_file, snapshot_run):
         + ['f9']                           # Close all groups.
     )
     _, snapshot_ok = await snapshot_run(ext_nested_file, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -223,7 +223,7 @@ async def test_up_moves_within_groups(longfile, snapshot_run):
         + ['up'] * 2                       # Move to the second group.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -235,7 +235,7 @@ async def test_down_stops_at_last_gruop(longfile, snapshot_run):
         + ['down'] * 2                     # Try to move beyond.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -248,7 +248,7 @@ async def test_up_stops_at_first_group(longfile, snapshot_run):
         + ['up'] * 2                       # Try to move beyond.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -260,7 +260,7 @@ async def test_left_then_right_keeps_snippet_section(longfile, snapshot_run):
         + ['right']                        # Move back to the seleced snippet.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -274,7 +274,7 @@ async def test_first_snippet_selected_when_group_is_changed(
         + ['right']                        # To first snippet in this group.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -286,7 +286,7 @@ async def test_closing_group_with_mouse_keeps_selection_in_groups(
         + ['left:group-3']                 # Close the third group.
     )
     _, snapshot_ok = await snapshot_run(nested_file, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -300,7 +300,7 @@ async def test_cannot_enter_zero_snippet_group(
         + ['right']                        # Try to enter it.
     )
     _, snapshot_ok = await snapshot_run(nested_file, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -314,7 +314,7 @@ async def test_cannot_enter_closed_group(
         + ['right']                        # Try to enter it.
     )
     _, snapshot_ok = await snapshot_run(nested_file, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
@@ -328,4 +328,4 @@ async def test_open_groups_can_be_entered(
         + ['right']                        # Enter it.
     )
     _, snapshot_ok = await snapshot_run(nested_file, actions)
-    assert snapshot_ok
+    assert snapshot_ok, 'Snapshot does not match stored version'
