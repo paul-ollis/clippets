@@ -41,7 +41,7 @@ class MyMarkdown(Markdown, StdMixin):
     def on_click(self, event):
         """Process a mouse click."""
         if 'is_snippet' in self.classes:
-            event.snippet = self
+            event.widget = self
 
 
 class MyText(Static, StdMixin):
@@ -50,7 +50,7 @@ class MyText(Static, StdMixin):
     def on_click(self, event):
         """Process a mouse click."""
         if 'is_snippet' in self.classes:
-            event.snippet = self
+            event.widget = self
 
 
 class MyLabel(Label, StdMixin):
@@ -59,7 +59,7 @@ class MyLabel(Label, StdMixin):
     def on_click(self, event):
         """Process a mouse click."""
         if 'is_group' in self.classes:
-            event.group = self
+            event.widget = self
 
 
 class MyTag(MyLabel):                      # pylint: disable=too-many-ancestors
@@ -67,7 +67,7 @@ class MyTag(MyLabel):                      # pylint: disable=too-many-ancestors
 
     def on_click(self, event):
         """Process a mouse click."""
-        event.tag = self
+        event.widget = self
 
 
 class MyVerticalScroll(VerticalScroll, StdMixin):

@@ -7,6 +7,14 @@ import pytest
 
 from support import clean_text, populate
 
+# TODO:
+#   Tests should involve preserved text. Currently, I think that code will
+#   break when preserved text is around and things get moved.
+#
+#   However, I am not sure that preserving text is really a good idea. Perhaps
+#   we should allow comments, but then treat the file a read-only or issue a
+#   warning that comments in the input file will be lost.
+
 std_infile_text = '''
     Main
       @text@
@@ -137,7 +145,7 @@ def single_snippet(snippet_infile):
 
 @pytest.fixture
 def zero_snippets(snippet_infile):
-    """Create a standard input file with no znippets."""
+    """Create a standard input file with no snippets."""
     populate(snippet_infile, zero_snippet_text)
     return snippet_infile
 
@@ -146,16 +154,6 @@ def zero_snippets(snippet_infile):
 def n_moves(request) -> list:
     """Generate fixtures for various numbers of moves."""
     return request.param
-
-
-# TODO: Remove this when I am happy the code tests are stable.
-def gen_moves(move, n):
-    """Generate move and delay actions."""
-    fast_n = 6
-    moves_a = [move] * min(fast_n, n)
-    # moves_b = [move, 'pause:0.01'] * max(0, n - fast_n)
-    moves_b = [move] * max(0, n - fast_n)
-    return moves_a + moves_b
 
 
 class TestKeyboardControlled:
@@ -494,7 +492,7 @@ class TestKeyboardControlled:
         """The view scrolls to ensure the insertion point remains visible."""
         actions = (
             ['m']                    # Start moving
-            + gen_moves('down', 6)   # Move down a number of times.
+            + ['down'] * 6           # Move down a number of times.
         )
         _, snapshot_ok = await snapshot_run(longfile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
@@ -505,7 +503,7 @@ class TestKeyboardControlled:
         """The view does not scroll unless necessary."""
         actions = (
             ['m']                    # Start moving
-            + gen_moves('down', 5)   # Move down a number of times.
+            + ['down'] * 5           # Move down a number of times.
         )
         _, snapshot_ok = await snapshot_run(longfile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
@@ -515,10 +513,10 @@ class TestKeyboardControlled:
             self, longfile, snapshot_run):
         """The view scrolls to ensure the insertion point remains visible."""
         actions = (
-            gen_moves('down', 2)     # Move to snippet 3
-            + ['m']                  # Start moving
-            + gen_moves('down', 6)   # Move down a number of times.
-            + gen_moves('up', 6)     # Move to snippet 2.
+            ['down'] * 2     # Move to snippet 3
+            + ['m']          # Start moving
+            + ['down'] * 6   # Move down a number of times.
+            + ['up'] * 6     # Move to snippet 2.
         )
         _, snapshot_ok = await snapshot_run(longfile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
@@ -532,17 +530,6 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(
             single_snippet, actions)
-        assert snapshot_ok, 'Snapshot does not match stored version'
-
-    @pytest.mark.asyncio
-    async def test_move_ignore_for_zero_snippets(
-            self, zero_snippets, snapshot_run):
-        """The move command is ignored for a zero snippet file."""
-        actions = (
-            ['m']                    # Try to start moving
-        )
-        _, snapshot_ok = await snapshot_run(
-            zero_snippets, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
 
 

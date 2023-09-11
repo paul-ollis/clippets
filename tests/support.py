@@ -382,7 +382,6 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
         self.pilot = None
         self.exited = False
         self.svg = ''
-        self.before_svg = ''
         if control_editor:
             self.watch_file = TempTestFile()
             os.environ['CLIPPETS_TEST_WATCH_FILE'] = self.watch_file.name
@@ -446,12 +445,7 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
             await asyncio.sleep(0.02)
             new_svg = self.app.export_screenshot()
             if svg == new_svg:
-                if self.before_svg:
-                    if svg != self.before_svg:
-                        self.before_svg = ''
-                        return svg
-                else:
-                    return svg
+                return svg
             svg = new_svg
 
         msg = 'Timed out waiting for stable screen shot'     # pragma: no cover
@@ -487,10 +481,6 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
     async def exec_snapshot(self, arg):
         """Execute a snapshot action."""
         self.svg = await self.take_screenshot()
-
-    async def exec_before_snapshot(self, arg):
-        """Execute a snapshot action to obtain a 'before' image."""
-        self.before_svg = await self.take_screenshot()
 
     async def exec_end_edit(self, arg):
         """Execute a end_edit action."""

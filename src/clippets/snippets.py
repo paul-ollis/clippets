@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import itertools
 import re
 import shutil
@@ -52,11 +51,6 @@ class FixedPointer:
         self.after = after
 
     @property
-    def prev_in_group(self) -> GroupChild | None:
-        """The previous child within this child's group."""
-        return self.child.prev_in_group
-
-    @property
     def next_in_group(self) -> GroupChild | None:
         """The next child within this child's group."""
         return self.child.next_in_group
@@ -69,7 +63,7 @@ class FixedPointer:
     def __eq__(self, other: object):
         """Test for equality wwith another pointer."""
         if not isinstance(other, FixedPointer):
-            return False
+            return False                                     # pragma: no cover
 
         is_equal = False
         if self.child is other.child:
@@ -82,9 +76,6 @@ class FixedPointer:
             is_equal = other.next_in_group is self.child
 
         return is_equal
-
-    def __ne__(self, other: object):
-        return not self.__eq__(other)
 
     def __repr__(self):
         return f'{self.__class__.__name__}({self.child.uid()}, {self.after})'
@@ -99,45 +90,36 @@ class Pointer(FixedPointer):
 
     :child:
         The child that is planned to be moved.
+    :pointers:
+        All the possible pointer positions.
     """
 
-    def __init__(self, child: GroupChild):
+    def __init__(self, child: GroupChild, pointers: list[FixedPointer]):
         super().__init__(child, after=False)
+        self.pointers = pointers
         self.source: GroupChild = child
-        self.invalid_pointers = (
+        invalid_pointers = (
             FixedPointer(child, after=False), FixedPointer(child, after=True))
-        if not (self.move(backwards=True) or self.move(backwards=False)):
+
+        # Try to choose a starting point just above the source.
+        self.idx = 0
+        for i, p in enumerate(self.pointers):
+            if p in invalid_pointers:
+                self.idx = max(0, i -1)
+                break
+
+        # Now remove the invliad pointers, after which we may find that moving
+        # is not possible.
+        self.pointers = [
+            p for p in self.pointers if p not in invalid_pointers]
+        if not self.pointers:
             raise CannotMove
 
+        p = self.pointers[self.idx]
+        self.child = p.child
+        self.after = p.after
+
     def move(self, *, backwards: bool = False) -> bool:
-        """Move to the next available insertion point.
-
-        :backwards:
-            If set then move the insertion point backwards.
-        :return:
-            True if movement occurred.
-        """
-        p = self._copy()
-        a, b = self.invalid_pointers
-        while self._simplistic_move(backwards=backwards):
-            # pylint: disable=consider-using-in
-            if self != p and self != a and self != b:
-                self.normalise()
-                return True
-        self._restore_from(p)
-        return False
-
-    def normalise(self):
-        """Normalise by making 'after == False', if possible."""
-        if isinstance(self.child, PlaceHolder):
-            self.after = False
-        elif self.after:
-            next_child = self.next_in_group
-            if next_child:
-                self.child = next_child
-                self.after = False
-
-    def _simplistic_move(self, *, backwards: bool = False) -> bool:
         """Move to the next insertion point.
 
         This performs the smallest possible move, which may results in an
@@ -148,35 +130,30 @@ class Pointer(FixedPointer):
         :return:
             True if an apparent movement occurred.
         """
-        if backwards and self.after:
-            self.after = False
-            return True
-        elif not backwards and not self.after:
-            self.after = True
+        delta = -1 if backwards else 1
+        if 0 <= self.idx + delta <= len(self.pointers) - 1:
+            self.idx += delta
+            p = self.pointers[self.idx]
+            self.child = p.child
+            self.after = p.after
             return True
         else:
-            next_child = self.child.walk_to_next(
-                backwards=backwards, within_group=False)
-            if next_child:
-                self.child = next_child
-                self.after = backwards
-                return True
-        return False
-
-    def _copy(self):
-        """Make a copy of this pointer."""
-        return copy.copy(self)
-
-    def _restore_from(self, inst: FixedPointer):
-        """Restore this pointer's state from another pointer."""
-        self.__dict__.update(inst.__dict__)
+            return False
 
 
 class SnippetInsertionPointer(Pointer):
     """A 'pointer' of where to insert a snippet within the tree."""
 
     def __init__(self, snippet: Snippet):
-        super().__init__(snippet)
+        pointers: list[FixedPointer] = []
+        s: SnippetLike
+        for s in snippet.root.walk(
+                predicate=is_snippet_like, group_depth_first=True):
+            if s.is_first_in_group:
+                pointers.append(FixedPointer(s, after=False))
+            pointers.append(FixedPointer(s, after=True))
+
+        super().__init__(snippet, pointers)
 
     def move_source(self) -> bool:
         """Move the source child to this insertion point."""
@@ -187,6 +164,26 @@ class SnippetInsertionPointer(Pointer):
             self.child.parent.add(child, after=self.child)
         else:
             self.child.parent.add(child, before=self.child)
+        self.child.parent.clean()
+        return True
+
+
+class GroupInsertionPointer(Pointer):
+    """A 'pointer' of where to insert a group within the tree."""
+
+    def __init__(self, group: Group):
+        super().__init__(group, group.root.insertion_points())
+
+    def move_source(self) -> bool:
+        """Move the source child to this insertion point."""
+        group = cast(Group, self.source)
+        dest_group = cast(Group, self.child)
+        group.parent.remove_group(group)
+        group.parent.clean()
+        if self.after:
+            self.child.parent.add_group_as_group(group, after=dest_group)
+        else:
+            self.child.parent.add_group_as_group(group, before=dest_group)
         self.child.parent.clean()
         return True
 
@@ -220,16 +217,6 @@ class GroupChild:
         """The root of the containing tree."""
         return self.parent.root
 
-    @property
-    def index(self):
-        """The index of this element within its parent container."""
-        return self.parent.index_of(self)
-
-    @property
-    def rindex(self):
-        """The reverse index of this element within its parent container."""
-        return self.parent.rindex_of(self)
-
     def depth(self) -> int:
         """Calculete the depth of this element within the snippet tree."""
         return self.parent.depth() + 1
@@ -238,19 +225,17 @@ class GroupChild:
         """Provide a unique ID for this element."""
         return self._uid
 
-    def is_empty(self) -> bool:                   # pylint: disable=no-self-use
-        """Detemine if this child."""
-        return True
-
     @property
     def is_first_in_group(self) -> bool:
         """True if this child is the first in its group."""
-        return self.parent.rindex_of(self) == 0
+        return self.parent.index_of(self) == 0
 
-    @property
-    def is_last_in_group(self) -> bool:
-        """True if this child is the last in its group."""
-        return self.parent.rindex_of(self) == -1
+    def is_empty(self) -> bool:                   # pylint: disable=no-self-use
+        """Determine if this element is empty.
+
+        Subclasses must over-ride.
+        """
+        return True                                          # pragma: no cover
 
     def full_repr(self, *, end='\n', debug: bool = False):
         """Format a simple representation of this element.
@@ -278,51 +263,6 @@ class GroupChild:
     def next_in_group(self) -> GroupChild | None:
         """The child after this one."""
         return self.parent.next_child(self)
-
-    @property
-    def prev_in_group(self) -> GroupChild | None:
-        """The child after this one."""
-        return self.parent.prev_child(self)
-
-    def _walk_to_next(
-            self, *,
-            backwards: bool = False,
-            within_group: bool = False,
-            predicate: Callable[[GroupChild], type[GroupChild] | None],
-            ) -> GroupChild | None:
-        """Tree walk to the next nearest child of comparable type."""
-        elements: Iterator[GroupChild] = self.root.walk(
-            predicate=predicate, after=self, backwards=backwards)
-        for element in elements:
-            if within_group and element.parent is not self.parent:
-                return None
-            else:
-                return element
-        return None
-
-    def walk_to_next(
-            self, *,
-            backwards: bool = False,
-            within_group: bool = False) -> GroupChild | None:
-        """Tree walk to the next nearest child of comparable type.
-
-        This basically walks the tree until this child is found then the walk
-        is continued until a child of the sam basic type is found.
-
-        :backwards:
-            When set the walk is donwin reverse.
-        :within_group:
-            If set then do not walk up out of the containing group.
-        :return:
-            The next child or ``None``.
-        """
-        return cast(SnippetLike, self._walk_to_next(
-            backwards=backwards, within_group=within_group,
-            predicate=self.is_like_me))
-
-    def is_like_me(self, child: GroupChild) -> type[GroupChild] | None:
-        """Test if the child is the of the same basic type."""
-        return GroupChild if isinstance(child, self.__class__) else None
 
     @classmethod
     def _uid_base_name(cls) -> str:
@@ -380,39 +320,11 @@ class Element:
 class SnippetLike(GroupChild):
     """A base for all the Snippet and PlaceHolder classes."""
 
-    def walk_to_next(
-            self, *,
-            backwards: bool = False,
-            within_group: bool = False) -> SnippetLike | None:
-        """Tree walk to the next nearest snippet or PlaceHolder.
-
-        This basically walks the tree until this snippet is found then the walk
-        is continued until the next Snippet or a PlaceHolder is found.
-
-        :backwards:
-            When set the walk is made in reverse order.
-        :within_group:
-            If set then do not walk up out of the containing group.
-        :return:
-            The next child or ``None``.
-        """
-        return cast(SnippetLike, self._walk_to_next(
-            backwards=backwards, within_group=within_group,
-            predicate=is_snippet_like))
-
 
 class PlaceHolder(Element, SnippetLike):
     """A place holder used in empty groups."""
 
     id_source: Iterator[int] | None = itertools.count()
-
-    @property
-    def is_last_in_group(self) -> bool:
-        """Always false.
-
-        A PlaceHolder is never considered to be first or last within a group.
-        """
-        return False                                         # pragma: no cover
 
     @property
     def is_first_in_group(self) -> bool:
@@ -477,7 +389,7 @@ class PreservedText(TextualElement, GroupChild):
 
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
-        return '\n'.join(self.source_lines) + '\n'
+        return ''                                            # pragma: no cover
 
 
 class Snippet(TextualElement, SnippetLike):
@@ -722,14 +634,13 @@ class GroupDebugMixin:
 class Group(GroupDebugMixin, Element, GroupChild):
     """A group of snippets and/or sub groups."""
 
-    # pylint: disable=too-many-public-methods
     id_source: Iterator[int] | None = itertools.count()
     all_tags: ClassVar[set[str]] = set()
 
     def __init__(self, name, parent=None, tag_text=''):
         super().__init__(parent)
         self.name = name
-        self.title = ''
+        self.title = ''   # TODO: What is this?
         self.groups: dict[str, Group] = {}
         self._ordered_groups: list[str] = []
         tags = {t.strip() for t in tag_text.split()}
@@ -743,14 +654,6 @@ class Group(GroupDebugMixin, Element, GroupChild):
     def ordered_groups(self) -> list[Group]:
         """The groups in user-defined order."""
         return [self.groups[name] for name in self._ordered_groups]
-
-    @property
-    def parents(self):
-        """An immutable sequence of this groups ancestors."""
-        if self.parent:
-            return self.parent, *self.parent.parents
-        else:
-            return ()
 
     def rename(self, name) -> None:
         """Change the name of this group."""
@@ -790,7 +693,8 @@ class Group(GroupDebugMixin, Element, GroupChild):
             after: GroupChild | Literal[0] | None = None,
             before: GroupChild | None = None,
         ) -> None:
-        """Add a new element as a child of this group."""
+        """Add a new snippet as a child of this group."""
+        # TODO: Consider making this handle groups as well.
         children = self.children
         if after == 0:
             p = 0
@@ -803,12 +707,16 @@ class Group(GroupDebugMixin, Element, GroupChild):
         self.children[p:p] = [child]
         child.parent = self
 
+    # TODO: Name is wrong!
     def add_group_as_group(
             self, child: Group,
             after: Group | None = None,
             before: Group | None = None,
         ) -> None:
-        """Add a esisting group as a child of this group."""
+        """Add a existing group as a child of this group.
+
+        This is used when reorgnising the group hierarchy.
+        """
         ordered_groups = self._ordered_groups
         if after:
             p = ordered_groups.index(after.name) + 1
@@ -867,33 +775,47 @@ class Group(GroupDebugMixin, Element, GroupChild):
         idx = children.index(child) + 1
         return children[idx] if idx < len(children) else None
 
-    def prev_child(self, child: GroupChild) -> GroupChild | None:
-        """Get the previous child, of the same basic type, before this one."""
-        children: Sequence[GroupChild]
-        if isinstance(child, Group):
-            children = self.ordered_groups
-        else:
-            children = self.children
-        idx = children.index(child) - 1
-        return children[idx] if idx >= 0 else None
+    def insertion_points(self) -> list[FixedPointer]:
+        """Determine all insertion poins."""
+        groups = self.ordered_groups
+        pointers: list[FixedPointer] = []
+        for i, g in enumerate(groups):
+            pointers.append(FixedPointer(g, after=False))
+            if i == len(groups) - 1:
+                pointers.append(FixedPointer(g, after=True))
+            pointers.extend(g.insertion_points())
+        return pointers
 
-    def basic_walk(self, *, backwards: bool = False) -> Iterator[GroupChild]:
+    def basic_walk(
+            self, *,
+            backwards: bool = False,
+            group_depth_first: bool = False,
+        ) -> Iterator[GroupChild]:
         """Iterate over the entire tree of groups and snippets.
 
         :backwards:
-            If set the walk in reverse order; i.e. last snippt is visited
-            first.
+            If set the walk in reverse order; i.e. the very last snippet is
+            visited first.
+        :group_depth_first:
+            If set then (for a forwards walk) child groups are yielded before
+            the group itself.
         """
         if backwards:
             for group in reversed(self.ordered_groups):
+                if not group_depth_first:
+                    yield group
                 yield from group.basic_walk(backwards=backwards)
-                yield group
+                if group_depth_first:
+                    yield group
             yield from reversed(self.children)
         else:
             yield from self.children
             for group in self.ordered_groups:
-                yield group
+                if not group_depth_first:
+                    yield group
                 yield from group.basic_walk(backwards=backwards)
+                if group_depth_first:
+                    yield group
 
     def snippets(self) -> Iterator[Snippet]:
         """Iterate over all child snippets."""
@@ -902,7 +824,8 @@ class Group(GroupDebugMixin, Element, GroupChild):
     def step_group(self, *, backwards: bool = False) -> Group | None:
         """Get the group before or after this onw."""
         for el in self.root.walk(
-                predicate=is_group, after=self, backwards=backwards):
+                predicate=is_group, after=self, backwards=backwards,
+                group_depth_first=backwards):
             return el
         return None
 
@@ -916,67 +839,12 @@ class Group(GroupDebugMixin, Element, GroupChild):
         if isinstance(el, Snippet):                              # noqa: SIM108
             seq = self.children
         else:
-            seq = self.ordered_groups
+            seq = self.ordered_groups                        # pragma: no cover
         return seq.index(el)
-
-    def rindex_of(self, el: GroupChild) -> int:
-        """Calculate the reverse index of an element.
-
-        Like `index_of`, but counting backward from the last element starting
-        at -1.
-
-        :return:
-            A value between -len(<container>) and - 1.
-        """
-        if isinstance(el, Group):
-            groups = self.ordered_groups
-            return groups.index(el) - len(groups)
-        else:
-            snippets =  self.children
-            return snippets.index(el) - len(snippets)
-
-    def is_last_snippet(self, snippet: Snippet) -> bool:
-        """Test if a snippet is the last in this gruop."""
-        snippets = [el for el in self.children if isinstance(el, Snippet)]
-        return bool(snippets) and snippets[-1] is snippet
 
     def keywords(self) -> set[str]:
         """Provide all the keywords applicable to this group's snippets."""
         return self.keyword_set.words
-
-    @property
-    def next_group(self) -> Group | None:
-        """The group after this one."""
-        groups = self.parent.ordered_groups
-        idx = groups.index(self) + 1
-        return groups[idx] if idx < len(groups) else None
-
-    @property
-    def prev_group(self) -> Group | None:
-        """The group after this one."""
-        groups = self.parent.ordered_groups
-        idx = groups.index(self) - 1
-        return groups[idx] if idx >= 0 else None
-
-    def walk_to_next(
-            self, *,
-            backwards: bool = False,
-            within_group: bool = False) -> Group | None:
-        """Tree walk to the next nearest snippet or PlaceHolder.
-
-        This basically walks the tree until this snippet is found then the walk
-        is continued until the next Snippet or a PlaceHolder is found.
-
-        :backwards:
-            When set the walk is made in reverse order.
-        :within_group:
-            If set then do not walk up out of the containing group.
-        :return:
-            The next child or ``None``.
-        """
-        return cast(Group, self._walk_to_next(
-            backwards=backwards, within_group=within_group,
-            predicate=is_group))
 
     @property
     def full_name(self) -> str:
@@ -1022,8 +890,12 @@ class Root(Group):
         self._ordered_groups = []
 
     def walk(
-            self, predicate: Callable[[GroupChild], type[ELT] | None],
-            *, after: GroupChild | None = None, backwards: bool = False,
+            self,
+            predicate: Callable[[GroupChild], type[ELT] | None],
+            *,
+            after: GroupChild | None = None,
+            backwards: bool = False,
+            group_depth_first: bool = False,
         ) -> Iterator[ELT]:
         """Iterate over the entire tree of groups and snippets.
 
@@ -1035,8 +907,12 @@ class Root(Group):
         :backwards:
             If set the walk in reverse order; i.e. last snippt is visited
             first.
+        :group_depth_first:
+            If set then (for a forwards walk) child groups are yielded before
+            the group itself.
         """
-        basic_walk = self.basic_walk(backwards=backwards)
+        basic_walk = self.basic_walk(
+            backwards=backwards, group_depth_first=group_depth_first)
         if after:
             for el in basic_walk:
                 if el is after:
@@ -1076,11 +952,6 @@ class Root(Group):
             all_keywords |= group.keywords()
         colors.keywords.apply_changes(all_keywords)
 
-    @property
-    def total_group_count(self) -> int:
-        """The total number of groups."""
-        return len(list(self.walk(predicate=is_group)))
-
 
 # TODO: Not Python 3.8 compatible.
 ParsedElement: TypeAlias = PreservedText | Snippet | KeywordSet | Group
@@ -1088,6 +959,8 @@ ParsedElement: TypeAlias = PreservedText | Snippet | KeywordSet | Group
 
 class Loader:
     """Encapsulation of snippet loading machinery."""
+
+    # pylint: disable=too-many-instance-attributes
 
     def __init__(self, path: str, *, root: Root | None = None):
         self.path = Path(path)
@@ -1290,19 +1163,6 @@ class DefaultLoader(Loader):
 
     async def stop_monitoring(self) -> None:
         """Do nothing for the default loader."""
-
-
-def save(path, root) -> None:
-    """Save a snippet tree to a file."""
-    with Path(path).open('wt', encoding='utf8') as f:
-        if root.title:
-            f.write(f'@title: {root.title}\n')
-        for el in root.walk(predicate=is_group_child):
-            f.write(el.file_text())
-            if isinstance(el, Group):
-                kws = el.keyword_set
-                if not kws.is_empty():
-                    f.write(kws.file_text())
 
 
 def backup_file(path) -> None:

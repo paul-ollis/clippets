@@ -40,7 +40,7 @@ disable=
     locally-disabled,
     raw-checker-failed,
     suppressed-message,
-    useless-suppression,
+    useless-return,
     use-symbolic-message-instead,
 
     # Checks provided by Ruff.

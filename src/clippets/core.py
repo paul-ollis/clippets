@@ -32,20 +32,20 @@ from dataclasses import dataclass
 from functools import partial, wraps
 from pathlib import Path
 from typing import (
-    AsyncGenerator, Callable, ClassVar, Iterable, TYPE_CHECKING, Union, cast)
+    AsyncGenerator, Callable, ClassVar, Iterable, Iterator, TYPE_CHECKING,
+    Union, cast)
 
 from rich.syntax import Syntax
 from rich.text import Text
 from textual._context import (
     active_message_pump, message_hook as message_hook_context_var)
 from textual.app import App, Binding, ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Container, Horizontal
 from textual.css.query import NoMatches
 from textual.message import Message
 from textual.pilot import Pilot
 from textual.screen import Screen
 from textual.walk import walk_depth_first
-from textual.widget import Widget
 from textual.widgets import Header, Input, Static
 from textual.widgets._markdown import MarkdownFence
 
@@ -55,19 +55,21 @@ from .platform import (
     SharedTempFile, dump_clipboard, get_editor_command, get_winpos,
     put_to_clipboard, terminal_title)
 from .snippets import (
-    CannotMove, DefaultLoader, Group, GroupChild, Loader, MarkdownSnippet,
-    PlaceHolder, Root, Snippet, SnippetInsertionPointer, is_group,
-    is_group_child, is_snippet, is_snippet_like)
+    CannotMove, DefaultLoader, Group, GroupChild, GroupInsertionPointer,
+    Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
+    SnippetInsertionPointer, is_group, is_group_child, is_snippet,
+    is_snippet_like)
 from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
     SnippetMenu)
 
-from . import patches
+from . import patches                                              # noqa: F401
 
 if TYPE_CHECKING:
     from textual.binding import _Bindings
     from textual.timer import Timer
+    from textual.widget import Widget
 
 HL_GROUP = ''
 LEFT_MOUSE_BUTTON = 1
@@ -92,6 +94,7 @@ Second
 '''.strip()
 
 SnippetWidget = Union[MyMarkdown, MyText, Static]
+Pointer = Union[SnippetInsertionPointer, GroupInsertionPointer]
 
 
 class StartupError(Exception):
@@ -122,6 +125,10 @@ class Selection:
 
     uid: str
     user: bool
+
+    def __repr__(self):
+        mode = 'user' if self.user else 'auto'
+        return f'Sel-{mode}:{self.uid}'
 
 
 class SetupDefaultFile(Message):
@@ -263,7 +270,7 @@ class MainScreen(Screen):
                         f'{tag}', id=self.gen_tag_id(tag), name=tag,
                         classes=f'tag {classes}'))
                 w = Horizontal(label, *fields, classes='group_row')
-                w.styles.padding = (0, 0, 0, (el.depth() - 1) * 4)
+                w.styles.margin = 0, 0, 0, (el.depth() - 1) * 4
                 self.widgets[uid] = w
                 yield w
             else:
@@ -315,7 +322,7 @@ def make_snippet_widget(uid, snippet) -> Widget | None:
         w = Static('-- place holder --', id=uid, classes=classes)
         w.display = False
     if w:
-        w.styles.margin = (0, 1, 0, (snippet.depth() - 1) * 4)
+        w.styles.margin = 0, 1, 0, (snippet.depth() - 1) * 4
     return w
 
 
@@ -449,6 +456,7 @@ class AppMixin:
     query_one: Callable
     resolver: asyncio.Task | None
     screen: Screen
+    context_name: Callable[[], str]
     _bindings: _Bindings
     MODES: ClassVar[dict[str, str | Screen | Callable[[], Screen]]]
 
@@ -466,6 +474,7 @@ class AppMixin:
         first_el = self.root.first_snippet() or self.root.first_group()
         self._selection_stack = [Selection(uid=first_el.uid(), user=False)]
         self.pointer: Pointer | None = None
+        self.hidden_snippets: set[Widget] = set()
         self.redo_buffer: deque = deque(maxlen=20)
         self.sel_order = False
         self.undo_buffer: deque = deque(maxlen=20)
@@ -518,11 +527,44 @@ class AppMixin:
         """Find the widget for a given element."""
         return self.find_widget_by_uid(el.uid())
 
+    def walk_snippet_widgets(self) -> Iterator[Widget]:
+        """Iterate over of the tree of Snippet widgets."""
+        for el in self.walk(predicate=is_snippet):
+            yield self.find_widget(el)
+
+    def walk_group_widgets(self) -> Iterator[Widget]:
+        """Iterate over of the tree of Snippet widgets."""
+        for el in self.walk(predicate=is_group):
+            yield self.find_widget(el)
+
     ## Management of dynanmic display features.
     def set_visuals(self) -> None:
         """Set and clear widget classes that control visual highlighting."""
         self.set_snippet_visuals()
         self.set_input_visuals()
+
+    @staticmethod
+    def _clear_move_marker( el, w):
+        if isinstance(el, Group):
+            w.parent.remove_class('dest_above')
+            w.parent.remove_class('dest_below')
+        else:
+            w.remove_class('dest_above')
+            w.remove_class('dest_below')
+
+    @staticmethod
+    def _set_move_marker(source, dest, w):
+        uid, after = dest.addr
+        if uid != source.uid() and uid == w.id:
+            if isinstance(dest.child, Group):
+                w.parent.add_class('dest_below' if after else 'dest_above')
+            else:
+                if isinstance(dest.child, PlaceHolder):
+                    after = False
+                w.add_class('dest_below' if after else 'dest_above')
+            if isinstance(dest.child, PlaceHolder):
+                print("SET", w.renderable, after)
+                w.display = True
 
     def set_snippet_visuals(self) -> None:
         """Set and clear widget classes that control snippet highlighting."""
@@ -532,18 +574,14 @@ class AppMixin:
             w = self.find_widget(el)
             w.remove_class('kb_focussed')
             w.remove_class('mouse_hover')
-            w.remove_class('dest_above')
-            w.remove_class('dest_below')
+            self._clear_move_marker(el, w)
             if isinstance(el, PlaceHolder):
                 w.display = False
+                print("CLR", w.renderable)
             p = self.pointer
             if p is not None:
                 if w.id != p.source.uid():
-                    uid, after = p.addr
-                    if uid != p.source.uid() and uid == w.id:
-                        w.add_class('dest_below' if after else 'dest_above')
-                    if isinstance(p.child, PlaceHolder):
-                        w.display = True
+                    self._set_move_marker(p.source, p, w)
             else:
                 if w == selected_widget and not filter_focussed:
                     w.add_class('kb_focussed')
@@ -570,32 +608,48 @@ class AppMixin:
                 w.remove_class('selected')
 
     ## Handling of mouse operations.
-    @only_in_context('normal')
-    async def on_click(self, ev) -> None:
+    async def on_click(self, ev) -> None:                          # noqa: C901
         """Process a mouse click."""
-        if ev.button == LEFT_MOUSE_BUTTON:
-            if ev.meta:
-                w = getattr(ev, 'snippet', None)
-                if w:
-                    snippet = self.root.find_group_child(w.id)
-                    if snippet:
-                        self.action_start_moving_snippet(snippet.uid())
-            elif not ev.meta:
-                self.on_left_click(ev)
-        elif ev.button == RIGHT_MOUSE_BUTTON:
-            if ev.meta:                                      # pragma: no cover
-                # This can be useful for debugging.
-                w = getattr(ev, 'snippet', getattr(ev, 'group', None))
-                if w:
-                    print('CLICK ON', w.id)
-            else:
+        if self.context_name() == 'normal':
+            if ev.button == LEFT_MOUSE_BUTTON:
+                if ev.meta:
+                    w = getattr(ev, 'widget', None)
+                    if w:
+                        element = self.root.find_group_child(w.id)
+                        if element:
+                            self.action_start_moving_element(element.uid())
+                elif not ev.meta:
+                    self.on_left_click(ev)
+            elif ev.button == RIGHT_MOUSE_BUTTON and not ev.meta:
                 await self.on_right_click(ev)
+
+        if ev.meta and ev.button == RIGHT_MOUSE_BUTTON:      # pragma: no cover
+            # This is useful for debugging.
+            w = getattr(ev, 'widget', None)
+            if w:
+                s = [f'Click: {w.id}']
+                for name, value in w.styles.__rich_repr__():
+                    s.append(f'    {name}={value}')
+                s.append(f'    classes={w.classes}')
+
+                ww = w.parent
+                if ww:
+                    s.append(f'  {ww}')
+                    for name, value in ww.styles.__rich_repr__():
+                        s.append(f'    {name}={value}')
+                    s.append(f'    classes={ww.classes}')
+                print('\n'.join(s))
 
     def on_left_click(self, ev) -> None:
         """Process a mouse left-click."""
-        if snippet := getattr(ev, 'snippet', None):
+        w = getattr(ev, 'widget', None)
+        if w is None:
+            return                                           # pragma: no cover
+
+        id_str = w.id
+        el = self.root.find_group_child(id_str)
+        if isinstance(el, Snippet):
             self.push_undo()
-            id_str = snippet.id
             if id_str in self.added:
                 self.added.remove(id_str)
             else:
@@ -603,22 +657,27 @@ class AppMixin:
             self.update_selected()
             self.update_result()
 
-        elif group := getattr(ev, 'group', None):
-            id_str = group.id
+        elif isinstance(el, Group):
             if id_str in self.collapsed:
                 self.collapsed.remove(id_str)
             else:
                 self.collapsed.add(id_str)
             self.filter_view()
 
-        elif tag := getattr(ev, 'tag', None):
-            self.action_toggle_tag(tag.name)
+        elif isinstance(w, MyTag):
+            self.action_toggle_tag(w.name)
 
     async def on_right_click(self, ev) -> None:
         """Process a mouse right-click."""
-        if w := cast(Widget, getattr(ev, 'snippet', None)):
+        w = getattr(ev, 'widget', None)
+        if w is None:
+            return                                           # pragma: no cover
+
+        id_str = w.id
+        el = self.root.find_group_child(id_str)
+        if isinstance(el, Snippet):
             await self.on_right_click_snippet(w)
-        elif w := cast(Widget, getattr(ev, 'group', None)):
+        elif isinstance(el, Group):
             await self.on_right_click_group(w)
 
     async def on_right_click_group(self, w: Widget) -> None:
@@ -649,7 +708,7 @@ class AppMixin:
             elif  v == 'duplicate':
                 await self.duplicate_snippet(wid)
             elif  v == 'move':
-                self.action_start_moving_snippet(wid)
+                self.action_start_moving_element(wid)
 
         wid = cast(str, w.id)
         snippet = self.root.find_group_child(wid)
@@ -667,7 +726,7 @@ class AppMixin:
             else:
                 return
 
-        # If the top of the stak is a group and the user moved there, do
+        # If the top of the stack is a group and the user moved there, do
         # nothing.
         if sel.uid.startswith('group-') and sel.user:
             return
@@ -777,8 +836,7 @@ class AppMixin:
         snippet, _ = self.selection
         if snippet is not None:
             for next_snippet in self.root.walk(
-                    predicate=is_snippet, after=snippet,
-                    backwards=inc < 0):
+                    predicate=is_snippet, after=snippet, backwards=inc < 0):
                 next_widget = self.find_widget(next_snippet)
                 if next_widget.display:
                     if push:
@@ -1113,19 +1171,41 @@ class AppMixin:
             self.push_screen(screen, on_close)
 
     ## Snippet position movement.
-    def action_start_moving_snippet(self, id_str: str | None = None) -> None:
-        """Start moving a snippet to a different position in the tree."""
-
+    def action_start_moving_element(self, id_str: str | None = None) -> None:
+        """Start moving a group/snippet to a different position in the tree."""
         id_str = id_str or self.selection_uid
+        w = self.query_one(f'#{id_str}')
+        element = self.root.find_group_child(id_str)
+        if isinstance(element, Snippet):
+            self.start_moving_snippet(w, element)
+        elif isinstance(element, Group):
+            self.start_moving_group(w, element)
 
-        snippet = cast(Snippet, self.root.find_group_child(id_str))
+    def start_moving_snippet(self, sel_w: Widget, snippet: Snippet) -> None:
+        """Start moving a snippet to a different position in the tree."""
         try:
             self.pointer = SnippetInsertionPointer(snippet)
         except CannotMove:
             return
+        sel_w.add_class('moving')
+        self.set_visuals()
 
-        w = self.query_one(f'#{id_str}')
-        w.add_class('moving')
+    def start_moving_group(self, sel_w: Widget, group: Group) -> None:
+        """Start moving a group to a different position in the tree."""
+        sel_w.add_class('moving')
+        try:
+            self.pointer = GroupInsertionPointer(group)
+        except CannotMove:
+            return
+
+        for w in self.walk_snippet_widgets():
+            if w.display and isinstance(w.id, str):
+                self.hidden_snippets.add(w)
+                w.display = False
+        for w in self.walk_group_widgets():
+            container = cast(Horizontal, w.parent)
+            top, right, _, left = container.styles.padding
+            container.styles.padding = top, right, 1, left
         self.set_visuals()
 
     def ensure_selection_visible(self):
@@ -1153,12 +1233,13 @@ class AppMixin:
 
     def action_complete_move(self):
         """Complete a snippet move operation."""
-        pointer = self.pointer
+        p = self.pointer
         self.action_stop_moving()
-        if pointer and pointer.move_source():
+        if p and p.move_source():
             self.rebuild_after_edits()
-            self._selection_stack[:] = [
-                Selection(uid=pointer.source.uid(), user=True)]
+            if p.source.uid().startswith('snippet-'):
+                self._selection_stack[:] = [
+                    Selection(uid=p.source.uid(), user=True)]
             self.set_visuals()
 
     def action_do_redo(self) -> None:
@@ -1238,10 +1319,13 @@ class AppMixin:
 
         :direction: Either 'up' or 'down'.
         """
-        pointer = self.pointer
-        if pointer is not None and pointer.move(backwards=direction == 'up'):
+        p = self.pointer
+        if p is None:
+            return False                                     # pragma: no cover
+
+        if p.move(backwards=direction == 'up'):
             self.set_visuals()
-            w = self.find_widget(pointer.child)
+            w = self.find_widget(p.child)
             w.scroll_visible(animate=False)
             return True
         else:
@@ -1254,9 +1338,20 @@ class AppMixin:
 
     def action_stop_moving(self) -> None:
         """Stop moving a snippet - cancelling the move operation."""
-        if self.pointer:
-            w = self.find_widget(self.pointer.source)
-            w.remove_class('moving')
+        p = self.pointer
+        if p is None:
+            return                                           # pragma: no cover
+
+        w = self.find_widget(p.source)
+        w.remove_class('moving')
+        if isinstance(p, GroupInsertionPointer):
+            for w in self.hidden_snippets:
+                w.display = True
+            for w in self.walk_group_widgets():
+                container = cast(Horizontal, w.parent)
+                top, right, _, left = container.styles.padding
+                container.styles.padding = top, right, 0, left
+        self.hidden_snippets.clear()
         self.pointer = None
         self.set_visuals()
 
@@ -1397,6 +1492,9 @@ class Clippets(AppMixin, App):
 
     def init_bindings(self):
         """Set up the application bindings."""
+        #
+        # Normal mode key bindings.
+        #
         bind = partial(self.key_handler.bind, contexts=('normal',), show=False)
         bind('f8', 'toggle_order', description='Toggle order')
         bind('up', 'select_move(-1)')
@@ -1414,14 +1512,9 @@ class Clippets(AppMixin, App):
         bind('d', 'duplicate_snippet')
         bind('e', 'edit_snippet')
         bind('f insert', 'toggle_collapse_group')
-        bind('m', 'start_moving_snippet', description='Move snippet')
+        bind('m', 'start_moving_element', description='Move group/snippet')
         bind('r', 'rename_group')
         bind('f7', 'edit_keywords', description='Edit keywords')
-
-        bind = partial(self.key_handler.bind, contexts=('filter',), show=True)
-        bind(
-            'ctrl+f up down tab shift-tab', 'leave_filter',
-            description='Leave filter input')
 
         bind = partial(self.key_handler.bind, contexts=('normal',), show=True)
         bind('f1', 'show_help', description='Help')
@@ -1438,6 +1531,12 @@ class Clippets(AppMixin, App):
             'down', 'move_insertion_point("down")', description='Cursor down')
         bind('enter', 'complete_move', description='Insert')
         bind('escape', 'stop_moving', description='Cancel')
+
+        # Key bindings when the filter intput field is focused.
+        bind = partial(self.key_handler.bind, contexts=('filter',), show=True)
+        bind(
+            'ctrl+f up down tab shift-tab', 'leave_filter',
+            description='Leave filter input')
 
         bind = partial(
             self.key_handler.bind, contexts=('editor',), show=True,
@@ -1572,7 +1671,6 @@ class Clippets(AppMixin, App):
             if message_hook is not None:
                 message_hook_context_var.set(message_hook)
             app._loop = asyncio.get_running_loop()               # noqa: SLF001
-            # pylint: disable=undefined-variable
             app._thread_id = threading.get_ident()               # noqa: SLF001
             await app._process_messages(                         # noqa: SLF001
                 ready_callback=on_app_ready,

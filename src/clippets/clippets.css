@@ -15,7 +15,7 @@ Screen {
 }
 
 .group_row {
-    height: 1;
+    height: auto;
 }
 
 #snippet-list {
@@ -57,7 +57,15 @@ Screen {
     border-top: thick $success;
     outline-bottom: solid  $success;
 }
-.moving {
+.group_row.dest_above {
+    outline-bottom: none;
+}
+.is_group.moving {
+    outline-left: thick $success;
+    outline-right: thick $success;
+    padding: 0 1 0 1;
+}
+.is_snippet.moving {
     outline: solid $success;
     padding: 1 1 0 1;
     outline-bottom: solid  $success;

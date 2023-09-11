@@ -6,11 +6,9 @@ import os
 import platform
 import subprocess
 import sys
-from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import List, Union
 
 import pytest
 from _pytest.config import ExitCode
@@ -185,7 +183,7 @@ def pytest_addoption(parser, pluginmanager):
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Perform any reuired global configuration."""
+    """Perform any required global configuration."""
 
 
 def pytest_sessionstart(session: Session) -> None:
@@ -195,7 +193,7 @@ def pytest_sessionstart(session: Session) -> None:
 
 def pytest_sessionfinish(
         session: Session,
-        exitstatus: Union[int, ExitCode],
+        exitstatus: int | ExitCode,
     ) -> None:                                               # pragma: no cover
     """Perform post run processing.
 
