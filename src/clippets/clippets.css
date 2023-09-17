@@ -76,11 +76,16 @@ Screen {
     outline-bottom: solid  $success;
 }
 
+.is_placehoder {
+    color: $text-disabled;
+}
+.is_placehoder.is_group {
+    background: $background;
+}
 .is_placehoder.dest_above {
     height: 3;
     padding: 0 0 0 0;
     margin: 0 1 0 4;
-    color: $text-disabled;
     outline-bottom: solid  $success;
 }
 

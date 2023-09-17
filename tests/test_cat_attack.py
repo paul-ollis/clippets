@@ -137,6 +137,19 @@ async def test_move_mode(infile, snapshot_run):
 
 
 @pytest.mark.asyncio
+async def test_move_group_mode(infile, snapshot_run):
+    """Unused keys are ignored when in group moving mode."""
+    actions = (
+        ['left']
+        + ['m']
+        + sorted(all_keys - valid_move_keys)
+    )
+    runner, snapshot_ok = await snapshot_run(infile, actions)
+    assert expect == runner.app.root.full_repr()
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
 async def test_help_mode(infile, snapshot_run):
     """Unused keys are ignored when showing the help."""
     actions = (

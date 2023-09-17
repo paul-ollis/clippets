@@ -84,7 +84,8 @@ class FixedPointer:
         return is_equal
 
     def __repr__(self):
-        return f'{self.__class__.__name__}({self.child.uid()}, {self.after})'
+        pos = 'after' if self.after else 'before'
+        return f'{self.__class__.__name__}({pos} {self.child.uid()})'
 
 
 class Pointer(FixedPointer):
@@ -114,7 +115,7 @@ class Pointer(FixedPointer):
                 self.idx = max(0, i -1)
                 break
 
-        # Now remove the invliad pointers, after which we may find that moving
+        # Now remove the invalid pointers, after which we may find that moving
         # is not possible.
         self.pointers = [
             p for p in self.pointers if p not in invalid_pointers]
@@ -178,7 +179,9 @@ class GroupInsertionPointer(Pointer):
     """A 'pointer' of where to insert a group within the tree."""
 
     def __init__(self, group: Group):
-        super().__init__(group, group.root.insertion_points())
+        points = group.root.insertion_points()
+        points = [p for p in points if p.child.parent is not group]
+        super().__init__(group, points)
 
     def move_source(self) -> bool:
         """Move the source child to this insertion point."""
@@ -192,6 +195,14 @@ class GroupInsertionPointer(Pointer):
             self.child.parent.add_group_as_group(group, before=dest_group)
         self.child.parent.clean()
         return True
+
+
+class Persistent:                      # pylint: disable=too-few-public-methods
+    """Base for objects that mey be stored in the snippets file."""
+
+    def file_text(self) -> str:                   # pylint: disable=no-self-use
+        """Generate the text that should be written to a file."""
+        return ''                                            # pragma: no cover
 
 
 class GroupChild:
@@ -216,7 +227,7 @@ class GroupChild:
         if self.id_source:
             self._uid = f'{self._uid_base_name()}-{next(self.id_source)}'
         else:
-            self._uid = ''
+            self._uid = ''                                   # pragma: no cover
 
     @property
     def root(self) -> Root:
@@ -244,7 +255,8 @@ class GroupChild:
         return True                                          # pragma: no cover
 
     def full_repr(
-            self, *, end='\n', debug: bool = False, details: bool = False):
+            self, *, end='\n', debug: bool = False, details: bool = False,
+        ) -> str:
         """Format a simple representation of this element.
 
         This is intended for test support. The exact format may change between
@@ -294,7 +306,6 @@ class ElementMeta:
         def comment(s):
             return s.startswith('#')
 
-        #assert '# Comment X' not in self.leading_text
         # Remove trailing blank lines
         while self.trailing_text and not self.trailing_text[-1].strip():
             self.trailing_text.pop()
@@ -306,7 +317,6 @@ class ElementMeta:
             [s for s in self.leading_text if not comment(s)]
             + [s for s in self.trailing_text if not comment(s)])
         self.trailing_text = []
-        #assert '# Comment X' not in self.comment_text
 
     def merge(self, meta: ElementMeta):
         """Merge another ElementMeta into this one."""
@@ -344,10 +354,6 @@ class Element:
         """Determine if this element is empty."""
         return len(self.source_lines) == 0
 
-    def file_text(self) -> str:                   # pylint: disable=no-self-use
-        """Generate the text that should be written to a file."""
-        return ''
-
     def clean(self) -> None:
         """Clean the source lines.
 
@@ -358,10 +364,14 @@ class Element:
 
 
 class SnippetLike(GroupChild):
-    """A base for all the Snippet and PlaceHolder classes."""
+    """A base for all the Snippet and SnippetPlaceHolder classes."""
 
 
-class PlaceHolder(Element, SnippetLike):
+class PlaceHolder:
+    """Base class for place holders."""
+
+
+class SnippetPlaceHolder(Element, SnippetLike, PlaceHolder):
     """A place holder used in empty groups."""
 
     id_source: Iterator[int] | None = itertools.count()
@@ -439,24 +449,7 @@ class TextualElement(Element):
         add_lines('    ', m.trailing_text)
         return '\n'.join(s) + '\n'
 
-
-class PreservedText(TextualElement, GroupChild):
-    """Input file text that is preserved, but non-functional.
-
-    This includes:
-
-    - Additional vertical space.
-    - Comment blocks.
-    """
-
-    id_source: Iterator[int] | None = None
-
-    def file_text(self) -> str:
-        """Generate the text that should be written to a file."""
-        return ''                                            # pragma: no cover
-
-
-class Snippet(TextualElement, SnippetLike):
+class Snippet(TextualElement, SnippetLike, Persistent):
     """A single, multiline snippet of text.
 
     This is used fro plain-text snippets and is also the base class for the
@@ -583,7 +576,7 @@ class MarkdownSnippet(Snippet):
         return '\n'.join(lines)
 
 
-class KeywordSet(TextualElement, GroupChild):
+class KeywordSet(TextualElement, GroupChild, Persistent):
     """An element holding a set of keywords."""
 
     id_source: Iterator[int] | None = itertools.count()
@@ -623,7 +616,7 @@ class KeywordSet(TextualElement, GroupChild):
         releases.
         """
         if details:
-            return f'K: {" ".join(sorted(self.words))}'
+            return f'K: {" ".join(sorted(self.words))}'      # pragma: no cover
         else:
             return f'{" ".join(sorted(self.words))}'
 
@@ -656,6 +649,7 @@ class GroupDebugMixin:
     children: list[GroupChild]
     parent: Group
     keyword_set: KeywordSet
+    meta: ElementMeta
 
     @property
     def ordered_groups(self) -> list[Group]:
@@ -669,7 +663,7 @@ class GroupDebugMixin:
         releases.
         """
         s = [self.name]
-        s.extend(g.outline_repr(end='') for g in self.ordered_groups)
+        s.extend(g.outline_repr(end='') for g in self.ordered_true_groups)
         return '\n'.join(s) + end
 
     @property
@@ -685,7 +679,8 @@ class GroupDebugMixin:
             return self.name
 
     def full_repr(
-            self, *, end='\n', debug: bool = False, details: bool = False):
+            self, *, end='\n', debug: bool = False, details: bool = False
+        ) -> str:
         """Format a simple outline representation of the tree.
 
         This is intended for test support. The exact format may change between
@@ -716,18 +711,17 @@ class GroupDebugMixin:
             for c in self.children if not isinstance(c, PlaceHolder))
         s.extend(
             g.full_repr(end='', debug=debug, details=details)
-            for g in self.ordered_groups)
-        return '\n'.join(s) + end
+            for g in self.ordered_true_groups)
+        return '\n'.join([e for e in s if e]) + end
 
 
-class Group(GroupDebugMixin, Element, GroupChild):
+class Group(GroupDebugMixin, Element, GroupChild, Persistent):
     """A group of snippets and/or sub groups."""
 
     id_source: Iterator[int] | None = itertools.count()
     all_tags: ClassVar[set[str]] = set()
 
     def __init__(self, name, parent=None, tag_text=''):
-        assert name
         super().__init__(parent)
         self.name = name
         self.title = ''   # TODO: What is this?
@@ -744,6 +738,13 @@ class Group(GroupDebugMixin, Element, GroupChild):
     def ordered_groups(self) -> list[Group]:
         """The groups in user-defined order."""
         return [self.groups[name] for name in self._ordered_groups]
+
+    @property
+    def ordered_true_groups(self) -> list[Group]:
+        """The groups in user-defined order."""
+        return [
+            self.groups[name] for name in self._ordered_groups
+            if not isinstance(self.groups[name], PlaceHolder)]
 
     def rename(self, name) -> None:
         """Change the name of this group."""
@@ -828,12 +829,16 @@ class Group(GroupDebugMixin, Element, GroupChild):
             self.children.remove(child)
         snippets = [el for el in self.children if isinstance(el, Snippet)]
         if not snippets:
-            self.children.append(PlaceHolder(parent=self))
+            self.children.append(SnippetPlaceHolder(parent=self))
 
     def remove_group(self, child) -> None:
-        """Remove a child element from this group."""
+        """Remove a child group from this group."""
         self.groups.pop(child.name)
         self._ordered_groups.remove(child.name)
+        if not self.groups:
+            ph = GroupPlaceHolder(name='<placeholder>', parent=self)
+            self.groups[ph.name] = ph
+            self._ordered_groups.append(ph.name)
 
     def clean(self) -> None:
         """Clean up this and any child groups.
@@ -853,12 +858,17 @@ class Group(GroupDebugMixin, Element, GroupChild):
         if self.parent:
             snippets = [el for el in self.children if isinstance(el, Snippet)]
             if not snippets:
-                self.children.append(PlaceHolder(parent=self))
+                self.children.append(SnippetPlaceHolder(parent=self))
+
+        if not self.groups:
+            ph = GroupPlaceHolder(name='<placeholder>', parent=self)
+            self.groups[ph.name] = ph
+            self._ordered_groups.append(ph.name)
 
     def next_child(self, child: GroupChild) -> GroupChild | None:
         """Get the next child, of the same basic type, after this one."""
         children: Sequence[GroupChild]
-        if isinstance(child, Group):
+        if isinstance(child, (Group, GroupPlaceHolder)):
             children = self.ordered_groups
         else:
             children = self.children
@@ -866,14 +876,17 @@ class Group(GroupDebugMixin, Element, GroupChild):
         return children[idx] if idx < len(children) else None
 
     def insertion_points(self) -> list[FixedPointer]:
-        """Determine all insertion poins."""
+        """Determine all group-insertion points within this group."""
         groups = self.ordered_groups
         pointers: list[FixedPointer] = []
         for i, g in enumerate(groups):
-            pointers.append(FixedPointer(g, after=False))
-            if i == len(groups) - 1:
-                pointers.append(FixedPointer(g, after=True))
-            pointers.extend(g.insertion_points())
+            if isinstance(g, PlaceHolder):
+                pointers.append(FixedPointer(g, after=False))
+            else:
+                pointers.append(FixedPointer(g, after=False))
+                if i == len(groups) - 1:
+                    pointers.append(FixedPointer(g, after=True))
+                pointers.extend(g.insertion_points())
         return pointers
 
     def basic_walk(
@@ -894,7 +907,8 @@ class Group(GroupDebugMixin, Element, GroupChild):
             for group in reversed(self.ordered_groups):
                 if not group_depth_first:
                     yield group
-                yield from group.basic_walk(backwards=backwards)
+                if not isinstance(group, GroupPlaceHolder):
+                    yield from group.basic_walk(backwards=backwards)
                 if group_depth_first:
                     yield group
             yield from reversed(self.children)
@@ -903,7 +917,8 @@ class Group(GroupDebugMixin, Element, GroupChild):
             for group in self.ordered_groups:
                 if not group_depth_first:
                     yield group
-                yield from group.basic_walk(backwards=backwards)
+                if not isinstance(group, GroupPlaceHolder):
+                    yield from group.basic_walk(backwards=backwards)
                 if group_depth_first:
                     yield group
 
@@ -969,6 +984,33 @@ class Group(GroupDebugMixin, Element, GroupChild):
         return '\n'.join(s) + '\n'
 
 
+class GroupPlaceHolder(Group, PlaceHolder):
+    """A place holder used in groups with no child groups."""
+
+    id_source: Iterator[int] | None = itertools.count()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @property
+    def is_first_in_group(self) -> bool:
+        """Always false.
+
+        A PlaceHolder is never considered to be first or last within a group.
+        """
+        return False                                         # pragma: no cover
+
+    def keywords(self) -> set[str]:
+        """Provide all the keywords applicable to this group's snippets."""
+        return set()
+
+    def full_repr(
+            self, *, end='\n', debug: bool = False, details: bool = False,
+        ) -> str:
+        """Format a simple representation of this element."""
+        return ''
+
+
 class Root(Group):
     """A group that acts as the root of the snippet tree."""
 
@@ -980,6 +1022,10 @@ class Root(Group):
     def depth(self) -> Literal[0]:
         """Return 0, the depth tree root."""
         return 0
+
+    def is_empty(self) -> bool:
+        """Determine if the root has no groups."""
+        return not bool(self.ordered_true_groups)
 
     def reset(self) -> None:
         """Reset to initialised state.
@@ -1101,7 +1147,7 @@ class Parser:
         self.root.set_meta(meta)
         self.root.clean()
         self.root.update_keywords()
-        if not self.root.groups:
+        if self.root.is_empty():
             raise NoGroupsError
 
         for el in self.root.walk(predicate=is_snippet):
@@ -1129,7 +1175,6 @@ class Parser:
                 return
             if self.el:
                 self.el.add(lpad[self.indent:] + text)
-        assert m, 'This cannot happen.'
 
     def _handle_line(self, line) -> None:
         """Handle a general line that is not part of a snippet."""
@@ -1259,7 +1304,7 @@ class Loader:
         with self.path.open('wt', encoding='utf8') as f:
             if root.title:
                 f.write(f'@title: {root.title}\n')
-            for el in root.walk(predicate=is_group_child):
+            for el in root.walk(predicate=is_persistent):
                 f.write(el.file_text())
                 if isinstance(el, Group):
                     kws = el.keyword_set
@@ -1337,7 +1382,8 @@ def reset_for_reload() -> None:
     """
     Group.id_source = itertools.count(1)
     KeywordSet.id_source = itertools.count()
-    PlaceHolder.id_source = itertools.count()
+    SnippetPlaceHolder.id_source = itertools.count()
+    GroupPlaceHolder.id_source = itertools.count()
     Snippet.id_source = itertools.count()
 
 
@@ -1349,8 +1395,14 @@ def reset_for_tests() -> None:
     reset_for_reload()
 
 
+def is_persistent(obj: Element) -> type[Persistent] | None:
+    """Test if object is persistent."""
+    ok = isinstance(obj, Persistent) and not isinstance(obj, PlaceHolder)
+    return Persistent if ok else None
+
+
 def is_group_child(obj: GroupChild) -> type[GroupChild] | None:
-    """Test if object is a Element."""
+    """Test if object is a GroupChild."""
     return GroupChild if isinstance(obj, GroupChild) else None
 
 
@@ -1361,7 +1413,8 @@ def is_snippet(obj: GroupChild) -> type[Snippet] | None:
 
 def is_group(obj: GroupChild) -> type[Group] | None:
     """Test if object is a Group."""
-    return Group if isinstance(obj, Group) else None
+    ok = isinstance(obj, Group) and not isinstance(obj, PlaceHolder)
+    return Group if ok else None
 
 
 def is_snippet_like(obj: GroupChild) -> type[SnippetLike] | None:

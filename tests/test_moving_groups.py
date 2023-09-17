@@ -121,7 +121,7 @@ class TestKeyboardControlled:
             ['left']
             + ['down'] * 3        # Move to fourth group.
             + ['m']               # Start moving groups.
-            + ['up']              # Move to insertion position.
+            + ['up'] * 2          # Move to insertion position.
             + ['enter']           # Complete the move.
             + ['right']           # Switch back to snippet.
             + ['enter']           # ... and add to the clipboard.
@@ -136,7 +136,7 @@ class TestKeyboardControlled:
         actions = (
             ['left']         # Move to first group.
             + ['m']          # Start move.
-            + ['down'] * 10  # Move insertion indicator as far as possible.
+            + ['down'] * 6   # Move into the last (top-level) group.
             + ['enter']      # Finish the move.
             + ['right']      # Switch back to snippet.
         )
@@ -150,7 +150,7 @@ class TestKeyboardControlled:
         actions = (
             ['left']         # Move to first group.
             + ['m']          # Start move.
-            + ['down'] * 2   # Move insertion indicator to end of second group
+            + ['down'] * 3   # Move insertion indicator to end of second group
             + ['enter']      # Finish the move.
             + ['right']      # Switch back to snippet.
         )
@@ -164,7 +164,7 @@ class TestKeyboardControlled:
         actions = (
             ['left']              # Move to first group.
             + ['m']               # Start moving groups.
-            + ['down'] * 3        # Move to below second group.
+            + ['down'] * 5        # Move to below second group.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'

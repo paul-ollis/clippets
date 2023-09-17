@@ -205,13 +205,13 @@ class TestMouseControlled:
 
     @pytest.mark.asyncio
     async def test_f9_opens_if_all_manually_closed(self, infile, snapshot_run):
-        """The F9 opens if all groups have been closes one-by-one."""
+        """The F9 key opens if all groups have been closes one-by-one."""
         actions = (
             ['left:group-1']      # Fold first group.
             + ['left:group-3']    # Fold one (of two) child group.
             + ['left:group-4']    # Fold one (of two) child group.
             + ['left:group-2']    # Fold parent gruop
-            + ['left:group-5']    # Fold last gruop
+            + ['left:group-5']    # Fold last group
             + ['f9']              # Open all folds
         )
         _, snapshot_ok = await snapshot_run(infile, actions)

@@ -6,16 +6,6 @@
 # 8. Make it work on Macs.
 # 10. Generate frozen versions for all platforms.
 
-# TODO: Make terminology consistent as follows.
-#       Added
-#           A snippet that has been added to the clipboard.
-#       Selected
-#           The snippet that has the box around. Many actions operate on this
-#           snippet. This is stored as the snippet ID and can be ``None`` when
-#           no snippet is present or visible.
-#       Focussed
-#           This should only relate to the filter input.
-
 from __future__ import annotations
 
 import argparse
@@ -56,7 +46,7 @@ from .platform import (
     put_to_clipboard, terminal_title)
 from .snippets import (
     CannotMove, DefaultLoader, Group, GroupChild, GroupInsertionPointer,
-    Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
+    GroupPlaceHolder, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
     SnippetInsertionPointer, is_group, is_group_child, is_snippet,
     is_snippet_like)
 from .widgets import (
@@ -259,25 +249,37 @@ class MainScreen(Screen):
         for el in self.walk(predicate=is_display_node):
             el.dirty = True
             uid = el.uid()
-            if isinstance(el, Group):
-                classes = 'is_group'
-                label = MyLabel(
-                    f'▽ {HL_GROUP}{el.name}', id=uid, classes=classes)
-                fields = []
-                for tag in el.tags:
-                    classes = f'tag_{all_tags[tag]}'
-                    fields.append(MyTag(
-                        f'{tag}', id=self.gen_tag_id(tag), name=tag,
-                        classes=f'tag {classes}'))
-                w = Horizontal(label, *fields, classes='group_row')
-                w.styles.margin = 0, 0, 0, (el.depth() - 1) * 4
+            if isinstance(el, (Group, GroupPlaceHolder)):
+                w = self.make_group_widget(uid, el, all_tags)
                 self.widgets[uid] = w
                 yield w
             else:
-                snippet = make_snippet_widget(uid, el)
-                if snippet:
-                    self.widgets[uid] = snippet
-                    yield snippet
+                w = make_snippet_widget(uid, el)
+                self.widgets[uid] = w
+                yield w
+
+    def make_group_widget(
+            self, uid: str, group: Group | GroupPlaceHolder,
+            all_tags: dict[str, i],
+        ) -> Widget:
+        """Construct correct widget for a given group or place holder."""
+        classes = 'is_group'
+        fields = []
+        if isinstance(group, GroupPlaceHolder):
+            classes += ' is_placehoder'
+            label = MyLabel(
+                f'{HL_GROUP}{group.name}', id=uid, classes=classes)
+        else:
+            label = MyLabel(
+                f'▽ {HL_GROUP}{group.name}', id=uid, classes=classes)
+            for tag in group.tags:
+                classes = f'tag_{all_tags[tag]}'
+                fields.append(MyTag(
+                    f'{tag}', id=self.gen_tag_id(tag), name=tag,
+                    classes=f'tag {classes}'))
+        w = Horizontal(label, *fields, classes='group_row')
+        w.styles.margin = 0, 0, 0, (group.depth() - 1) * 4
+        return w
 
     def rebuild_tree_part(self):
         """Rebuild the tree part of the UI."""
@@ -308,8 +310,8 @@ class MainScreen(Screen):
         self.screen.set_focus(None)
 
 
-def make_snippet_widget(uid, snippet) -> Widget | None:
-    """Construct correct widegt for a given snnippet."""
+def make_snippet_widget(uid: str, snippet: Snippet | PlaceHolder) -> Widget:
+    """Construct correct widget for a given snippet or placeholder."""
     classes = 'is_snippet'
     w: MyMarkdown | MyText | Static | None = None
     if isinstance(snippet, MarkdownSnippet):
@@ -317,12 +319,11 @@ def make_snippet_widget(uid, snippet) -> Widget | None:
     elif isinstance(snippet, Snippet):
         classes = f'{classes} is_text'
         w = MyText(id=uid, classes=classes)
-    elif isinstance(snippet, PlaceHolder):
+    else:
         classes = f'{classes} is_placehoder'
         w = Static('-- place holder --', id=uid, classes=classes)
         w.display = False
-    if w:
-        w.styles.margin = 0, 1, 0, (snippet.depth() - 1) * 4
+    w.styles.margin = 0, 1, 0, (snippet.depth() - 1) * 4
     return w
 
 
@@ -556,7 +557,7 @@ class AppMixin:
     def _set_move_marker(source, dest, w):
         uid, after = dest.addr
         if uid != source.uid() and uid == w.id:
-            if isinstance(dest.child, Group):
+            if isinstance(dest.child, (Group, GroupPlaceHolder)):
                 w.parent.add_class('dest_below' if after else 'dest_above')
             else:
                 if isinstance(dest.child, PlaceHolder):
@@ -569,6 +570,8 @@ class AppMixin:
         """Set and clear widget classes that control snippet highlighting."""
         filter_focussed = (fw := self.focused) and fw.id == 'filter'
         _, selected_widget = self.selection
+        p = self.pointer
+        moving_group = p and isinstance(p.source, Group)
         for el in self.walk(predicate=is_display_node):
             w = self.find_widget(el)
             w.remove_class('kb_focussed')
@@ -576,8 +579,9 @@ class AppMixin:
             self._clear_move_marker(el, w)
             if isinstance(el, PlaceHolder):
                 w.display = False
-            p = self.pointer
             if p is not None:
+                if moving_group and isinstance(el, GroupPlaceHolder):
+                    w.display = True
                 if w.id != p.source.uid():
                     self._set_move_marker(p.source, p, w)
             else:
@@ -926,7 +930,9 @@ class AppMixin:
         stack: list[GroupChild] = []
         opened = True
         for el in self.walk(predicate=is_group_child):
-            if isinstance(el, Group):
+            if isinstance(el, PlaceHolder):
+                pass
+            elif isinstance(el, Group):
                 while stack and stack[-1].depth() >= el.depth():
                     stack.pop()
                 w = cast(MyLabel, self.find_widget(el))
@@ -1169,7 +1175,7 @@ class AppMixin:
                 id='add_group-dialog')
             self.push_screen(screen, on_close)
 
-    ## Snippet position movement.
+    ## Snippet and group position movement.
     def action_start_moving_element(self, id_str: str | None = None) -> None:
         """Start moving a group/snippet to a different position in the tree."""
         id_str = id_str or self.selection_uid
