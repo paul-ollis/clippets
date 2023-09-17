@@ -38,7 +38,7 @@ Uninterpreted
 All content, including comments and uninterpreted text is stored during
 loading and stored as a nested tree of groups.
 
-Wahe a (possibly modified) tree is saved, the output should always be a close
+When a (possibly modified) tree is saved, the output should always be a close
 analogue of the original input. There will be some notable differences.
 
 - Indentation of markers and content will be 2 and 4 spaces respectively.
@@ -311,23 +311,34 @@ def test_leading_blank_lines_are_preserved(snippet_infile, snippet_outfile):
 
 def test_interspersed_text_is_preserved(snippet_infile, snippet_outfile):
     """Writing a file preserves leading blank lines."""
-    expected = populate(snippet_infile, '''
+    populate(snippet_infile, '''
         Main
           @md@
             Snippet 1
 
-        # Comment
+        # Comment X
+         Some text
+          @md@
+            Snippet 2
+    ''')
+    expected = clean_text('''
+        Main
+          @md@
+            Snippet 1
 
+          #! Some text
+          # Comment X
           @md@
             Snippet 2
     ''')
     root, _ = load(snippet_infile.name)
+    print(root.full_repr(details=True))
     save(snippet_outfile.name, root)
     assert expected == str(snippet_outfile)
 
 
 def test_trailing_text_is_preserved(snippet_infile, snippet_outfile):
-    """Writing a file preserves trailing comments and blank lines."""
+    """Writing a file preserves trailing comments, but not blank lines."""
     expected = populate(snippet_infile, '''
         Main
           @md@
@@ -338,6 +349,7 @@ def test_trailing_text_is_preserved(snippet_infile, snippet_outfile):
     ''')
     root, _ = load(snippet_infile.name)
     save(snippet_outfile.name, root)
+    expected = expected[:-1]
     assert expected == str(snippet_outfile)
 
 
@@ -352,7 +364,6 @@ def test_keywords_are_saved(snippet_infile, snippet_outfile):
             Snippet 1
 
         # Comment
-        |
     ''')
     root, _ = load(snippet_infile.name)
     save(snippet_outfile.name, root)
@@ -371,9 +382,113 @@ def test_title_is_preserved(snippet_infile, snippet_outfile):
             Snippet 1
 
         # Comment
-        |
     ''')
     root, title = load(snippet_infile.name)
     save(snippet_outfile.name, root)
     assert 'User supplied title' == title
+    print(str(snippet_outfile))
+    assert expected == str(snippet_outfile)
+
+
+def test_keywords_can_be_on_marker_line(snippet_infile, snippet_outfile):
+    """Keywords can be listed on the same line as the marker."""
+    populate(snippet_infile, '''
+        Main
+          @keywords@ one two
+          @md@
+            Snippet 1
+    ''')
+    expected = clean_text('''
+        Main
+          @keywords@
+            one
+            two
+          @md@
+            Snippet 1
+    ''')
+    root, _ = load(snippet_infile.name)
+    save(snippet_outfile.name, root)
+    assert expected == str(snippet_outfile)
+
+
+def test_keywords_can_be_on_same_line(snippet_infile, snippet_outfile):
+    """Keywords can be listed on a line as well as singly."""
+    populate(snippet_infile, '''
+        Main
+          @keywords@
+            one two
+            zeta
+          @md@
+            Snippet 1
+    ''')
+    expected = clean_text('''
+        Main
+          @keywords@
+            one
+            two
+            zeta
+          @md@
+            Snippet 1
+    ''')
+    root, _ = load(snippet_infile.name)
+    save(snippet_outfile.name, root)
+    assert expected == str(snippet_outfile)
+
+
+def test_all_keywords_are_collected(snippet_infile, snippet_outfile):
+    """Keywords in multipls places are aggregated."""
+    populate(snippet_infile, '''
+        Main
+          @keywords@ one two
+            zeta
+          @md@
+            Snippet 1
+          @keywords@
+            alpha two
+    ''')
+    expected = clean_text('''
+        Main
+          @keywords@
+            alpha
+            one
+            two
+            zeta
+          @md@
+            Snippet 1
+    ''')
+    root, _ = load(snippet_infile.name)
+    save(snippet_outfile.name, root)
+    assert expected == str(snippet_outfile)
+
+
+def test_groups_are_aggregated(snippet_infile, snippet_outfile):
+    """Multiple goups with the same name are aggregated into one group."""
+    populate(snippet_infile, '''
+        Main
+          @md@
+            Snippet 1
+        Main
+          @md@
+            Snippet 2
+        Second
+          @text@
+            Snippet 4
+        Main
+          @md@
+            Snippet 3
+    ''')
+    expected = clean_text('''
+        Main
+          @md@
+            Snippet 1
+          @md@
+            Snippet 2
+          @md@
+            Snippet 3
+        Second
+          @text@
+            Snippet 4
+    ''')
+    root, _ = load(snippet_infile.name)
+    save(snippet_outfile.name, root)
     assert expected == str(snippet_outfile)

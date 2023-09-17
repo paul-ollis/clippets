@@ -132,14 +132,33 @@ def _strequals(config, op, left, right):                     # pragma: no cover
 def pytest_assertrepr_compare(config, op, left, right):      # pragma: no cover
     """Customise certain type comparison reports."""
     # pylint: disable=too-many-locals
+    def fmt_left(s):
+        has_nl = s.endswith('\n')
+        if has_nl:
+            s = s[:-1]
+        pad = ' ' * (max_left - len(s))
+        return s + cr + pad if has_nl else s + ' ' + pad
+
+    def fmt_right(s):
+        has_nl = s.endswith('\n')
+        if has_nl:
+            s = s[:-1]
+        return s + cr if has_nl else s
+
+    cr = '[bright_cyan]↵[/]'
     if _strequals(config, op, left, right):
         s = ['<<--RICH-->>']
-        lhs, rhs = prep_diffs(left.splitlines(), right.splitlines())
+        lhs, rhs = prep_diffs(left.splitlines(True), right.splitlines(True))
+        max_left = 30
+        for before, after in zip(lhs, rhs):
+            for (ai, a), (bi, b) in zip(before.lines, after.lines):
+                max_left = max(max_left, len(a))
+
         for before, after in zip(lhs, rhs):
             for (ai, a), (bi, b) in zip(before.lines, after.lines):
                 bar = '::'
-                lhs_str = f'{a:<40}'
-                rhs_str = f'{b}'
+                lhs_str = fmt_left(a)
+                rhs_str = fmt_right(b)
                 err = '[bold red]E[/bold red] '
 
                 if before.code == 'unchanged':
@@ -149,15 +168,17 @@ def pytest_assertrepr_compare(config, op, left, right):      # pragma: no cover
                     err = '[dim]c[/dim] '
                     bar = '=='
                 elif before.code == 'deleted':
-                    lhs_str = f'[bold red]{a:<40}[/bold red]'
+                    lhs_str = f'[bold red]{fmt_left(a)}[/bold red]'
+                    rhs_str = fmt_right(b)
                     bar = '[red bold]<-[/red bold]'
                 elif before.code == 'inserted':
-                    rhs_str = f'[yellow]{b}[/yellow]'
+                    rhs_str = fmt_left(a)
+                    rhs_str = f'[yellow]{fmt_right(b)}[/yellow]'
                     bar = '[yellow]->[/yellow]'
                 elif before.code == 'replaced':
                     bar = '[green]<>[/green]'
-                    lhs_str = f'[bold red]{a:<40}[/bold red]'
-                    rhs_str = f'[yellow]{b}[/yellow]'
+                    lhs_str = f'[bold red]{fmt_left(a)}[/bold red]'
+                    rhs_str = f'[yellow]{fmt_right(b)}[/yellow]'
 
                 s.append(
                     f'{err}{lstr(ai)} {lhs_str} {bar} {lstr(bi)} {rhs_str}')

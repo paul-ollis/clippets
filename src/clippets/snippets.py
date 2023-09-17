@@ -10,6 +10,7 @@ import sys
 import textwrap
 import weakref
 from contextlib import suppress
+from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
 from typing import (
@@ -22,6 +23,7 @@ from . import colors
 from .text import render_text
 
 if TYPE_CHECKING:
+    import io
     from rich.text import Text
 
 class Sentinel:                        # pylint: disable=too-few-public-methods
@@ -34,6 +36,10 @@ SENTINAL = Sentinel()
 
 class CannotMove(Exception):
     """Inidication that a snippet of gruop cannot be moved."""
+
+
+class NoGroupsError(Exception):
+    """The user tried to load a file conataining no groups."""
 
 
 class FixedPointer:
@@ -237,23 +243,28 @@ class GroupChild:
         """
         return True                                          # pragma: no cover
 
-    def full_repr(self, *, end='\n', debug: bool = False):
+    def full_repr(
+            self, *, end='\n', debug: bool = False, details: bool = False):
         """Format a simple representation of this element.
 
         This is intended for test support. The exact format may change between
         releases.
+
+        :debug:   If set then include the UIDs.
+        :details: If set then include more details.
         """
-        body = self.body_repr()
+        body = self.body_repr(details=details)
         spc = ' ' if body else ''
         id_part = f' {self.uid()}' if debug else ''
         return f'{self.__class__.__name__}{id_part}:{spc}{body}'
 
-    def body_repr(self) -> str:                   # pylint: disable=no-self-use
+    def body_repr(self, *, details: bool) -> str:
         """Format a simple representation of this element's body.
 
         This is intended for test support. The exact format may change between
         releases.
         """
+        # pylint: disable=no-self-use
         return ''                                            # pragma: no cover
 
     def clean(self) -> None:
@@ -270,6 +281,40 @@ class GroupChild:
         return cls.__name__.lower()
 
 
+@dataclass
+class ElementMeta:
+    """Meta data associated with an element."""
+
+    comment_text: list[str] = field(default_factory=list)
+    leading_text: list[str] = field(default_factory=list)
+    trailing_text: list[str] = field(default_factory=list)
+
+    def extract_comments(self):
+        """Extract comments from leading/trailing text."""
+        def comment(s):
+            return s.startswith('#')
+
+        #assert '# Comment X' not in self.leading_text
+        # Remove trailing blank lines
+        while self.trailing_text and not self.trailing_text[-1].strip():
+            self.trailing_text.pop()
+
+        self.comment_text = (
+            [s for s in self.leading_text if comment(s)]
+            + [s for s in self.trailing_text if comment(s)])
+        self.leading_text = (
+            [s for s in self.leading_text if not comment(s)]
+            + [s for s in self.trailing_text if not comment(s)])
+        self.trailing_text = []
+        #assert '# Comment X' not in self.comment_text
+
+    def merge(self, meta: ElementMeta):
+        """Merge another ElementMeta into this one."""
+        self.leading_text.extend(meta.leading_text)
+        self.trailing_text.extend(meta.trailing_text)
+        self.comment_text.extend(meta.comment_text)
+
+
 class Element:
     """An element in a tree of groups and snippets.
 
@@ -279,8 +324,7 @@ class Element:
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._source_lines: list[str] = []
-        self.leading_text: list[str] = []
-        self.trailing_text: list[str] = []
+        self.meta = ElementMeta()
 
     @property
     def source_lines(self) -> Sequence[str]:
@@ -292,13 +336,9 @@ class Element:
         self._source_lines = list(value)
         self.dirty = True
 
-    def add_leading_text(self, lines: Sequence[str]):
-        """Extend the leading text for this element."""
-        self.leading_text.extend(lines)
-
-    def add_trailing_text(self, lines: Sequence[str]):
-        """Extend the trailing text for this element."""
-        self.trailing_text.extend(lines)
+    def set_meta(self, meta: ElementMeta):
+        """Set the meta data for this element."""
+        self.meta.merge(meta)
 
     def is_empty(self) -> bool:
         """Determine if this element is empty."""
@@ -359,21 +399,45 @@ class TextualElement(Element):
         """
         return textwrap.dedent('\n'.join(self.source_lines))
 
-    def body_repr(self):
+    def body_repr(self, *, details: bool) -> str:
         """Format a simple representation of this element's body.
 
         This is intended for test support. The exact format may change between
         releases.
         """
-        return f'{self.body!r}'
+        def add_lines(prefix, lines):
+            if lines:
+                text = '\n'.join(lines)
+                s.append(f'    {prefix + ":":<8} {text!r}')
+
+        if details:
+            s = []
+            m = self.meta
+            s.append(f'{self.body!r}')
+            add_lines('Comment', m.comment_text)
+            add_lines('Leading', m.leading_text)
+            add_lines('Trailing', m.trailing_text)
+            return '\n'.join(s)
+        else:
+            return f'{self.body!r}'
 
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
-        s = [f'{line}\n' for line in self.leading_text]
-        s.append(f'  {self.marker}\n')
-        s.extend(f'    {line}\n' for line in self.source_lines)
-        s.extend(f'{line}\n' for line in self.trailing_text)
-        return ''.join(s)
+        def add_lines(pad: str, lines: list[str], prefix: str = ''):
+            s.extend(
+                f'{pad}{prefix}{line}' if line.rstrip() else ''
+                for line in lines)
+
+        s = []
+        m = self.meta
+        add_lines('  ', m.leading_text, prefix='#! ')
+        add_lines('  ', m.comment_text)
+        s.append(f'  {self.marker}')
+        s.extend(
+            f'    {line}' if line.rstrip() else ''
+            for line in self.source_lines)
+        add_lines('    ', m.trailing_text)
+        return '\n'.join(s) + '\n'
 
 
 class PreservedText(TextualElement, GroupChild):
@@ -411,10 +475,10 @@ class Snippet(TextualElement, SnippetLike):
         """The snippet's lines, with keywords marked up.
 
         Keywords are surrounded by the Unicode characters u2e24 and 2e25. These
-        look very similar to comma, so they are extremely unlikely to appear in
-        non-marked up text. Immediately following the u2e24 characte is a
+        look very similar to commas, so they are extremely unlikely to appear
+        in non-marked up text. Immediately following the u2e24 characte is a
         single letter that is a key indicating the colour that will be used to
-        highligh the keyword.
+        highlight the keyword.
         """
         keywords = self.parent.keywords()
         if not self._marked_lines:
@@ -483,13 +547,15 @@ class Snippet(TextualElement, SnippetLike):
         """Clean the source lines.
 
         Tabs are expanded and whitespace is trimmed from the end of each line.
-        Trailing blank lines are deleted and common leading white space
-        removed.
+        Trailing blank lines are stored as meta data and common leading white
+        space removed.
         """
         super().clean()
         lines = self._source_lines
+        trailing = []
         while lines and not lines[-1].strip():
-            self.add_trailing_text([lines.pop()])
+            trailing.append(lines.pop())
+        self.meta.trailing_text.extend(trailing)
         self._source_lines[:] = textwrap.dedent('\n'.join(lines)).splitlines()
 
     @classmethod
@@ -523,9 +589,9 @@ class KeywordSet(TextualElement, GroupChild):
     id_source: Iterator[int] | None = itertools.count()
     marker = '@keywords@'
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.words = set()
+    def __init__(self, *, keywords: str = '', **kwargs):
+        super().__init__(**kwargs)
+        self.words = set(keywords.split())
 
     def add(self, line) -> None:
         """Add a entry to this set of keywords.
@@ -544,17 +610,22 @@ class KeywordSet(TextualElement, GroupChild):
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
         s = [f'  {self.marker}']
-        s.extend(f'    {line}' for line in self.text.splitlines())
+        s.extend(
+            f'    {line}' if line.rstrip() else ''
+            for line in self.text.splitlines())
         text = '\n'.join(s)
         return text.rstrip() + '\n'
 
-    def body_repr(self) -> str:
+    def body_repr(self, *, details: bool) -> str:
         """Format a simple representation of this element's body.
 
         This is intended for test support. The exact format may change between
         releases.
         """
-        return f'{" ".join(sorted(self.words))}'
+        if details:
+            return f'K: {" ".join(sorted(self.words))}'
+        else:
+            return f'{" ".join(sorted(self.words))}'
 
     def is_empty(self) -> bool:
         """Detemine if this keyword set is empty."""
@@ -613,21 +684,39 @@ class GroupDebugMixin:
         else:
             return self.name
 
-    def full_repr(self, end='\n', *, debug: bool = False) -> str:
+    def full_repr(
+            self, *, end='\n', debug: bool = False, details: bool = False):
         """Format a simple outline representation of the tree.
 
         This is intended for test support. The exact format may change between
         releases.
+
+        :debug:   If set then include the UIDs.
+        :details: If set then include more details.
         """
+        def add_lines(prefix, lines):
+            if lines:
+                text = '\n'.join(lines)
+                s.append(f'    {prefix + ":":<8} {text!r}')
+
         if debug:                                            # pragma: no cover
             s = [f'Group: {self.repr_full_name} {self.uid()}']
+        elif details:
+            s = []
+            m = self.meta
+            s.append(f'{self.repr_full_name}')
+            add_lines('Comment', m.comment_text)
+            add_lines('Leading', m.leading_text)
+            add_lines('Trailing', m.trailing_text)
         else:
             s = [f'Group: {self.repr_full_name}']
         s.append(self.keyword_set.full_repr(end='', debug=debug))
         s.extend(
-            c.full_repr(end='', debug=debug) for c in self.children
-            if not isinstance(c, PlaceHolder))
-        s.extend(g.full_repr(end='', debug=debug) for g in self.ordered_groups)
+            c.full_repr(end='', debug=debug, details=details)
+            for c in self.children if not isinstance(c, PlaceHolder))
+        s.extend(
+            g.full_repr(end='', debug=debug, details=details)
+            for g in self.ordered_groups)
         return '\n'.join(s) + end
 
 
@@ -638,6 +727,7 @@ class Group(GroupDebugMixin, Element, GroupChild):
     all_tags: ClassVar[set[str]] = set()
 
     def __init__(self, name, parent=None, tag_text=''):
+        assert name
         super().__init__(parent)
         self.name = name
         self.title = ''   # TODO: What is this?
@@ -859,14 +949,24 @@ class Group(GroupDebugMixin, Element, GroupChild):
 
     def file_text(self) -> str:
         """Generate the text that should be written to a file."""
-        s = [f'{line}\n' for line in self.leading_text]
+        def add_lines(pad, lines, prefix: str = ''):
+            s.extend(
+                f'{pad}{prefix}{line}' if line.rstrip() else ''
+                for line in lines)
+
+        s = []
+        m = self.meta
+        add_lines('', m.leading_text, prefix='#! ')
+        add_lines('', m.comment_text)
         if self.tags:
-            s.append(f'{self.full_name} [{" ".join(self.tags)}]\n')
+            s.append(f'{self.full_name} [{" ".join(self.tags)}]')
         else:
-            s.append(f'{self.full_name}\n')
-        s.extend(f'    {line}\n' for line in self.source_lines)
-        s.extend(f'{line}\n' for line in self.trailing_text)
-        return ''.join(s)
+            s.append(f'{self.full_name}')
+        s.extend(
+            f'    {line}' if line.rstrip() else ''
+            for line in self.source_lines)
+        add_lines('', m.trailing_text)
+        return '\n'.join(s) + '\n'
 
 
 class Root(Group):
@@ -954,24 +1054,148 @@ class Root(Group):
 
 
 # TODO: Not Python 3.8 compatible.
-ParsedElement: TypeAlias = PreservedText | Snippet | KeywordSet | Group
+ParsedElement: TypeAlias = Snippet | KeywordSet
+
+
+class Parser:
+    # pylint: disable=too-few-public-methods
+    """The parser for a Clippets file."""
+
+    def __init__(self, root: Root):
+        self.root = root
+        self.el: ParsedElement | None = None
+        self.cur_group: Group = self.root
+        self.meta = ElementMeta()
+        self.indent: int = 0
+
+    def load(self, f: io.TextIOWrapper) -> None:
+        """Load a snippet hierarchy from a file.
+
+        :raise:
+            NoGroupsError if the file containes no groups.
+        """
+        self.cur_group = self.root
+        with f:
+            self.el = None
+            self.meta = ElementMeta()
+            for rawline in f:
+                line = rawline.rstrip()
+                if self.el:
+                    self._handle_content(line)
+                if not self.el:                                  # noqa: SIM102
+                    if not (
+                               self._handle_comment(line)
+                            or self._handle_title(line)
+                            or self._handle_group(line)
+                            or self._handle_marker(line)
+                        ):
+                        self._handle_line(line)
+
+        self._store()
+
+        meta = self.meta
+        meta.trailing_text[:] = meta.leading_text
+        meta.leading_text[:] = []
+        meta.extract_comments()
+        self._store()
+        self.root.set_meta(meta)
+        self.root.clean()
+        self.root.update_keywords()
+        if not self.root.groups:
+            raise NoGroupsError
+
+        for el in self.root.walk(predicate=is_snippet):
+            el.reset()
+
+    def _store(self) -> None:
+        """Store the current element if not empty."""
+        if self.el is not None:
+            el = self.el
+            el.clean()
+            if not el.is_empty():
+                self.meta.extract_comments()
+                self.cur_group.add(el)
+                self.el.set_meta(self.meta)
+                self.meta = ElementMeta()
+            self.el = None
+
+    def _handle_content(self, line) -> None:
+        """Handle probable content of a snippet."""
+        m = re.match(r'^( *)(.*)', line)
+        if m:
+            lpad, text = m.groups()
+            if line.strip() and len(lpad) <= self.indent:
+                self._store()
+                return
+            if self.el:
+                self.el.add(lpad[self.indent:] + text)
+        assert m, 'This cannot happen.'
+
+    def _handle_line(self, line) -> None:
+        """Handle a general line that is not part of a snippet."""
+        line = line.strip()
+        self.meta.leading_text.append(line)
+
+    def _handle_comment(self, line) -> bool:
+        """Handle a comment line."""
+        if line.startswith('#'):
+            self.meta.leading_text.append(line.lstrip())
+            return True
+        else:
+            return False
+
+    def _handle_title(self, line) -> bool:
+        """Handle a title line."""
+        m = re.match('@title *: *(.*)', line)
+        if m:
+            self._store()
+            self.root.title = m.group(1)
+        return bool(m)
+
+    def _handle_group(self, line) -> bool:
+        """Handle a group start line."""
+        m = re.match(r'([^ ].*)', line)
+        if m:
+            self._store()
+            text = m.group()
+            sub_groups = [g.strip() for g in text.split(':')]
+            self.cur_group = self.root.add_group(sub_groups.pop(0))
+            self.meta.extract_comments()
+            self.cur_group.set_meta(self.meta)
+            self.meta = ElementMeta()
+            while sub_groups:
+                self.cur_group = self.cur_group.add_group(sub_groups.pop(0))
+            return True
+        else:
+            return False
+
+    def _handle_marker(self, line) -> bool:
+        """Handle a marker line."""
+        m = re.match(r'^( +?)@(.*)@ *(.*)', line)
+        if m:
+            self._store()
+            if m.group(2) == 'keywords':
+                self.el = KeywordSet(
+                    parent=self.cur_group, keywords=m.group(3))
+            elif m.group(2) == 'md':
+                self.el = MarkdownSnippet(parent=self.cur_group)
+            else:
+                self.el = Snippet(parent=self.cur_group)
+            self.indent = len(m.group(1))
+            return True
+        else:
+            return False
 
 
 class Loader:
     """Encapsulation of snippet loading machinery."""
 
-    # pylint: disable=too-many-instance-attributes
-
     def __init__(self, path: str, *, root: Root | None = None):
         self.path = Path(path)
         self.root = root or Root('<ROOT>')
-        self.el: ParsedElement = Snippet(parent=self.root)
-        self.last_added: ParsedElement | None = None
-        self.cur_group: Group = Group('')
         self.monitor_task: asyncio.Task | None = None
         self.load_time: float = 0.0
         self.stop_event = asyncio.Event()
-        self.leading_text: list[str] = []
 
     def start_monitoring(self, on_change_callback: Callable) -> None:
         """Start a task that monitors for change to the loaded file."""
@@ -1001,77 +1225,6 @@ class Loader:
                 if not await pause(2.0):
                     break
 
-    def store(self) -> None:
-        """Store the current element if not empty."""
-        el = self.el
-        el.clean()
-        if not el.is_empty():
-            if isinstance(el, PreservedText):
-                self.leading_text.extend(el.source_lines)
-            else:
-                el.add_leading_text(self.leading_text)
-                self.leading_text = []
-                self.cur_group.add(el)
-                self.last_added = el
-        self.el = PreservedText(parent=self.cur_group)
-
-    def handle_comment(self, line) -> bool:
-        """Handle a comment line."""
-        if line.startswith('#'):
-            if not isinstance(self.el, PreservedText):
-                self.store()
-                self.el = PreservedText(parent=self.cur_group)
-            self.el.add(line)
-            return True
-        else:
-            return False
-
-    def handle_title(self, line) -> bool:
-        """Handle a title line."""
-        if line.startswith('@title:'):
-            self.store()
-            _, _, title = line.partition(':')
-            self.root.title = title.strip()
-            self.el = PreservedText(parent=self.cur_group)
-            return True
-        else:
-            return False
-
-    def handle_group(self, line) -> bool:
-        """Handle a group start line."""
-        r_group = re.compile(r'([^ ].*)')
-        m = r_group.match(line)
-        if m:
-            self.store()
-            text = m.group()
-            sub_groups = [g.strip() for g in text.split(':')]
-            self.cur_group = self.root.add_group(sub_groups.pop(0))
-            self.cur_group.add_leading_text(self.leading_text)
-            self.leading_text = []
-            while sub_groups:
-                self.cur_group = self.cur_group.add_group(sub_groups.pop(0))
-            self.last_added = self.cur_group
-            self.el = PreservedText(parent=self.cur_group)
-            return True
-        else:
-            return False
-
-    def handle_marker(self, line) -> bool:
-        """Handle a marker line."""
-        r_marker = re.compile(r'^ +?@(.*)@ *$')
-        m = r_marker.match(line)
-        if m:
-            self.store()
-            if m.group(1) == 'keywords':
-                self.el = KeywordSet(parent=self.cur_group)
-            elif m.group(1) == 'md':
-                self.el = MarkdownSnippet(parent=self.cur_group)
-            else:
-                self.el = Snippet(parent=self.cur_group)
-            return True
-        else:
-            return False
-
     def load(self) -> tuple[Root | None, str, str]:
         """Load a tree of snippets from a file."""
         exc: OSError | None = None
@@ -1081,39 +1234,28 @@ class Loader:
             msg = f'Could not open {self.path}: {exc.strerror}'
             return None, '', msg
         else:
+            # This may raise NoGroupsError.
             return self._do_load(f)
 
-    def _do_load(self, f) -> tuple[Root, str, str]:
-        self.load_time = self.mtime
+    def _do_load(self, f: io.TextIOWrapper):
         reset_for_reload()
+        parser = Parser(self.root)
         self.root.reset()
-        self.cur_group = self.root
-        with f:
-            self.el = PreservedText(parent=self.cur_group)
-            for rawline in f:
-                line = rawline.rstrip()
-                if not (self.handle_comment(line)
-                        or self.handle_title(line)
-                        or self.handle_group(line)
-                        or self.handle_marker(line)):
-                    self.el.add(line)
-
-        self.store()
-        self.root.clean()
-        self.root.update_keywords()
-        if not self.root.groups:
+        self.load_time = self.mtime
+        try:
+            parser.load(f)
+        except NoGroupsError:
             sys.exit(f'File {self.path} contains no groups')
-
-        for el in self.root.walk(predicate=is_snippet):
-            el.reset()
-        if self.last_added:
-            self.last_added.add_trailing_text(self.leading_text)
         else:
-            self.root.add_trailing_text(self.leading_text)
-        return self.root, self.root.title, ''
+            return self.root, self.root.title, ''
 
-    def save(self, root) -> None:
+    def save(self, root: Root | None = None) -> None:
         """Save a snippet tree to the file."""
+        def add_lines(pad, lines):
+            for line in lines:
+                f.write(f'{pad}{line}\n')
+
+        root = root or self.root
         with self.path.open('wt', encoding='utf8') as f:
             if root.title:
                 f.write(f'@title: {root.title}\n')
@@ -1123,6 +1265,9 @@ class Loader:
                     kws = el.keyword_set
                     if not kws.is_empty():
                         f.write(kws.file_text())
+            m = root.meta
+            add_lines('', m.leading_text)
+            add_lines('', m.comment_text)
         self.load_time = self.mtime
 
     @property

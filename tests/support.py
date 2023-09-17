@@ -217,15 +217,18 @@ class FixNamedTestFile:
 
 
 class TempTestFile:
-    """A temporary file for testing.
+    """A named temporary file for testing.
 
+    This uses
     The main difference is that the string representation is the file's current
     contents.
     """
 
     def __init__(self, *args, **kwargs):
-        self._f = NamedTemporaryFile(*args, **kwargs)
-        self._name = self._f.name
+        kwargs['delete'] = False
+        f = NamedTemporaryFile(*args, **kwargs)
+        self._name = f.name
+        f.close()
 
     @property
     def name(self):
@@ -252,33 +255,21 @@ class TempTestFile:
         assert not p.exists()
 
     def close(self):
-        """Close the file."""
-        self._f.close()
+        """Close the file and delete this file plus any backups."""
         self._cleanup()
 
     def write_text(self, text):
         """Write given text as the entire file's content."""
-        try:
-            self._f.seek(0)
-        except (OSError, ValueError):
-            f = open(self.name, 'wt', encoding='utf-8')
-        else:
-            self._f.truncate()
-            f = self._f
-        f.write(text)
-        f.flush()
+        with open(self._name, 'wt', encoding='utf-8') as f:
+            f.write(text)
 
     def delete(self):
-        """Delete the file.
-
-        This also closes it, but does not run the cleanup.
-        """
-        self._f.file.close()
+        """Delete the file."""
         Path(self.name).unlink()
 
     def __str__(self):
-        self._f.seek(0)
-        return self._f.read()
+        with open(self._name, 'rt', encoding='utf-8') as f:
+            return f.read()
 
 
 class EditTempFile(TempTestFile):
@@ -499,7 +490,7 @@ class AppRunner:                 # pylint: disable=too-many-instance-attributes
         try:
             self.app.screen.query_one(selector)
         except NoMatches:                                    # pragma: no cover
-            msg = f'Bad widget ID: {arg!r}, screen={self.app.screen}'
+            msg = f'Bad widget ID: {arg!r}, screen={self.app.screen}\n'
             names = set()
             for node in self.app.screen.query(None):
                 if node.id:

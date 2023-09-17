@@ -107,7 +107,7 @@ class TestBootstrapping:
             + ['enter']
         )
         infile.delete()
-        exited = await simple_run(infile, actions, expect_exit=True)
+        _, exited = await simple_run(infile, actions, expect_exit=True)
         assert exited
 
     @pytest.mark.asyncio

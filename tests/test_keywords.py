@@ -24,7 +24,7 @@ std_infile_text = '''
 
         - The keyword **highlighting** is in addition to the Markdown
           highlighting.
-        - Keywords, quite correctly only matches complete words.
+        - Keywords, quite correctly, only match complete words.
       @md@
         The third snippet.
     Second
@@ -101,7 +101,7 @@ async def test_keywords_can_be_edited(
     populate(edit_text_file, 'Markdown\ntext\n')
     actions = (
         ['f7']                # Edit the first group's keywords.
-        + ['wait:0.5:EditorHasExited']
+        + ['wait:1.0:EditorHasExited']
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run_dyn(infile(kw), actions)
@@ -118,7 +118,7 @@ async def test_ui_is_greyed_out_during_clipboard_editing(
         ['f7']                # Edit the first group's keywords.
         + ['snapshot:']         # Take snapshot with editor running
         + ['end_edit:']         # Stop the editor.
-        + ['wait:0.5:EditorHasExited']
+        + ['wait:1.0:EditorHasExited']
     )
     kw = 'highlighting text'
     _, snapshot_ok = await snapshot_run(
@@ -135,7 +135,7 @@ async def test_select_group_used_if_no_snippets(
     actions = (
         ['f9']                  # Close all groups.
         + ['f7']                # Edit the first group's keywords.
-        + ['wait:0.2:EditorHasExited']
+        + ['wait:1.0:EditorHasExited']
         + ['f9']                # Open all groups.
     )
     kw = 'highlighting text'

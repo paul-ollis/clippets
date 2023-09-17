@@ -126,8 +126,12 @@ def edit_text_file() -> EditTempFile:
 
 
 @pytest.fixture
-def simple_run():
-    """Provide a way to run the Clippets app."""
+def simple_run() -> bool:
+    """Provide a way to run the Clippets app.
+
+    :return:
+        A tuple of the AppRunner and a bool that is true if the app exited.
+    """
     async def run_app(                                          # noqa: PLR0913
             infile: TempTestFile, actions: list, *, log=False,
             test_mode: bool = True, options: list[str] | None = None,
@@ -143,7 +147,7 @@ def simple_run():
             if not (exited and expect_exit):                 # pragma: no cover
                 print(''.join(tb))
                 assert not tb
-        return exited
+        return runner, exited
 
     return run_app
 
