@@ -563,7 +563,6 @@ class AppMixin:
                     after = False
                 w.add_class('dest_below' if after else 'dest_above')
             if isinstance(dest.child, PlaceHolder):
-                print("SET", w.renderable, after)
                 w.display = True
 
     def set_snippet_visuals(self) -> None:
@@ -577,7 +576,6 @@ class AppMixin:
             self._clear_move_marker(el, w)
             if isinstance(el, PlaceHolder):
                 w.display = False
-                print("CLR", w.renderable)
             p = self.pointer
             if p is not None:
                 if w.id != p.source.uid():
@@ -1117,6 +1115,7 @@ class AppMixin:
                 self.find_widget)
 
         self.update_result()
+        self.filter_view()
         self.set_visuals()
 
     def rebuild_after_edits(self):

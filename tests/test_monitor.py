@@ -113,13 +113,8 @@ async def test_change_to_the_file_can_be_ignored(infile, snapshot_run):
 
 
 @pytest.mark.asyncio
-async def test_folded_groups_fold_are_lost(infile, snapshot_run):
-    """Clippet drops folds upon reload.
-
-    It would be nice if the user could make small external edits without
-    messing up their current Clippets view. A leter version of Clippets may
-    support this.
-    """
+async def test_folded_groups_fold_may_be_maintained(infile, snapshot_run):
+    """Clippets tries to retain the folded group state after a reload."""
     def update_file():
         text = clean_text(multi_group_infile).replace(
             'Snippet 2', 'Snippet 2\n  @text@\n    Snippet 2A')

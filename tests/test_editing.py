@@ -114,6 +114,38 @@ class TestKeyboardControlled:
         assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
+    async def test_editing_maintains_folded_state(
+            self, two_group_infile, edit_text_file, snapshot_run):
+        """Folded groups remain folded after editing."""
+        populate(edit_text_file, 'Snippet 2 - edited')
+        actions = (
+            ['left']                         # Move to first group.
+            + ['down']                       # ... then next group.
+            + ['f']                          # ... then fold.
+            + ['up']                         # ... back to first group.
+            + ['right']                      # ... then snippet.
+            + ['down']                       # ... then second snippet.
+            + ['e']                          # Edit it
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2 - edited'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Third
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert 'Snippet 2' == edit_text_file.prev_text
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
     async def test_edit_dup_etc_ignored_for_group(
             self, infile, edit_text_file, snapshot_run):
         """Request to edit, etc. are ignored when a group is selected."""
@@ -734,6 +766,40 @@ class TestInternalEditor:
             MarkdownSnippet: 'Snippet 4'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_editing_maintains_folded_state(
+            self, two_group_infile, edit_text_file, snapshot_run):
+        """Folded groups remain folded after editing."""
+        populate(edit_text_file, 'Snippet 2 - edited')
+        actions = (
+            ['left']                         # Move to first group.
+            + ['down']                       # ... then next group.
+            + ['f']                          # ... then fold.
+            + ['up']                         # ... back to first group.
+            + ['right']                      # ... then snippet.
+            + ['down']                       # ... then second snippet.
+            + ['e']                          # Edit it
+            + ['end']
+            + ['backspace']
+            + ['B']
+            + ['ctrl+s']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet B'
+            MarkdownSnippet: 'Snippet 3'
+            Group: Third
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok, 'Snapshot does not match stored version'
 
