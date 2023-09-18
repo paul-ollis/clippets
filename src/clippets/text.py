@@ -53,20 +53,36 @@ def force_style(st: str | Style) -> Style:
 
 def render_text(text: Text | str) -> Text:
     """Render specially marked up text."""
+    def splits():
+        end = 0
+        for i, span in enumerate(text.spans):
+            if i == 0:
+                if span.start > 0:
+                    yield raw_text[:span.start], Span(0, span.start, Style())
+                yield raw_text[span.start:span.end], span
+                end = span.end
+        if end < len(raw_text):
+            yield raw_text[end:], Span(end, len(raw_text), Style())
+
     if isinstance(text, str):
         text = Text(text, spans=[Span(0, len(text), Style())])
     raw_text = text.plain
+    print("RAW", raw_text, text.spans)
     if '\u2e24' in raw_text:
         new_spans = []
         new_parts = []
         off = 0
-        for span in text.spans:
+        for substr, span in splits():
             substr = raw_text[span.start:span.end]
+            print("S:", span.start, span.end, repr(substr))
             new_subspans, new_substr = gen_highlight_spans(
                 substr, force_style(span.style), off)
             new_spans.extend(new_subspans)
             new_parts.append(new_substr)
             off += len(new_parts[-1])
-        return Text(''.join(new_parts), spans=new_spans)
+        new_text = Text(''.join(new_parts), spans=new_spans)
+        new_raw_text = new_text.plain
+        print("...", new_raw_text)
+        return new_text
     else:
         return text

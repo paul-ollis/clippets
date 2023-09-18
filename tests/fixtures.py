@@ -2,10 +2,12 @@
 
 Much of the snapshot code in here is 'borrowed' from Textual's test code.
 """
+from __future__ import annotations
 
 import functools
 import os
 import pickle
+import shutil
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
@@ -45,7 +47,7 @@ class MyTemporaryDirectory(TemporaryDirectory):
 
     def cleanup(self):
         """Clean up the temporry directory."""
-        self._rmtree(self.name, ignore_errors=True)          # pragma: no cover
+        shutil.rmtree(self.name, ignore_errors=True)
 
 
 @dataclass

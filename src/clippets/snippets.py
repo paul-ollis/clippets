@@ -15,7 +15,7 @@ from io import StringIO
 from pathlib import Path
 from typing import (
     Callable, ClassVar, Iterable, Iterator, Literal, Sequence, TYPE_CHECKING,
-    TypeAlias, TypeVar, cast)
+    TypeVar, Union, cast)
 
 from markdown_strings import esc_format
 
@@ -1100,7 +1100,7 @@ class Root(Group):
 
 
 # TODO: Not Python 3.8 compatible.
-ParsedElement: TypeAlias = Snippet | KeywordSet
+ParsedElement = Union[Snippet, KeywordSet]
 
 
 class Parser:

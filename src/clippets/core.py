@@ -260,7 +260,7 @@ class MainScreen(Screen):
 
     def make_group_widget(
             self, uid: str, group: Group | GroupPlaceHolder,
-            all_tags: dict[str, i],
+            all_tags: dict[str, int],
         ) -> Widget:
         """Construct correct widget for a given group or place holder."""
         classes = 'is_group'
@@ -1437,6 +1437,7 @@ class Clippets(AppMixin, App):
     """The textual application object."""
 
     # pylint: disable=too-many-instance-attributes
+    ENABLE_COMMAND_PALETTE = False
     AUTO_FOCUS = None
     CSS_PATH = 'clippets.css'
     SCREENS: ClassVar[dict] = {'help': HelpScreen()}

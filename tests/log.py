@@ -4,6 +4,7 @@ This is here to support debugging. It is deliberately simple. It tends to be
 more useful when running the test suite. For other debugging, simply using
 print and the textual console tool is my typical approach.
 """
+from __future__ import annotations
 
 import os
 import sys

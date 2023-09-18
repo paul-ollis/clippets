@@ -147,7 +147,7 @@ async def test_select_group_used_if_no_snippets(
 class TestInternalEditor:
     """Using the built-in editor."""
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture(autouse=True, name='set_env')
     @classmethod
     def set_env(cls):
         """Set up the environment for these tests."""
