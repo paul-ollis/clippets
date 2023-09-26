@@ -1,0 +1,28 @@
+# An example of a snippet file.
+@title: An optional title - appears at the top of the terminal.
+
+# Groups start at the beginning of a line. Sub-groups are separated
+# by colons and tags may appear at the end inside brackets.
+Main : Sub group [ classA classD ]
+
+  # A group may define keywords, which are highlighted within its
+  # snippets, as an aid to spotitng the snippet you want. The
+  # content of a group is all indented.
+  @keywords@
+    lists
+    second
+
+  # Each snippet starts with @md@ or @text@. The body of the snippet
+  # is all followining indented text.
+  @md@
+    Markdown is the *most* flexible format allowing:
+
+    - Thinkg like
+    - bulleted lists.
+
+  @text@
+    The second snippet.
+
+Another top-level group
+  @text@
+    The third snippet.

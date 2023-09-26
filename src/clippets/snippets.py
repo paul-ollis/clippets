@@ -14,8 +14,7 @@ from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
 from typing import (
-    Callable, ClassVar, Iterable, Iterator, Literal, Sequence, TYPE_CHECKING,
-    TypeVar, Union, cast)
+    Callable, ClassVar, Literal, TYPE_CHECKING, TypeVar, Union, cast)
 
 from markdown_strings import esc_format
 
@@ -24,6 +23,8 @@ from .text import render_text
 
 if TYPE_CHECKING:
     import io
+    from collections.abc import Iterable, Iterator, Sequence
+
     from rich.text import Text
 
 class Sentinel:                        # pylint: disable=too-few-public-methods
@@ -367,7 +368,7 @@ class SnippetLike(GroupChild):
     """A base for all the Snippet and SnippetPlaceHolder classes."""
 
 
-class PlaceHolder:
+class PlaceHolder(GroupChild):
     """Base class for place holders."""
 
 
@@ -656,6 +657,11 @@ class GroupDebugMixin:
         """The groups in user-defined order."""
         return []                                            # pragma: no cover
 
+    @property
+    def ordered_true_groups(self) -> list[Group]:
+        """The groups in user-defined order."""
+        return []                                            # pragma: no cover
+
     def outline_repr(self, end='\n') -> str:
         """Format a simple group-only outline representation of the tree.
 
@@ -679,7 +685,7 @@ class GroupDebugMixin:
             return self.name
 
     def full_repr(
-            self, *, end='\n', debug: bool = False, details: bool = False
+            self, *, end='\n', debug: bool = False, details: bool = False,
         ) -> str:
         """Format a simple outline representation of the tree.
 
@@ -1395,7 +1401,7 @@ def reset_for_tests() -> None:
     reset_for_reload()
 
 
-def is_persistent(obj: Element) -> type[Persistent] | None:
+def is_persistent(obj: GroupChild) -> type[Persistent] | None:
     """Test if object is persistent."""
     ok = isinstance(obj, Persistent) and not isinstance(obj, PlaceHolder)
     return Persistent if ok else None

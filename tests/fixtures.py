@@ -26,7 +26,7 @@ from syrupy import SnapshotAssertion
 
 from support import AppRunner, EditTempFile, TempTestFile
 
-from clippets import colors, core, snippets
+from clippets import colors, core, snippets, robot
 
 HERE = Path(__file__).parent
 
@@ -138,8 +138,10 @@ def simple_run() -> bool:
             infile: TempTestFile, actions: list, *, log=False,
             test_mode: bool = True, options: list[str] | None = None,
             expect_exit: bool = False):
+        args = [infile.name]
         runner = AppRunner(
-            infile, actions, test_mode=test_mode, options=options)
+            infile.name, actions, test_mode=test_mode, options=options,
+            make_app=lambda args: core.Clippets(core.parse_args(args)))
         if log:
             with runner.logf:                                # pragma: no cover
                 _, tb, exited = await runner.run()
@@ -162,9 +164,11 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
             test_mode: bool = True, options: list[str] | None = None,
             expect_exit: bool = False,
             control_editor: bool = False):
+        args = [infile.name]
         runner = AppRunner(
-            infile, actions, test_mode=test_mode, options=options,
-            control_editor=control_editor)
+            infile.name, actions, test_mode=test_mode, options=options,
+            control_editor=control_editor,
+            make_app=lambda args: core.Clippets(core.parse_args(args)))
         if log:
             with runner.logf:                                # pragma: no cover
                 svg, tb, exited = await runner.run()
@@ -173,6 +177,7 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
         if tb:
             if not (exited and expect_exit):                 # pragma: no cover
                 print(''.join(tb))
+                print(f'>>>> {tb!r}')
                 assert not tb
         return runner, check_svg(snapshot, svg, request, runner.app)
 

@@ -1,6 +1,6 @@
 [project]
 name = "clippets"
-version = "0.4.1"
+version = "0.4.2"
 authors = [
   { name="Paul Ollis", email="paul@cleversheep.org" },
 ]
@@ -38,7 +38,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.ruff]
 per-file-ignores = {}
-target-version = "py38"
+target-version = "py39"
 line-length = 79
 select = ["ALL", "E", "F", "B", "D", "PL"]
 ignore = [

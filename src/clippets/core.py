@@ -14,32 +14,26 @@ import itertools
 import re
 import subprocess
 import sys
-import threading
 import time
 from collections import deque
-from contextlib import asynccontextmanager, suppress
+from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial, wraps
 from pathlib import Path
-from typing import (
-    AsyncGenerator, Callable, ClassVar, Iterable, Iterator, TYPE_CHECKING,
-    Union, cast)
+from typing import Callable, ClassVar, TYPE_CHECKING, Union, cast
 
 from rich.syntax import Syntax
 from rich.text import Text
-from textual._context import (
-    active_message_pump, message_hook as message_hook_context_var)
 from textual.app import App, Binding, ComposeResult
-from textual.containers import Container, Horizontal
+from textual.containers import Horizontal
 from textual.css.query import NoMatches
 from textual.message import Message
-from textual.pilot import Pilot
 from textual.screen import Screen
 from textual.walk import walk_depth_first
 from textual.widgets import Header, Input, Static
 from textual.widgets._markdown import MarkdownFence
 
-from . import markup, snippets
+from . import markup, robot, snippets
 from .editor import TextArea
 from .platform import (
     SharedTempFile, dump_clipboard, get_editor_command, get_winpos,
@@ -57,6 +51,8 @@ from .widgets import (
 from . import patches                                              # noqa: F401
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Iterator
+
     from textual.binding import _Bindings
     from textual.timer import Timer
     from textual.widget import Widget
@@ -253,7 +249,7 @@ class MainScreen(Screen):
                 w = self.make_group_widget(uid, el, all_tags)
                 self.widgets[uid] = w
                 yield w
-            else:
+            elif isinstance(el, (Snippet, PlaceHolder)):
                 w = make_snippet_widget(uid, el)
                 self.widgets[uid] = w
                 yield w
@@ -1436,7 +1432,6 @@ class AppMixin:
 class Clippets(AppMixin, App):
     """The textual application object."""
 
-    # pylint: disable=too-many-instance-attributes
     ENABLE_COMMAND_PALETTE = False
     AUTO_FOCUS = None
     CSS_PATH = 'clippets.css'
@@ -1633,82 +1628,6 @@ class Clippets(AppMixin, App):
             self.resolver_q.put_nowait('rebuild')
             self.populater_q.put_nowait('pop')
 
-    @asynccontextmanager
-    async def run_test(                                         # noqa: PLR0913
-        self,
-        *,
-        headless: bool = True,
-        size: tuple[int, int] | None = (80, 24),
-        tooltips: bool = False,
-        notifications: bool = False,
-        message_hook: Callable[[Message], None] | None = None,
-    ) -> AsyncGenerator[Pilot, None]:
-        """Run app under test conditions.
-
-        Use this to run your app in "headless" (no output) mode and driver the
-        app via a [Pilot][textual.pilot.Pilot] object.
-
-        Example:
-            ```python
-            async with app.run_test() as pilot:
-                await pilot.click("#Button.ok")
-                assert ...
-            ```
-
-        Args:
-            headless: Run in headless mode (no output or input).
-            size: Force terminal size to `(WIDTH, HEIGHT)`,
-                or None to auto-detect.
-            tooltips: Enable tooltips when testing.
-            message_hook:
-                An optional callback that will called with every message going
-                through the app.
-        """
-        app = self
-        app._disable_tooltips = not tooltips                     # noqa: SLF001
-        app_ready_event = asyncio.Event()
-
-        def on_app_ready() -> None:
-            """Note when app is ready to process events."""
-            app_ready_event.set()
-
-        async def run_app(app) -> None:
-            """Run the application."""
-            if message_hook is not None:
-                message_hook_context_var.set(message_hook)
-            app._loop = asyncio.get_running_loop()               # noqa: SLF001
-            app._thread_id = threading.get_ident()               # noqa: SLF001
-            await app._process_messages(                         # noqa: SLF001
-                ready_callback=on_app_ready,
-                headless=headless,
-                terminal_size=size,
-            )
-
-        # Launch the app in the "background"
-        active_message_pump.set(app)
-        app_task = asyncio.create_task(run_app(app), name=f'run_test {app}')
-
-        # Wait until the app has performed all startup routines.
-        await app_ready_event.wait()
-
-        # Get the app in an active state.
-        app._set_active()                                        # noqa: SLF001
-
-        # Context manager returns pilot object to manipulate the app
-        try:
-            with terminal_title('Snippet-wrangler'):
-                pilot = Pilot(app)
-                await pilot._wait_for_screen()                   # noqa: SLF001
-                yield pilot
-        finally:
-            # Shutdown the app cleanly
-            await app._shutdown()                                # noqa: SLF001
-            await app_task
-            # Re-raise the exception which caused panic so test frameworks are
-            # aware
-            if self._exception:
-                raise self._exception                        # pragma: no cover
-
 
 class KeyHandler:
     """Context specific key handling for an App."""
@@ -1820,6 +1739,7 @@ def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:
     # reliable snapshot based tests.
     parser.add_argument(
         '--sync-mode', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--svg', type=Path, help=argparse.SUPPRESS)
     return parser.parse_args(sys_args or sys.argv[1:])
 
 
@@ -1835,11 +1755,15 @@ def main():                                                  # pragma: no cover
     if args.dump:
         dump_clipboard()
         sys.exit(0)
-    try:
-        app = Clippets(args)
-    except StartupError as exc:
-        sys.exit(str(exc))
-    app.run()
+    elif args.svg:
+        robot.run_capture(
+            args, make_app=lambda args: Clippets(parse_args(args)))
+    else:
+        try:
+            app = Clippets(args)
+        except StartupError as exc:
+            sys.exit(str(exc))
+        app.run()
 
 
 def reset_for_tests():

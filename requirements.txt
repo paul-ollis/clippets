@@ -2,7 +2,6 @@ config-path
 markdown
 markdown_strings
 
--e pytest-rich/
 jinja2
 pycodestyle
 pylint
@@ -11,6 +10,8 @@ pytest-asyncio
 pytest-cov
 syrupy
 types-Markdown
+
+sphinx
 
 build
 twine

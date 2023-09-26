@@ -12,23 +12,21 @@ Clippets s a Textual (https://textual.textualize.io/) framework based applicatio
 Status
 ======
 
-This is a *beta* software. I believe that it is useful and usable in its current
+This is a *beta* software. It is defintetly useful and usable in its current
 form:
 
 - It performs its basic function and provides a user interface that is good
   enough to support productive use.
-- It has a fairly comprehensive test suite.
-- I hope that crashes should be rare (backup files are maintained to minimise
-  the impact).
+- It has a pretty comprehensive test suite.
+- Crashes should be rare (backup files are maintained to minimise the impact).
 
 However:
 
-- It still needs more tests.
 - There are areas of mouse and keyboard support that beg improvement.
 - Some desirable features are obviously missing, such as:
 
   - There is no proper documentation beyound the built-in help.
-  - It does not yet work on MacOS.
+  - It does not yet work on MacOS. (Pull requests gratefully received.)
 
 
 Getting started
@@ -59,13 +57,13 @@ Now add the Python script directory to your PATH as follows:
 
 - At the prompt enter this command:
 
-  .. code::
+  .. code-block:: bat
 
      python -c "import sys; print(sys.executable)"
 
   This show where Python is installed. On my PC this displays:
 
-  .. code::
+  .. code-block:: bat
 
      c:\Users\Paul\AppData\Local\Programs\Python\Pytheon311\python.exe
 
@@ -82,7 +80,7 @@ Now add the Python script directory to your PATH as follows:
     the Python scripts path, based on the Python installation directory obtained
     earlier. In my case the path I need is:
 
-    .. code::
+    .. code-block:: bat
 
        c:\Users\Paul\AppData\Local\Programs\Python\Pytheon311\Scripts
 
@@ -119,7 +117,7 @@ Install Clippets
 
 - Enter the command:
 
-  .. code::
+  .. code-block:: bat
 
      python -m pip install --user clippets
 
@@ -132,13 +130,13 @@ Linux
 Make sure Python is installed using your distribution's package manager. You
 should then ba able to install clippets using "pip".
 
-.. code::
+.. code-block::
 
    python -m pip install --user clippets
 
 If the above does not work, you may need to run:
 
-.. code::
+.. code-block::
 
    python -m pip ensurepip
 
@@ -146,7 +144,7 @@ If this indicates that your distribution blocks "ensurepip" for the system
 insallation of Python, consider using a virtual environment (see
 https://docs.python.org/3/library/venv.html for more details).
 
-.. code::
+.. code-block::
 
    python -m venv clippets
 
@@ -159,20 +157,14 @@ https://docs.python.org/3/library/venv.html for more details).
 Running clippets/snippets
 -------------------------
 
-You will first need a minimal file containing snippets. For example:
+Clippets needs a file to hold your snippets, here we assume is it called
+``snippets.txt``. Run clippets as one of the following commands:
 
-.. code::
-
-  Main
-    @md@
-      My *first* snippet
-
-You can name the file as you want. Let's assume the file is called
-'snippets.txt'. Run clippets as one of the following commands:
-
-.. code::
+.. code-block::
 
    snippets snippets.txt
    clippets snippets.txt
 
-The ``F1`` key will bring up a help screen to get you going.
+The first time you run this command Clippets will offer to create the file and
+will populate it with some place-holder snippets. The ``F1`` key will bring up
+a help screen to get you going.
