@@ -3,7 +3,7 @@ Clippets file format
 ====================
 
 Clippets uses a simple, formatted text file to store the group hierarchy
-of snippets. The file is read at start up and written evey time you make
+of snippets. The file is read at start up and written every time you make
 any change to a snippet, keyword or group.
 
 You do not need to understand this file format in order to use Clippets,
@@ -17,10 +17,10 @@ A Clippets file defines the following.
 - The names of groups.
 - Tag names associated with groups (optional).
 - Keywords associated with groups (optional).
-- Snippets that are orgainised within groups.
+- Snippets that are organised within groups.
 - Comment lines
 
-Blow is an example of a snippet file and the how at appears when loaded into
+Below is an example of a snippet file and the how at appears when loaded into
 Snippets.
 
 .. literalinclude:: snippet-examples/file_format/intro.snip
@@ -43,7 +43,7 @@ correct file. An example of defining the title is:
 
     @title: My main set of snippets
 
-The '@' must be in the first column (*i.e.* the line mst not be
+The '@' must be in the first column (*i.e.* the line must not be
 indented) and there must be no space between the '@' and the 't' of
 title. Spaces before and after the ':' are ignored.
 
@@ -51,7 +51,7 @@ title. Spaces before and after the ':' are ignored.
 Group and tag names
 -------------------
 
-Group names start in in the first column (*i.e.* the line mst not be
+Group names start in in the first column (*i.e.* the line must not be
 indented). Group names can contain most characters, but it recommended
 that you stick with letters, digits, spaces, underscores and dashes. If
 you follow this rule then you will not have issues with future versions
@@ -88,7 +88,7 @@ The above lines create a tree of groups like this::
 Tag names can optionally be added to a group by listing them inside
 (square) brackets. Tag names are single words; spaces are used to
 separate tag names. It is recommended that, as for group names you only
-use letters, digits, underscores and dashes for tag names. Spaces aroud
+use letters, digits, underscores and dashes for tag names. Spaces around
 the brackets are ignored.
 
 Some examples of adding tags to groups are:
@@ -188,7 +188,7 @@ Extra text
 
 Anything that Clippets' file parser does not recognise is classed as
 extra text. Such extra text is converted to a comment, but starting with
-'#! '. These comments get atached to a nearby group, snippet or keyword
+'#! '. These comments get attached to a nearby group, snippet or keyword
 set.
 
 

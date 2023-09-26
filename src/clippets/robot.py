@@ -346,7 +346,14 @@ def run_capture(
             idx = line.find('<text ')
             if idx > 0:
                 lines[i] = line[:idx]
-                break
+        if '.terminal-' in line and ' fill: ' in line:
+            print(line)
+
+    import os
+    print("A", os.environ.get('NO_COLOR', None))
+    print("B", os.environ.get('TERM', None))
+    print("C", os.environ.get('FORCE_COLOR', None))
+
     svg = '\n'.join(lines)
 
     with Path.open(args.svg, mode='w', encoding='utf-8') as f:

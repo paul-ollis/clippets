@@ -2,7 +2,6 @@
 Welcome to Clippets' documentation
 ==================================
 
-
 Introduction
 ============
 
@@ -12,8 +11,8 @@ snippets from a organised collection. You can view this short video_ to get the
 basic idea.
 
 Clippets was developed to support people such as teachers who often find they
-make the same comments many times when marking student papers. It tries to making
-finding and selecting text snippets fast and easy.
+make the same comments many times when marking student papers. It tries to
+making finding and selecting text snippets fast and easy.
 
 
 Features
@@ -25,7 +24,8 @@ Features
 - Text snippets are organised into a nested hierarchy of groups to make
   navigating to the desired snippet easy.
 
-- User defined keywords are highlighted to make desired snippets easier to spot.
+- User defined keywords are highlighted to make desired snippets easier to
+  spot.
 
 - Groups may be given tags. Groups with the same tag can be folded or expanded
   with a single mouse click.
@@ -44,18 +44,23 @@ Features
 - Full keyboard support and the mouse can also be used for many operations.
 
 
-Credits
-=======
+Get started
+-----------
 
-Clippets would have been much harder to write without `Textual`_ as the
-application framework.
+These sections give advice on how to install and first run Clippets.
 
-I am also heavily indebted to Ted Conbeer for his `textual-textarea widget`_,
-which provided much of the code for Clippets' built in editor.
+.. toctree::
+   :maxdepth: 2
+
+   getting-started/windows
+   getting-started/linux
+   getting-started/first-run
 
 
+.. include:: credits.txt
 
-Table of contents, Indices and tables
+
+Table of contents, indices and tables
 =====================================
 
 .. toctree::

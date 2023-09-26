@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import itertools
+import os
 import re
 import subprocess
 import sys
@@ -48,7 +49,7 @@ from .widgets import (
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
     SnippetMenu)
 
-from . import patches                                              # noqa: F401
+from . import patches
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
@@ -1756,6 +1757,14 @@ def main():                                                  # pragma: no cover
         dump_clipboard()
         sys.exit(0)
     elif args.svg:
+        # This is for document generation. We want color regardless of the
+        # user's environment. The 'Read the Docs' builder sets NO_COLOR
+        # (without a by-your-leave), which is rather unhelpful. Here we
+        # undefine it while setting both TERM and  FORCE_COLOR for good
+        # measure.
+        os.environ.pop('NO_COLOR', None)
+        os.environ['TERM'] = 'xterm-256color'
+        os.environ['FORCE_COLOR'] = 'yes'
         robot.run_capture(
             args, make_app=lambda args: Clippets(parse_args(args)))
     else:
