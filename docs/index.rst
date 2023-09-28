@@ -7,8 +7,8 @@ Introduction
 
 Clippets is a terminal user interface (TUI) application designed make very easy
 to build up *rich* text within your computer's clipboard, by selecting text
-snippets from a organised collection. You can view this short video_ to get the
-basic idea.
+snippets from a organised collection. You can view this short `video`_ to get
+the basic idea.
 
 Clippets was developed to support people such as teachers who often find they
 make the same comments many times when marking student papers. It tries to
@@ -41,20 +41,7 @@ Features
 
 - The group and snippet hierarchy can be reorganised within the TUI.
 
-- Full keyboard support and the mouse can also be used for many operations.
-
-
-Get started
------------
-
-These sections give advice on how to install and first run Clippets.
-
-.. toctree::
-   :maxdepth: 2
-
-   getting-started/windows
-   getting-started/linux
-   getting-started/first-run
+- Full keyboard support, plus mouse support for many operations.
 
 
 .. include:: credits.txt
@@ -66,11 +53,12 @@ Table of contents, indices and tables
 .. toctree::
    :maxdepth: 2
 
-   file_format
+   getting-started/main
+   user-guide/main
+   reference/main
 
 - :ref:`genindex`
 - :ref:`search`
-
 
 .. _Textual: https://textual.textualize.io
 .. _video: https://github.com/paul-ollis/snippets/assets/6062510/acc93396-c7b8-429f-825e-cfd940959760

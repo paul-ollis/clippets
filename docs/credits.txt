@@ -1,0 +1,8 @@
+Credits
+=======
+
+Clippets would have been much harder to write without `Textual`_ as the
+application framework.
+
+I am also heavily indebted to Ted Conbeer for his `textual-textarea widget`_,
+which provided much of the code for Clippets' built in editor.

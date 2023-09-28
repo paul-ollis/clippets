@@ -1,5 +1,5 @@
-Windows installation
---------------------
+Windows
+-------
 
 Install Python
 ~~~~~~~~~~~~~~

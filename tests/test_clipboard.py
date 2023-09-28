@@ -83,7 +83,7 @@ class TestMouseControlled:
     @pytest.mark.asyncio
     async def test_snippets_can_be_removed(
             self, infile, snapshot_run):
-        """The mouse can also remove snippets rom the clipboard."""
+        """The mouse can also remove snippets from the clipboard."""
         actions = (
             ['left:snippet-1']            # Add snippet 2
             + ['left:snippet-0']          # Then snippet 1

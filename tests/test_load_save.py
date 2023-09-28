@@ -54,7 +54,7 @@ from clippets import snippets
 
 
 def dump(*strings):                                          # pragma: no cover
-    """Dump one ore mor blocks of text."""
+    """Dump one or more blocks of text."""
     print('--------')
     for text in strings:
         for line in text.splitlines(True):

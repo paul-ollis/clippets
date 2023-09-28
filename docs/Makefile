@@ -8,17 +8,25 @@ SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = .
 BUILDDIR      = _build
+export CLIPPETS_EDITOR =
 
-# Make sure color is used to generate SVG files. The 'Read the Docs' builder
-# sets NO_COLOR (without a by-your-leave), which is rather unhelpful. Here we
-# undefine it and set FORCE_COLOR for good measure.
-undefine NO_COLOR
-export FORCE_COLOR = 1
+snip_files = $(wildcard reference/file_format/*.snip)
+snip_files += $(wildcard getting-started/first-run/*.snip)
+snip_files += $(wildcard user-guide/basics/*.snip)
+snip_files += $(wildcard user-guide/groups/*.snip)
 
-svg_files = $(patsubst %.snip, %.svg, $(wildcard snippet-examples/file_format/*.snip))
+svg_files = $(patsubst %.snip, %.svg, $(snip_files))
+
+sources = $(wildcard ../src/clippets/*.py)
+sources += $(wildcard ../src/clippets/*.css)
+
+$(svg_files) : $(sources)
 
 %.svg: %.snip
-	snippets --svg=$@ $<
+	snippets --work-dir=svg-gen --svg=$@ $<
+
+getting-started/first-run/first-run.svg: $(sources)
+	snippets --dims=80x24 --work-dir=svg-gen --svg=$@ snippets.txt
 
 readme_files = mk_readme.py README.txt credits.txt
 
@@ -35,5 +43,5 @@ help:
 
 # Catch-all target: route all unknown targets to Sphinx using the new
 # "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-html: Makefile $(svg_files)
+html: Makefile $(svg_files) getting-started/first-run/first-run.svg
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)

@@ -62,12 +62,15 @@ HL_GROUP = ''
 LEFT_MOUSE_BUTTON = 1
 RIGHT_MOUSE_BUTTON = 3
 BANNER = r'''
-  ____ _ _                  _
- / ___| (_)_ __  _ __   ___| |_ ___
-| |   | | | '_ \| '_ \ / _ \ __/ __|
-| |___| | | |_) | |_) |  __/ |_\__ \
- \____|_|_| .__/| .__/ \___|\__|___/
-          |_|   |_|
+ ____    ___                                __
+/\  _`\ /\_ \    __                        /\ \__
+\ \ \/\_\//\ \  /\_\  _____   _____      __\ \ ,_\   ____
+ \ \ \/_/_\ \ \ \/\ \/\ '__`\/\ '__`\  /'__`\ \ \/  /',__\
+  \ \ \L\ \\_\ \_\ \ \ \ \L\ \ \ \L\ \/\  __/\ \ \_/\__, `\
+   \ \____//\____\\ \_\ \ ,__/\ \ ,__/\ \____\\ \__\/\____/
+    \/___/ \/____/ \/_/\ \ \/  \ \ \/  \/____/ \/__/\/___/
+                        \ \_\   \ \_\
+                         \/_/    \/_/
 '''
 DEFAULT_CONTENTS = '''
 Main
@@ -220,14 +223,16 @@ class MainScreen(Screen):
 
     def compose(self) -> ComposeResult:
         """Build the widget hierarchy."""
-        yield Header()
-
+        yield Header(id='header')
         with Horizontal(id='input', classes='input oneline'):
             yield MyLabel('Filter: ')
             inp = MyInput(placeholder='Enter text to filter.', id='filter')
             inp.cursor_blink = False
             yield inp
-        with MyVerticalScroll(id='view', classes='result'):
+        with MyVerticalScroll(id='view', classes='result') as view:
+            view_height = self.app.args.view_height
+            if view_height:
+                view.styles.height = view_height
             if self.app.args.raw:
                 yield Static(id='result')
             else:
@@ -1523,7 +1528,7 @@ class Clippets(AppMixin, App):
         bind('f2', 'edit_clipboard', description='Edit')
         bind('f3', 'clear_selection', description='Clear')
         bind('f9', 'toggle_collapse_all', description='(Un)fold')
-        bind('enter space', 'toggle_add', description='Toggle select')
+        bind('enter space', 'toggle_add', description='Toggle add')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
         bind = partial(self.key_handler.bind, contexts=('moving',), show=True)
@@ -1559,7 +1564,9 @@ class Clippets(AppMixin, App):
 
     def compose(self) -> ComposeResult:
         """Build the widget hierarchy."""
-        yield Static()
+        s = Static(id='fred')
+        s.display = False
+        yield s
         self.add_mode('main', MainScreen(self.root, uid='main'))
         self.switch_mode('main')
 
@@ -1732,7 +1739,7 @@ def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         '--dump', action='store_true',
         help='On windows, dump the clipboard and quit.')
-    parser.add_argument('snippet_file')
+    parser.add_argument('snippet_file', type=Path)
 
     # This is used by testing. It prevents some actions running as backgroud
     # asyncio tasks. These tasks exist to make the application appear more
@@ -1741,6 +1748,9 @@ def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         '--sync-mode', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--svg', type=Path, help=argparse.SUPPRESS)
+    parser.add_argument('--work-dir', type=Path, help=argparse.SUPPRESS)
+    parser.add_argument('--dims', type=str, help=argparse.SUPPRESS)
+    parser.add_argument('--view-height', type=int, help=argparse.SUPPRESS)
     return parser.parse_args(sys_args or sys.argv[1:])
 
 
@@ -1750,6 +1760,51 @@ def is_display_node(obj: GroupChild) -> type[GroupChild] | None:
     return GroupChild if isinstance(obj, display_node_types) else None
 
 
+def perform_svg_run(args: argparse.Namespace) -> None:
+    """Performa run in order to generate an SVG image."""
+    def resolve_includes(lines):
+        """Resolve simple-include directives."""
+        include_lines = []
+        for i, line in enumerate(lines):
+            if line.startswith('@simple-include: '):
+                p = args.snippet_file.parent / line[17:].strip()
+                include_lines.append((i, p.read_text().splitlines()))
+        for i, inc_lines in reversed(include_lines):
+            lines[i:i + 1] = inc_lines
+        return [line.rstrip() for line in lines]
+
+    # This is for document generation. We want color regardless of the
+    # user's environment. The 'Read the Docs' builder sets NO_COLOR
+    # (without a by-your-leave), which is rather unhelpful. Here we
+    # undefine it while setting both TERM and  FORCE_COLOR for good
+    # measure.
+    os.environ.pop('NO_COLOR', None)
+    os.environ['TERM'] = 'xterm-256color'
+    os.environ['FORCE_COLOR'] = 'yes'
+
+    # Use the working directory if specified.
+    args.svg = args.svg.resolve()
+    work_dir = args.work_dir
+    if work_dir:
+        work_dir.mkdir(exist_ok=True)
+        for p in work_dir.glob('*'):
+            p.unlink()
+        new_path = work_dir / args.snippet_file.name
+        if args.snippet_file.exists():
+            lines = args.snippet_file.read_text().splitlines()
+            new_path.write_text('\n'.join(resolve_includes(lines)))
+        os.chdir(work_dir)
+        args.snippet_file = Path(args.snippet_file.name)
+
+    try:
+        robot.run_capture(
+            args, make_app=lambda args: Clippets(parse_args(args)))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        sys.exit(str(e))
+
+
 def main():                                                  # pragma: no cover
     """Run the application."""
     args = parse_args()
@@ -1757,16 +1812,7 @@ def main():                                                  # pragma: no cover
         dump_clipboard()
         sys.exit(0)
     elif args.svg:
-        # This is for document generation. We want color regardless of the
-        # user's environment. The 'Read the Docs' builder sets NO_COLOR
-        # (without a by-your-leave), which is rather unhelpful. Here we
-        # undefine it while setting both TERM and  FORCE_COLOR for good
-        # measure.
-        os.environ.pop('NO_COLOR', None)
-        os.environ['TERM'] = 'xterm-256color'
-        os.environ['FORCE_COLOR'] = 'yes'
-        robot.run_capture(
-            args, make_app=lambda args: Clippets(parse_args(args)))
+        perform_svg_run(args)
     else:
         try:
             app = Clippets(args)

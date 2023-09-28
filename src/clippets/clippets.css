@@ -4,7 +4,6 @@ Screen {
 
 /* The single line filter input. */
 #filter {
-    /* # dock: top; */
     margin: 0 0 0 0;
     padding: 0 0 0 0;
     border: none;
@@ -16,6 +15,14 @@ Screen {
 
 .group_row {
     height: auto;
+}
+
+VerticalScroll {
+    scrollbar-size: 1 1;
+}
+
+TextArea {
+    scrollbar-size: 1 1;
 }
 
 #snippet-list {
@@ -131,6 +138,7 @@ MarkdownParagraph {
 
 #result {
     width: 100%;
+    scrollbar-size: 1 1;
 }
 
 .result {

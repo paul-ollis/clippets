@@ -83,10 +83,10 @@ class AppRunner:
             *,
             test_mode: bool = True,
             options: list[str] | None = None,
-            make_app: Callable[[list[str]], App]):
-
+            make_app: Callable[[list[str]], App],
+        ):
         options = options or []
-        args = [snippet_file, *options]
+        args = [str(snippet_file), *options]
         if test_mode:
             args.append('--sync-mode')
         self.app = make_app(args)
@@ -96,12 +96,12 @@ class AppRunner:
         self.exited = False
         self.svg = ''
 
-    async def run(self, *, size: tuple[int, int] = (80, 35)) -> tuple:
+    async def run(self, *, size: tuple[int, int] = (80, 34)) -> tuple:
         """Run the application."""
         task = tasks.create_task(self._run(size=size))
         return await task
 
-    async def _run(self, *, size: tuple[int, int] = (80, 35)) -> tuple:
+    async def _run(self, *, size: tuple[int, int] = (80, 34)) -> tuple:
         coro =  self.run_test(
             headless=True, size=size, message_hook=self.on_msg)
         tb = []
@@ -327,15 +327,64 @@ def run_capture(
     :make_app:
         A function that will create the Clippets application instance.
     """
+    # Actions can be in a '.prog' file named after the snippet file or they can
+    # be embedded in comments within the snippet file. The snippet file can
+    # also contain:
+    #
+    # - The required dimensions.
+    # - The height of the clipboard view area.
+    dims = [80, 30]
+    view_height: int | None = None
+    actions = []
+    prog = args.snippet_file.parent / f'{args.snippet_file.stem}.prog'
+    if prog.exists():
+        actions = args.prog.read_text().strip().splitlines()
+    elif args.snippet_file.exists():
+        extracting = False
+        for rawline in args.snippet_file.read_text().splitlines():
+            line = rawline.strip()
+            if line == '# Prog':
+                extracting = True
+            elif line == '# End Prog':
+                extracting = False
+            elif line.startswith('# Dims: '):
+                new_dims = [int(s) for s in line[8:].split('x')]
+                if len(new_dims) == 2:
+                    dims = [max(40, new_dims[0]), max(10, new_dims[1])]
+            elif line.startswith('# ViewHeight: '):
+                view_height = int(line[13:].strip())
+            elif line.startswith('# '):
+                actions.append(line[2:].strip())
+
+    options = []
+    if view_height:
+        options.append(f'--view-height={view_height}')
     runner = AppRunner(
         snippet_file=args.snippet_file,
-        actions=[],
+        actions=actions,
         test_mode=True,
+        options=options,
         make_app=make_app,
     )
-    svg, tb, *_ = asyncio.run(runner.run())
+    if args.dims:
+        dims = [int(s) for s in args.dims.split('x')]
+    svg, tb, *_ = asyncio.run(runner.run(size=dims))
     if tb:
         print(''.join(tb), file=sys.__stdout__)
+
+    # Load any SVG overlay file.
+    overlay = args.svg.parent / f'{args.svg.stem}.ovl'
+    if overlay.exists():
+        overlay_lines = overlay.read_text().splitlines()
+        body_idx = -1
+        x, y = [0.0, 0.0]
+        for i, line in enumerate(overlay_lines):
+            if line.strip() == '[[[BODY]]]':
+                body_idx = i
+            elif line.strip().startswith('transform="translate('):
+                _, _, a = line.partition('(')
+                a, _, _ = a.partition(')')
+                x, y = [float(s) for s in a.split(',')]
 
     # Textual puts the title string on title bar of the terminal image, which
     # looks odd when it is also displayed in the Clippets title bar. Hence this
@@ -345,19 +394,27 @@ def run_capture(
         if line.startswith('    <rect fill="#292929" stroke='):
             idx = line.find('<text ')
             if idx > 0:
-                lines[i] = line[:idx]
-        if '.terminal-' in line and ' fill: ' in line:
-            print(line)
+                line = line[:idx]
+                if overlay.exists():
+                    line = line.replace('x="1"', f'x="{x}"')
+                lines[i] = line
+                break
 
-    import os
-    print("A", os.environ.get('NO_COLOR', None))
-    print("B", os.environ.get('TERM', None))
-    print("C", os.environ.get('FORCE_COLOR', None))
+    # Merge the SVG with any overlay file.
+    overlay = args.svg.parent / f'{args.svg.stem}.ovl'
+    if overlay.exists():
+        for i, line in enumerate(lines):
+            if 'transform="translate(' in line:
+                a, _, r = line.partition('(')
+                v, _, b = r.partition(')')
+                xx, yy = [float(s) for s in v.split(',')]
+                lines[i] = f'{a}({xx + x}, {yy + y}){b}'
 
-    svg = '\n'.join(lines)
+        overlay_lines[body_idx:body_idx+1] = lines[1:-1]
+        lines = overlay_lines
 
-    with Path.open(args.svg, mode='w', encoding='utf-8') as f:
-        f.write(svg)
+    with args.svg.open(mode='w', encoding='utf-8') as f:
+        f.write('\n'.join(lines))
 
 
 async def wait_for_idle(app: App | None = None):

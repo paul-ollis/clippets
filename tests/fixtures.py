@@ -23,12 +23,24 @@ import pytest
 from _pytest.fixtures import FixtureRequest
 from _pytest.main import Session
 from syrupy import SnapshotAssertion
+from syrupy.extensions.single_file import (
+    SingleFileSnapshotExtension, WriteMode)
 
 from support import AppRunner, EditTempFile, TempTestFile
 
-from clippets import colors, core, snippets, robot
+from clippets import colors, core, robot, snippets
 
 HERE = Path(__file__).parent
+
+
+class SVGImageExtension(SingleFileSnapshotExtension):
+    _file_extension = "svg"
+    _write_mode = WriteMode.TEXT
+
+
+@pytest.fixture
+def snapshot(snapshot):
+    return snapshot.use_extension(SVGImageExtension)
 
 
 class MyTemporaryDirectory(TemporaryDirectory):
