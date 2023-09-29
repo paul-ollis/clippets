@@ -43,9 +43,9 @@ for the first time. See@
 - `Linux installation`_.
 - `Starting Clippets`_.
 
-.. _Windows installation: https://clippets.readthedocs.io/en/latest/getting-started/windows.html
-.. _Linux installation: https://clippets.readthedocs.io/en/latest/getting-started/linux.html
-.. _Starting Clippets: https://clippets.readthedocs.io/en/latest/getting-started/first-run.html
+.. _Windows installation: https://clippets.readthedocs.io/en/main/getting-started/windows.html
+.. _Linux installation: https://clippets.readthedocs.io/en/main/getting-started/linux.html
+.. _Starting Clippets: https://clippets.readthedocs.io/en/main/getting-started/first-run.html
 
 Credits
 =======
@@ -55,3 +55,6 @@ application framework.
 
 I am also heavily indebted to Ted Conbeer for his `textual-textarea widget`_,
 which provided much of the code for Clippets' built in editor.
+
+.. _Textual: https://textual.textualize.io
+.. _`textual-textarea widget`: https://github.com/tconbeer/textual-textarea

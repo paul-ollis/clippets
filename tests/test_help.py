@@ -47,22 +47,22 @@ def infile(snippet_infile):
 
 
 @pytest.mark.asyncio
-async def test_help_can_be_displayed(infile, snapshot_run):
+async def test_help_can_be_displayed(infile, snapshot_run, clean_version):
     """The F1 key brings up a help page."""
     actions = (
         ['f1']            # Open the help
     )
-    _, snapshot_ok = await snapshot_run(infile, actions)
+    _, snapshot_ok = await snapshot_run(infile, actions, clean=clean_version)
     assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 @pytest.mark.asyncio
-async def test_footer_click_show_help(infile, snapshot_run):
+async def test_footer_click_show_help(infile, snapshot_run, clean_version):
     """Clicking the help part of the footer brings up a help page."""
     actions = (
         ['left:.footer']            # Open the help
     )
-    _, snapshot_ok = await snapshot_run(infile, actions)
+    _, snapshot_ok = await snapshot_run(infile, actions, clean=clean_version)
     assert snapshot_ok, 'Snapshot does not match stored version'
 
 

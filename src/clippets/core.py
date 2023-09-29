@@ -1005,8 +1005,12 @@ class AppMixin:
         text = self.build_result_text()
         w = cast(Static, self.query_one('#result'))
         w.update(text)
-        put_to_clipboard(
-            text, mode='raw' if self.args.raw else 'styled')
+        try:
+            put_to_clipboard(
+                text, mode='raw' if self.args.raw else 'styled')
+        except (OSError, subprocess.CalledProcessError):
+            if not self.args.svg_run:
+                raise
 
     def build_result_text(self) -> str:
         """Build up the text that should be copied to the clipboard."""
@@ -1749,12 +1753,13 @@ def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:
     # asyncio tasks. These tasks exist to make the application appear more
     # responsive to the user, but can make it harder (or slower) to create
     # reliable snapshot based tests.
-    parser.add_argument(
-        '--sync-mode', action='store_true', help=argparse.SUPPRESS)
-    parser.add_argument('--svg', type=Path, help=argparse.SUPPRESS)
-    parser.add_argument('--work-dir', type=Path, help=argparse.SUPPRESS)
-    parser.add_argument('--dims', type=str, help=argparse.SUPPRESS)
-    parser.add_argument('--view-height', type=int, help=argparse.SUPPRESS)
+    add_hidden_arg = partial(parser.add_argument, help=argparse.SUPPRESS)
+    parser.add_argument( '--sync-mode', action='store_true')
+    parser.add_argument('--svg', type=Path)
+    parser.add_argument('--svg-run', action='store_true')
+    parser.add_argument('--work-dir', type=Path)
+    parser.add_argument('--dims', type=str)
+    parser.add_argument('--view-height', type=int)
     return parser.parse_args(sys_args or sys.argv[1:])
 
 

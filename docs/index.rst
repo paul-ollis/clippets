@@ -60,6 +60,4 @@ Table of contents, indices and tables
 - :ref:`genindex`
 - :ref:`search`
 
-.. _Textual: https://textual.textualize.io
 .. _video: https://github.com/paul-ollis/snippets/assets/6062510/acc93396-c7b8-429f-825e-cfd940959760
-.. _`textual-textarea widget`: https://github.com/tconbeer/textual-textarea

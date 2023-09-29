@@ -21,3 +21,17 @@ def test(session):
     session.install('-e', '.')
     args = ['pytest', *session.posargs, '-n28', '-vv', '-x', 'tests']
     session.run(*args)
+
+
+@nox.session(reuse_venv=True)
+def release(session):
+    """Generate a release."""
+    session.install(
+        'build',
+        'markdown',
+        'markdown_strings',
+        'rich',
+        'textual',
+    )
+    session.run('python', 'tools/pre-release-check.py')
+    session.run('python', '-m', 'build')

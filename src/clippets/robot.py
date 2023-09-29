@@ -356,7 +356,7 @@ def run_capture(
             elif line.startswith('# '):
                 actions.append(line[2:].strip())
 
-    options = []
+    options = ['--svg-run']
     if view_height:
         options.append(f'--view-height={view_height}')
     runner = AppRunner(

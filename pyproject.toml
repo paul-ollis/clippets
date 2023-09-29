@@ -1,10 +1,10 @@
 [project]
 name = "clippets"
-version = "0.4.2"
+version = "0.5.0"
 authors = [
   { name="Paul Ollis", email="paul@cleversheep.org" },
 ]
-description = "UI to build up clipboard content from (rich) text snippets."
+description = "TUI to build up clipboard content from (rich) text snippets."
 requires-python = ">=3.9"
 readme = "README.rst"
 classifiers = [

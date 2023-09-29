@@ -6,3 +6,6 @@ application framework.
 
 I am also heavily indebted to Ted Conbeer for his `textual-textarea widget`_,
 which provided much of the code for Clippets' built in editor.
+
+.. _Textual: https://textual.textualize.io
+.. _`textual-textarea widget`: https://github.com/tconbeer/textual-textarea

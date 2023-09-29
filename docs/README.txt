@@ -43,6 +43,6 @@ for the first time. See@
 - `Linux installation`_.
 - `Starting Clippets`_.
 
-.. _Windows installation: https://clippets.readthedocs.io/en/latest/getting-started/windows.html
-.. _Linux installation: https://clippets.readthedocs.io/en/latest/getting-started/linux.html
-.. _Starting Clippets: https://clippets.readthedocs.io/en/latest/getting-started/first-run.html
+.. _Windows installation: https://clippets.readthedocs.io/en/main/getting-started/windows.html
+.. _Linux installation: https://clippets.readthedocs.io/en/main/getting-started/linux.html
+.. _Starting Clippets: https://clippets.readthedocs.io/en/main/getting-started/first-run.html

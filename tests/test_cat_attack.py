@@ -150,12 +150,13 @@ async def test_move_group_mode(infile, snapshot_run):
 
 
 @pytest.mark.asyncio
-async def test_help_mode(infile, snapshot_run):
+async def test_help_mode(infile, snapshot_run, clean_version):
     """Unused keys are ignored when showing the help."""
     actions = (
         ['f1']
         + sorted(all_keys - valid_help_keys)
     )
-    runner, snapshot_ok = await snapshot_run(infile, actions)
+    runner, snapshot_ok = await snapshot_run(
+        infile, actions, clean=clean_version)
     assert expect == runner.app.root.full_repr()
     assert snapshot_ok, 'Snapshot does not match stored version'

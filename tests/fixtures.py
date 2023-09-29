@@ -7,6 +7,7 @@ from __future__ import annotations
 import functools
 import os
 import pickle
+import re
 import shutil
 from contextlib import suppress
 from dataclasses import dataclass
@@ -18,6 +19,7 @@ from tempfile import TemporaryDirectory, mkdtemp
 
 from jinja2 import Template
 from rich.console import ConsoleDimensions
+from textual.app import App
 
 import pytest
 from _pytest.fixtures import FixtureRequest
@@ -41,6 +43,16 @@ class SVGImageExtension(SingleFileSnapshotExtension):
 @pytest.fixture
 def snapshot(snapshot):
     return snapshot.use_extension(SVGImageExtension)
+
+
+@pytest.fixture
+def clean_version():
+    """Fixture for cleaning the version in an SVG file."""
+    def clean(svg: str) -> str:
+        return re.sub(
+            r':version:\&\#160;[0-9.]+?<', r':version:&#160;M.m.p<', svg)
+
+    return clean
 
 
 class MyTemporaryDirectory(TemporaryDirectory):
@@ -175,6 +187,7 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
             infile: TempTestFile, actions: list, *, log=False,
             test_mode: bool = True, options: list[str] | None = None,
             expect_exit: bool = False,
+            clean: Callable[[str], str] = lambda s: s,
             control_editor: bool = False):
         args = [infile.name]
         runner = AppRunner(
@@ -191,7 +204,7 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
                 print(''.join(tb))
                 print(f'>>>> {tb!r}')
                 assert not tb
-        return runner, check_svg(snapshot, svg, request, runner.app)
+        return runner, check_svg(snapshot, clean(svg), request, runner.app)
 
     return run_app
 
@@ -233,7 +246,10 @@ def node_to_report_path(node):
     return Path(tempdir.name) / '_'.join(parts)
 
 
-def check_svg(expect, actual, request, app) -> bool:
+def check_svg(
+        expect: SnapshotAssertion, actual: str, request: FixtureRequest,
+        app: App,
+    ) -> bool:
     """Check expected against actual SVG screenshot."""
     result = expect == actual
     svg_text = ''
