@@ -152,14 +152,19 @@ class Pointer(FixedPointer):
 class SnippetInsertionPointer(Pointer):
     """A 'pointer' of where to insert a snippet within the tree."""
 
-    def __init__(self, snippet: Snippet):
+    def __init__(
+            self,
+            snippet: Snippet,
+            is_usable: Callable[[SnippetLike], bool],
+        ):
         pointers: list[FixedPointer] = []
         s: SnippetLike
         for s in snippet.root.walk(
                 predicate=is_snippet_like, group_depth_first=True):
-            if s.is_first_in_group:
-                pointers.append(FixedPointer(s, after=False))
-            pointers.append(FixedPointer(s, after=True))
+            if is_usable(s):
+                if s.is_first_in_group:
+                    pointers.append(FixedPointer(s, after=False))
+                pointers.append(FixedPointer(s, after=True))
 
         super().__init__(snippet, pointers)
 

@@ -241,8 +241,7 @@ def check_svg(expect, actual, request, app) -> bool:
     console = app.console
     p_app = PseudoApp(PseudoConsole(console.legacy_windows, console.size))
     if not result:                                           # pragma: no cover
-        # The split and join below is a mad hack, sorry...
-        expect_svg_text = '\n'.join(str(expect).splitlines()[1:-1])
+        expect_svg_text = str(expect)
         svg_text = actual
 
     full_path, line_number, name = request.node.reportinfo()

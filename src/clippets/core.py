@@ -1190,8 +1190,12 @@ class AppMixin:
 
     def start_moving_snippet(self, sel_w: Widget, snippet: Snippet) -> None:
         """Start moving a snippet to a different position in the tree."""
+        def is_usable(el: SnippetLike) -> bool:
+            w = self.find_widget(el)
+            return w.display or isinstance(el, PlaceHolder) if w else False
+
         try:
-            self.pointer = SnippetInsertionPointer(snippet)
+            self.pointer = SnippetInsertionPointer(snippet, is_usable)
         except CannotMove:
             return
         sel_w.add_class('moving')

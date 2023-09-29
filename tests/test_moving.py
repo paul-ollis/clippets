@@ -1,4 +1,4 @@
-"""Moving the snippets within and between gruops."""
+"""Moving the snippets within and between groups."""
 from __future__ import annotations
 # pylint: disable=no-self-use
 # pylint: disable=redefined-outer-name
@@ -6,14 +6,6 @@ from __future__ import annotations
 import pytest
 
 from support import clean_text, populate
-
-# TODO:
-#   Tests should involve preserved text. Currently, I think that code will
-#   break when preserved text is around and things get moved.
-#
-#   However, I am not sure that preserving text is really a good idea. Perhaps
-#   we should allow comments, but then treat the file a read-only or issue a
-#   warning that comments in the input file will be lost.
 
 std_infile_text = '''
     Main
@@ -28,6 +20,30 @@ std_infile_text = '''
         Snippet 4
       @text@
         Snippet 5
+      @text@
+        Snippet 6
+      @text@
+        Snippet 7
+'''
+multi_group_text = '''
+    Main
+      @text@
+        Snippet 1
+      @text@
+        Snippet 2
+      @text@
+        Snippet 3
+    Second
+      @text@
+        Snippet 4
+      @text@
+        Snippet 5
+    Second : Sub
+      @text@
+        Snippet 4a
+      @text@
+        Snippet 5a
+    Third
       @text@
         Snippet 6
       @text@
@@ -105,6 +121,13 @@ zero_snippet_text = '''
 def infile(snippet_infile):
     """Create a standard input file for many of this module's tests."""
     populate(snippet_infile, std_infile_text)
+    return snippet_infile
+
+
+@pytest.fixture
+def multi_group_infile(snippet_infile):
+    """Create a standard input file for many of this module's tests."""
+    populate(snippet_infile, multi_group_text)
     return snippet_infile
 
 
@@ -438,6 +461,76 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 3'
         ''')
         runner, snapshot_ok = await snapshot_run(infile_g0x2, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_move_skips_closed_group(
+            self, multi_group_infile, snapshot_run):
+        """Closed groups are skipped when moving snippets."""
+        actions = (
+            ['left:group-2']      # Fold group 2
+            + ['m']               # Start moving
+            + ['down'] * 2        # Move to above snippet 6
+            + ['enter']           # Complete move
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 2'
+            Snippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            Snippet: 'Snippet 4'
+            Snippet: 'Snippet 5'
+            Group: Second:Sub
+            KeywordSet:
+            Snippet: 'Snippet 4a'
+            Snippet: 'Snippet 5a'
+            Group: Third
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 6'
+            Snippet: 'Snippet 7'
+        ''')
+        runner, snapshot_ok = await snapshot_run(multi_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_move_skips_closed_sub_group(
+            self, multi_group_infile, snapshot_run):
+        """Closed sub-groups are skipped when moving snippets."""
+        actions = (
+            ['left:group-3']      # Fold group 2
+            + ['m']               # Start moving
+            + ['down'] * 5        # Move to above snippet 6
+            + ['enter']           # Complete move
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 2'
+            Snippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            Snippet: 'Snippet 4'
+            Snippet: 'Snippet 5'
+            Group: Second:Sub
+            KeywordSet:
+            Snippet: 'Snippet 4a'
+            Snippet: 'Snippet 5a'
+            Group: Third
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 6'
+            Snippet: 'Snippet 7'
+        ''')
+        runner, snapshot_ok = await snapshot_run(multi_group_infile, actions)
         assert expect == runner.app.root.full_repr()
         assert snapshot_ok, 'Snapshot does not match stored version'
 
