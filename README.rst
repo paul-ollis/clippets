@@ -1,3 +1,4 @@
+.. vim: readonly nomodifiable
 .. This file is generated and will be over-written. See the Makefile and
    mk_readme.py files in docs for more details.
 
@@ -10,7 +11,8 @@ clipboard.
 
 `https://github.com/paul-ollis/snippets/assets/6062510/acc93396-c7b8-429f-825e-cfd940959760`
 
-Clippets s a Textual (`https://textual.textualize.io/`) framework based application.
+Clippets is a Textual (`https://textual.textualize.io/`) framework based
+application.
 
 
 Status
@@ -26,18 +28,18 @@ form:
 
 However:
 
-- There are areas of mouse and keyboard support that beg improvement.
+- There are still areas of mouse and keyboard support that beg improvement.
 - Some desirable features are obviously missing, such as:
 
-  - There is no proper documentation beyond the built-in help.
+  - There is some proper `documentation`_, but it is far from complete.
   - It does not yet work on MacOS. (Pull requests gratefully received.)
 
 
 Get started
 ===========
 
-The full documentation includes instructions on installing and running Clippets
-for the first time. See@
+The full `documentation`_ includes instructions on installing and running
+Clippets for the first time. See@
 
 - `Windows installation`_.
 - `Linux installation`_.
@@ -46,6 +48,7 @@ for the first time. See@
 .. _Windows installation: https://clippets.readthedocs.io/en/main/getting-started/windows.html
 .. _Linux installation: https://clippets.readthedocs.io/en/main/getting-started/linux.html
 .. _Starting Clippets: https://clippets.readthedocs.io/en/main/getting-started/first-run.html
+.. _documentation: https://clippets.readthedocs.io/en/main
 
 Credits
 =======

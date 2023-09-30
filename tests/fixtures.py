@@ -49,8 +49,10 @@ def snapshot(snapshot):
 def clean_version():
     """Fixture for cleaning the version in an SVG file."""
     def clean(svg: str) -> str:
-        return re.sub(
+        svg = re.sub(
             r':version:\&\#160;[0-9.]+?<', r':version:&#160;M.m.p<', svg)
+        return re.sub(
+            r'terminal-\d{6,}-', r'terminal-', svg)
 
     return clean
 
@@ -204,7 +206,9 @@ def snapshot_run(snapshot: SnapshotAssertion, request: FixtureRequest):
                 print(''.join(tb))
                 print(f'>>>> {tb!r}')
                 assert not tb
-        return runner, check_svg(snapshot, clean(svg), request, runner.app)
+        result, expect_text = check_svg(
+            snapshot, clean(svg), request, runner.app)
+        return runner, result
 
     return run_app
 
@@ -265,7 +269,7 @@ def check_svg(
     data = (
         result, expect_svg_text, svg_text, p_app, full_path, line_number, name)
     data_path.write_bytes(pickle.dumps(data))
-    return result
+    return result, expect_svg_text
 
 
 @dataclass

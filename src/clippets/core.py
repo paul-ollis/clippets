@@ -46,8 +46,8 @@ from .snippets import (
     is_snippet_like)
 from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
-    MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
-    SnippetMenu)
+    MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText,
+    MyVerticalScroll, SnippetMenu)
 
 from . import patches
 
@@ -126,7 +126,7 @@ class SetupDefaultFile(Message):
 
 
 class EditorHasExited(Message):
-    """An inidication the extenal editor has exited."""
+    """An indication the extenal editor has exited."""
 
 
 class Matcher:                         # pylint: disable=too-few-public-methods
@@ -224,11 +224,14 @@ class MainScreen(Screen):
     def compose(self) -> ComposeResult:
         """Build the widget hierarchy."""
         yield Header(id='header')
-        with Horizontal(id='input', classes='input oneline'):
+        with Horizontal(id='input', classes='input oneline') as h:
             yield MyLabel('Filter: ')
             inp = MyInput(placeholder='Enter text to filter.', id='filter')
             inp.cursor_blink = False
+            inp.can_focus = False
             yield inp
+        h.can_focus = False
+        h.can_focus_children = False
         with MyVerticalScroll(id='view', classes='result') as view:
             view_height = self.app.args.view_height
             if view_height:
@@ -612,9 +615,19 @@ class AppMixin:
                 w.remove_class('selected')
 
     ## Handling of mouse operations.
+    async def on_my_input_clicked(self, msg: Message):
+        """React to a click on the filter input widget."""
+        print("INPUT CLICK", msg.widget.id)
+        w = msg.widget
+        if w.id == 'filter':
+            self.action_enter_filter()
+
     async def on_click(self, ev) -> None:                          # noqa: C901
         """Process a mouse click."""
-        if self.context_name() == 'normal':
+        # Prevent default Textual handling doing things like changing the
+        # focus.
+        context = self.context_name()
+        if context == 'normal':
             if ev.button == LEFT_MOUSE_BUTTON:
                 if ev.meta:
                     w = getattr(ev, 'widget', None)
@@ -626,6 +639,9 @@ class AppMixin:
                     self.on_left_click(ev)
             elif ev.button == RIGHT_MOUSE_BUTTON and not ev.meta:
                 await self.on_right_click(ev)
+
+        elif context == 'filter' and ev.button == LEFT_MOUSE_BUTTON:
+            self.on_left_click(ev)
 
         if ev.meta and ev.button == RIGHT_MOUSE_BUTTON:      # pragma: no cover
             # This is useful for debugging.
@@ -646,6 +662,11 @@ class AppMixin:
 
     def on_left_click(self, ev) -> None:
         """Process a mouse left-click."""
+        # If the filter input is focused, just switch back to normal mode.
+        if self.context_name() == 'filter':
+            self.action_leave_filter()
+            return
+
         w = getattr(ev, 'widget', None)
         if w is None:
             return                                           # pragma: no cover
@@ -1315,12 +1336,15 @@ class AppMixin:
     def action_enter_filter(self) -> None:
         """Move focus to the filter input field."""
         w = self.query_one('#filter')
+        w.can_focus = True
         self.screen.set_focus(w)
         self._selection_stack.append(Selection(uid='filter', user=True))
         self.set_visuals()
 
     def action_leave_filter(self) -> None:
         """Move focus away from the filter input field."""
+        w = self.query_one('#filter')
+        w.can_focus = False
         self.screen.set_focus(None)
         self.fix_selection(kill_filter=True)
         self.set_visuals()
@@ -1552,6 +1576,7 @@ class Clippets(AppMixin, App):
         bind(
             'ctrl+f up down tab shift-tab', 'leave_filter',
             description='Leave filter input')
+        bind('ctrl+q', 'quit', description='Quit', priority=True)
 
         bind = partial(
             self.key_handler.bind, contexts=('editor',), show=True,

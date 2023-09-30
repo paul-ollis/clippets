@@ -125,6 +125,10 @@ As shown in the menu bar, use ``Control-S`` to save your changes and
     Currently is is not possible to edit the clipboard and then add/remove
     snippets while preserving your edits.
 
+    .. note::
+
+       This is a note.
+
 ----
 
 .. [#re]

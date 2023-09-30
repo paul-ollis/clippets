@@ -219,7 +219,7 @@ class TestMouseControlled:
 
 
 class TestKeyboardControlled:
-    """Using the keyboard (exclusively) to fold groups.
+    """Using the keyboard in preference to the mouse.
 
     Currently keyboard control is very limited in this area.
     """
@@ -309,7 +309,7 @@ class TestKeyboardControlled:
         """The filter field provides a quick way to hide snippets."""
         actions = (
             ['ctrl+f']          # Switch to the filter field.
-            + ['2']             # Select only snippets containting '2'.
+            + ['2']             # Select only snippets containing '2'.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
@@ -324,7 +324,7 @@ class TestKeyboardControlled:
         """
         actions = (
             ['ctrl+f']          # Switch to the filter field.
-            + ['2']             # Select only snippets containting '2'.
+            + ['2']             # Select only snippets containing '2'.
             + ['ctrl+f']        # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
@@ -340,7 +340,7 @@ class TestKeyboardControlled:
         """
         actions = (
             ['ctrl+f']          # Switch to the filter field.
-            + ['2']             # Select only snippets containting '2'.
+            + ['2']             # Select only snippets containing '2'.
             + ['down']          # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
@@ -356,7 +356,7 @@ class TestKeyboardControlled:
         """
         actions = (
             ['ctrl+f']          # Switch to the filter field.
-            + ['2']             # Select only snippets containting '2'.
+            + ['2']             # Select only snippets containing '2'.
             + ['up']            # Switch away from the filter field.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
@@ -404,7 +404,7 @@ class TestKeyboardControlled:
         """The filter is treated as a regular expression."""
         actions = (
             ['ctrl+f']          # Switch to the filter field.
-            + list('[AB]')      # Select only snippets containting 'A' or 'B'.
+            + list('[AB]')      # Select only snippets containing 'A' or 'B'.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
@@ -420,6 +420,42 @@ class TestKeyboardControlled:
         actions = (
             ['ctrl+f']          # Switch to the filter field.
             + list('[AB')       # Enter mal-formed expression.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_mouse_can_focus_the_filter(
+            self, infile, snapshot_run):
+        """The mouse can be used to set focus to the filter field."""
+        actions = (
+            ['left:filter']     # Switch to the filter field.
+            + list('[AB]')      # Select only snippets containing 'A' or 'B'.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_mouse_can_unfocus_the_filter(
+            self, infile, snapshot_run):
+        """The mouse can be used to remove focus from the filter field."""
+        actions = (
+            ['ctrl+f']          # Switch to the filter field.
+            + list('[AB]')      # Select only snippets containing 'A' or 'B'.
+            + ['left:result']   # Click on the clipboard view widget.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_mouse_unfocus_does_not_change_snippet_selection(
+            self, infile, snapshot_run):
+        """Removing focus using the mouse does not change snippet selection."""
+        actions = (
+            ['down'] * 2           # Select the third snippet.
+            + ['ctrl+f']           # Switch to the filter field.
+            + list('[AB]')         # Select only snippets containing 'A' or 'B'.
+            + ['left:snippet-3']   # Click on the fourth snippet.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'

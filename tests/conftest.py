@@ -152,6 +152,8 @@ def pytest_assertrepr_compare(config, op, left, right):      # pragma: no cover
         lhs, rhs = prep_diffs(left.splitlines(True), right.splitlines(True))
         max_left = 30
         for before, after in zip(lhs, rhs):
+            if before.code == 'unchanged':
+                continue
             for (ai, a), (bi, b) in zip(before.lines, after.lines):
                 max_left = max(max_left, len(a))
 

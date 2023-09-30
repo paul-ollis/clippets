@@ -9,6 +9,7 @@ import rich.repr
 from rich.text import Text
 from textual.color import Color
 from textual.containers import Grid, VerticalScroll
+from textual.message import Message
 from textual.screen import ModalScreen
 from textual.validation import Function
 from textual.widget import Widget
@@ -77,10 +78,22 @@ class MyVerticalScroll(VerticalScroll, StdMixin):
 class MyInput(Input, AppChild):
     """Application specific Input widget."""
 
+    class Clicked(Message):
+        """An indication the user has clicked on this widget."""
+
+        def __init__(self, w: Widget):
+            super().__init__()
+            self.widget = w
+
     def on_blur(self, _event):
         """Process a mouse click."""
         self.app.handle_blur(self)
 
+    def on_click(self, event):
+        """Process a mouse click."""
+        # The Textual machinery for ``Input`` prevents propagation of the
+        # ``Click`` event, so we do it explicitly.
+        self.app.post_message(self.Clicked(self))
 
 class PopupDialog(ModalScreen):
     """Base for 'popup' dialogues."""

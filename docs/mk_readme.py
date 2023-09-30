@@ -16,6 +16,7 @@ dest = Path('../README.rst')
 sources = [Path(s) for s in source_names.split()]
 
 with dest.open('w', encoding='utf-8') as f:
+    f.write('.. vim: readonly nomodifiable\n')
     line = ''
     for i, p in enumerate(sources):
         if line.strip():
