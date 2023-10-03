@@ -62,7 +62,7 @@ shift = set(f'shift+{m}' for m in movement)
 all_keys = printable | control  | fkeys | shift
 
 valid_normal_action_keys = set([
-    'A', 'a', 'e', 'd', 'f', 'm', 'r', ' ',
+    'A', 'a', 'e', 'd', 'f', 'm', 'r', 'h', 'j', 'k', 'l', ' ',
     'f1', 'f2', 'f3', 'f7', 'f8', 'f9',
     'up', 'down', 'left', 'right',
     'ctrl+b', 'ctrl+f', 'ctrl+u', 'ctrl+r',

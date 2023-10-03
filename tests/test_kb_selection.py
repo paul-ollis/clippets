@@ -98,6 +98,27 @@ async def test_view_only_scrolls_down_as_necessary(longfile, snapshot_run):
 
 
 @pytest.mark.asyncio
+async def test_j_key_acts_as_down_key(longfile, snapshot_run):
+    """Moving down can be done usin the 'j' key."""
+    actions = (
+        ['j'] * 3                       # Move down a number of times.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_k_key_acts_as_up(longfile, snapshot_run):
+    """Moving up can be done usin the 'k' key."""
+    actions = (
+        ['down'] * 5                    # Move down a number of times.
+        + ['k'] * 3                     # Move up a number of times.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("d_moves, u_moves", [(7, 7), (13, 8)])
 async def test_view_scrolls_as_necessary_on_up(
         longfile, snapshot_run, d_moves, u_moves):
@@ -158,8 +179,18 @@ async def test_left_moves_to_group_names(longfile, snapshot_run):
 
 
 @pytest.mark.asyncio
+async def test_h_moves_to_group_names(longfile, snapshot_run):
+    """The 'h' key moves into the group names."""
+    actions = (
+        ['h']                           # Move into the group names.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
 async def test_left_stops_within_groups(longfile, snapshot_run):
-    """The left is ignore when already in the groups."""
+    """The left key is ignore when already in the groups."""
     actions = (
         ['left']                           # Move into the group names.
         + ['left']                         # Pressing again does nothing.
@@ -169,10 +200,53 @@ async def test_left_stops_within_groups(longfile, snapshot_run):
 
 
 @pytest.mark.asyncio
-async def test_right_stops_within_snippets(longfile, snapshot_run):
-    """The right is ignore when already in the snippets."""
+async def test_h_stops_within_groups(longfile, snapshot_run):
+    """The 'h' key is ignore when already in the groups."""
     actions = (
-        ['right']                          # Try to move righ in snippets.
+        ['left']                           # Move into the group names.
+        + ['left']                         # Pressing again does nothing.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_right_moves_back_to_snippets(longfile, snapshot_run):
+    """The right moves out the groups, back into the snippets."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['right']                        # Move back to the snippets.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_l_moves_back_to_snippets(longfile, snapshot_run):
+    """The 'l' moves out the groups, back into the snippets."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['l']                           # Move back to the snippets.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_right_stops_within_snippets(longfile, snapshot_run):
+    """The right key is ignored when already in the snippets."""
+    actions = (
+        ['right']                          # Try to move right in snippets.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_l_stops_within_snippets(longfile, snapshot_run):
+    """The 'l' key is ignored when already in the snippets."""
+    actions = (
+        ['l']                              # Try to move right in snippets.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok, 'Snapshot does not match stored version'
@@ -184,6 +258,29 @@ async def test_down_moves_within_groups_and_scrolls(longfile, snapshot_run):
     actions = (
         ['left']                           # Move into the group names.
         + ['down'] * 3                     # Move to the last group.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_j_moves_within_groups(longfile, snapshot_run):
+    """The 'j' key moves within the group names."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['j'] * 2                        # Move to the last group.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_k_moves_within_groups(longfile, snapshot_run):
+    """The 'k' key moves within the group names."""
+    actions = (
+        ['left']                           # Move into the group names.
+        + ['down'] * 3                     # Move to the last group.
+        + ['k'] * 2                        # Move up 2 groups.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok, 'Snapshot does not match stored version'

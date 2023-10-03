@@ -239,13 +239,13 @@ class TestKeyboardControlled:
         assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
-    async def test_move_snippet_to_end_of_group(
+    async def test_move_snippet_using_k_key(
             self, infile, snapshot_run_dyn):
-        """A snippet may be moved to the end of a group."""
+        """A snippet may be moved to using the 'k' key."""
         actions = (
             ['down'] * 5          # Move to Snippet 6
             + ['m']               # Start moving
-            + ['down'] * 2        # Move insetion point end of the group
+            + ['k'] * 1           # Move insertion above snippet 4
             + ['enter']           # Complete move
         )
         expect = clean_text('''
@@ -258,10 +258,68 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 3'
             Group: Second
             KeywordSet:
+            Snippet: 'Snippet 6'
             Snippet: 'Snippet 4'
             Snippet: 'Snippet 5'
             Snippet: 'Snippet 7'
+        ''')
+        runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_move_snippet_to_end_of_group(
+            self, infile, snapshot_run_dyn):
+        """A snippet may be moved to the end of a group."""
+        actions = (
+            ['down'] * 3          # Move to Snippet 6
+            + ['m']               # Start moving
+            + ['down'] * 5        # Move insetion point end of the group
+            + ['enter']           # Complete move
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            Snippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            Snippet: 'Snippet 5'
             Snippet: 'Snippet 6'
+            Snippet: 'Snippet 7'
+            Snippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_move_snippet_using_j_key(
+            self, infile, snapshot_run_dyn):
+        """A snippet may be moved to using the 'j' key."""
+        actions = (
+            ['down'] * 3          # Move to Snippet 6
+            + ['m']               # Start moving
+            + ['j'] * 5           # Move insetion point end of the group
+            + ['enter']           # Complete move
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            Snippet: 'Snippet 3'
+            Group: Second
+            KeywordSet:
+            Snippet: 'Snippet 5'
+            Snippet: 'Snippet 6'
+            Snippet: 'Snippet 7'
+            Snippet: 'Snippet 4'
         ''')
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert expect == runner.app.root.full_repr()

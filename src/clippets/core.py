@@ -1573,9 +1573,10 @@ class Clippets(AppMixin, App):
 
         bind = partial(self.key_handler.bind, contexts=('moving',), show=True)
         bind(
-            'up', 'move_insertion_point("up")', description='Cursor up')
+            'up k', 'move_insertion_point("up")', description='Cursor up')
         bind(
-            'down', 'move_insertion_point("down")', description='Cursor down')
+            'down j', 'move_insertion_point("down")',
+            description='Cursor down')
         bind('enter', 'complete_move', description='Insert')
         bind('escape', 'stop_moving', description='Cancel')
 

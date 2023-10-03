@@ -130,6 +130,22 @@ class TestKeyboardControlled:
         assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
+    async def test_group_move_using_k_key(
+            self, infile, snapshot_run):
+        """A group can be moved using the 'k' key."""
+        actions = (
+            ['left']
+            + ['down'] * 3        # Move to fourth group.
+            + ['m']               # Start moving groups.
+            + ['up'] * 2          # Move to insertion position.
+            + ['enter']           # Complete the move.
+            + ['right']           # Switch back to snippet.
+            + ['enter']           # ... and add to the clipboard.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
     async def test_group_can_be_moved_to_last_position(
             self, infile, snapshot_run):
         """A group can be moved to the very last position."""
@@ -137,6 +153,20 @@ class TestKeyboardControlled:
             ['left']         # Move to first group.
             + ['m']          # Start move.
             + ['down'] * 6   # Move into the last (top-level) group.
+            + ['enter']      # Finish the move.
+            + ['right']      # Switch back to snippet.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_group_can_be_moved_using_j_key(
+            self, infile, snapshot_run):
+        """A group can be moved using the 'k' key."""
+        actions = (
+            ['left']         # Move to first group.
+            + ['m']          # Start move.
+            + ['j'] * 6      # Move into the last (top-level) group.
             + ['enter']      # Finish the move.
             + ['right']      # Switch back to snippet.
         )
