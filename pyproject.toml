@@ -1,6 +1,6 @@
 [project]
 name = "clippets"
-version = "0.5.1"
+version = "0.5.2"
 authors = [
   { name="Paul Ollis", email="paul@cleversheep.org" },
 ]

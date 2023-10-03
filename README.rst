@@ -31,7 +31,9 @@ However:
 - There are still areas of mouse and keyboard support that beg improvement.
 - Some desirable features are obviously missing, such as:
 
-  - There is some proper `documentation`_, but it is far from complete.
+  - There is a fairly complete `user guide`_, but I consider it to be a first
+    draft.
+
   - It does not yet work on MacOS. (Pull requests gratefully received.)
 
 
@@ -49,6 +51,7 @@ Clippets for the first time. See@
 .. _Linux installation: https://clippets.readthedocs.io/en/main/getting-started/linux.html
 .. _Starting Clippets: https://clippets.readthedocs.io/en/main/getting-started/first-run.html
 .. _documentation: https://clippets.readthedocs.io/en/main
+.. _user guide: https://clippets.readthedocs.io/en/main
 
 Credits
 =======
