@@ -847,7 +847,7 @@ class Group(GroupDebugMixin, Element, GroupChild, Persistent):
         self.groups.pop(child.name)
         self._ordered_groups.remove(child.name)
         if not self.groups:
-            ph = GroupPlaceHolder(name='<placeholder>', parent=self)
+            ph = GroupPlaceHolder(name='-- place holder -- ', parent=self)
             self.groups[ph.name] = ph
             self._ordered_groups.append(ph.name)
 
@@ -872,7 +872,7 @@ class Group(GroupDebugMixin, Element, GroupChild, Persistent):
                 self.children.append(SnippetPlaceHolder(parent=self))
 
         if not self.groups:
-            ph = GroupPlaceHolder(name='<placeholder>', parent=self)
+            ph = GroupPlaceHolder(name='-- place holder --', parent=self)
             self.groups[ph.name] = ph
             self._ordered_groups.append(ph.name)
 

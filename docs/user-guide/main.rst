@@ -4,46 +4,24 @@
 User guide
 ==========
 
+.. toctree::
+   :maxdepth: 2
+
+   basics
+   groups
+   editing
+   moving
+   finding
+   external-editor
+   backups
+
 ..  Things to cover.
 
     - Markdown vs plain snippets.
     - A good link for basic Markdown.
-    - Using the filter entry.
     - Using the help.
-    - Adding groups.
-    - Renaming groups.
     - Deleting groups.
-    - Moving groups.
-    - Adding snippets.
-    - Editing snippets.
-    - Duplicating snippets.
-    - Moving snippets.
-    - Editing keywords.
     - Editing tags.
-    - Backup files.
-    - Editing the snippets file and detecting changes.
-
-      - Clearing.
-
-    - Using an external editor.
-
-      - Scroll wheel.
-      - Scroll bars.
-      - Folding groups.
-      - Folding groups using tags.
-
-    - Keyboard navigation.
-
-      - Snippets.
-      - Groups.
-      - Folding groups.
-
-..  Things to cover for tutorial.
-
-    - Adding snippets to the clip board.
-    - Removing snippets from the clip board.
-    - The ordering of the snippets within the clip board.
-    - A good link for basic Markdown.
 
 ..  Things we cannot do.
 
@@ -58,9 +36,28 @@ User guide
     - When all groups are folded, the 'right' key moves off the selected group,
       which should not be allowed.
     - Snippet moving does not cope with collapsed groups.
+    - An empty snippet does not render properly. It needs to be a proper blank
+      line.
+    - The help page is woefully out of date.
+    - Cancelling add-snippet still adds a snippet to the tree, but does not add
+      a widget. Causes a crash.
+    - PgUp and PgDn should do something useful.
+    - Does the context menu show ``Move`` when snippet movement is not possible.
+      Yes it does. It should be greyed out.
+    - Should all snippet place-holders be made visible during snippet moving to
+      be consistent with group moving?
 
-.. toctree::
-   :maxdepth: 2
 
-   basics
-   groups
+.. RST syntax highlighting bugs.
+
+    - For ``marking.snip``,
+
+      The trailing comment is part of the literal text.
+
+    - For :ref:`folding`)
+
+      The trailing ')' is part of the interpreted text.
+
+    - In, for example :refnum:`components`
+
+      Spell checking is not disabled.

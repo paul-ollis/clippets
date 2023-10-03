@@ -18,7 +18,7 @@ classifiers = [
 dependencies = [
     'markdown',
     'markdown_strings',
-    'textual',
+    'textual>=0.38.0',
 ]
 
 [tool.setuptools.package-data]

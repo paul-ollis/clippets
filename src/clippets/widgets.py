@@ -95,6 +95,7 @@ class MyInput(Input, AppChild):
         # ``Click`` event, so we do it explicitly.
         self.app.post_message(self.Clicked(self))
 
+
 class PopupDialog(ModalScreen):
     """Base for 'popup' dialogues."""
 
@@ -255,7 +256,7 @@ class GroupNameMenu(PopupDialog):
             input = partial(input, placeholder='Unique group name')
         for b in self.yes_buttons:
             b.disabled = True
-        yield Grid(input(), b1, b2, id='dialog', classes='popup freddy')
+        yield Grid(input(), b1, b2, id='dialog', classes='popup')
 
     def is_unique(self, name):
         """Check if the name is legal and unique."""

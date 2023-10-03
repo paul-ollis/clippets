@@ -30,7 +30,7 @@ from pathlib import Path
 clippet_temp_path = Path(sys.argv[1])
 old_text = clippet_temp_path.read_text(encoding='utf-8')
 
-# The scond argument is provded by the test infrastructure. It oontains the
+# The scond argument is provided by the test infrastructure. It oontains the
 # text that shoulb be written to the Clippets provided file.
 new_content_path = Path(os.environ['CLIPPETS_TEST_PATH'])
 new_text = new_content_path.read_text(encoding='utf-8')

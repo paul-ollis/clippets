@@ -1,3 +1,5 @@
+.. _file_format:
+
 ====================
 Clippets file format
 ====================

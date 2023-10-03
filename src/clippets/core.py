@@ -129,6 +129,10 @@ class EditorHasExited(Message):
     """An indication the extenal editor has exited."""
 
 
+class ScreenGreyedOut(Message):
+    """An indication the screen has been greyed out."""
+
+
 class Matcher:                         # pylint: disable=too-few-public-methods
     """Simple plain-text replacement for a compiled regular expression."""
 
@@ -434,6 +438,7 @@ class ExtEditSession(EditSession):
     async def check_if_edit_finished(self):
         """Poll to see if the editor process has finished."""
         if self.proc and self.proc.returncode is not None:
+            print("Editor finished")
             # Note that more calls to this method may already be queued. We
             # cannot rely on simply stopping the timer. So we use self.proc
             # being ``None`` as a guard.
@@ -708,6 +713,7 @@ class AppMixin:
     async def on_right_click_group(self, w: Widget) -> None:
         """Handle a mouse right-click on a group."""
         async def on_close(v):
+            # Note: Menu screen is popped before this is called.
             self.screen.set_focus(None)
             if  v == 'add_snippet':
                 await self.add_snippet(wid)
@@ -717,14 +723,15 @@ class AppMixin:
                 await self.rename_group(wid)
 
         wid = cast(str, w.id)
-        snippet = self.root.find_group_child(wid)
-        if snippet:
-            self.push_screen(GroupMenu(id='snippet-menu'), on_close)
+        group = self.root.find_group_child(wid)
+        if group:
+            self.push_screen(GroupMenu(id='group-menu'), on_close)
 
     async def on_right_click_snippet(self, w: Widget) -> None:
         """Process a mouse right-click on a snippet."""
 
         async def on_close(v):
+            # Note: Menu screen is popped before this is called.
             self.screen.set_focus(None)
             if  v == 'add_snippet':
                 await self.add_snippet(wid)
@@ -1121,7 +1128,7 @@ class AppMixin:
                 on_edit_complete)
 
     async def edit_snippet(self, id_str) -> None:
-        """Invoke the user's editor on a snippet."""
+        """Invoke the editor on a snippet."""
 
         def on_edit_complete(text):
             if text.strip() != snippet.text.strip():
@@ -1163,6 +1170,7 @@ class AppMixin:
         ext_editor = get_editor_command('CLIPPETS_EDITOR', '')
         if ext_editor:
             self.push_screen(GreyoutScreen(message, id='greyout'))
+            self.app.post_message(ScreenGreyedOut())
             temp_path = SharedTempFile()
             proc = await run_editor(text, temp_path)
             self.edit_session = ExtEditSession(
@@ -1536,10 +1544,10 @@ class Clippets(AppMixin, App):
         #
         bind = partial(self.key_handler.bind, contexts=('normal',), show=False)
         bind('f8', 'toggle_order', description='Toggle order')
-        bind('up', 'select_move(-1)')
-        bind('down', 'select_move(1)')
-        bind('left', 'select_move(-1, "horizontally")')
-        bind('right', 'select_move(1, "horizontally")')
+        bind('up k', 'select_move(-1)')
+        bind('down j', 'select_move(1)')
+        bind('left h', 'select_move(-1, "horizontally")')
+        bind('right l', 'select_move(1, "horizontally")')
         bind('ctrl+b', 'zap_filter', description='Clear filter input')
         bind(
             'ctrl+f tab shit-tab', 'enter_filter',
@@ -1759,6 +1767,7 @@ async def run_editor(text: str, path: Path) -> asyncio.subprocess.Process:
         dims = {'w': 80, 'h': 25}
     edit_cmd += ' ' + str(path)
     cmd = edit_cmd.format(**dims).split()
+    print("RUN EDITOR", edit_cmd, cmd)
     return await asyncio.create_subprocess_exec(
         *cmd, stderr=subprocess.DEVNULL)
 
@@ -1784,6 +1793,7 @@ def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument('--svg-run', action='store_true')
     parser.add_argument('--work-dir', type=Path)
     parser.add_argument('--dims', type=str)
+    parser.add_argument('--dummy-editor', action='store_true')
     parser.add_argument('--view-height', type=int)
     return parser.parse_args(sys_args or sys.argv[1:])
 

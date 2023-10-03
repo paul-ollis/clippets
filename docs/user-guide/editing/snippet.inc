@@ -10,7 +10,10 @@ Style [style]
 
 Style : Paragraphs [style para]
   @md@
-    Your paragraphs are too long.
+    It is a bit difficult to follow your argument. I suggest:
+
+    - Create a detailed plan before you start writing.
+    - Perhaps consider using a mind-map.
   @md@
     Split long paragraphs so each covers a single topic.
 

@@ -1,25 +1,13 @@
-# Prog
-#     enter
-#     down
-#     down
-#     down
-#     down
-#     down
-#     enter
-#     down
-#     enter
-# End Prog
-# Dims: 80x33
 Spelling [rigour style]
   @keywords@ improvement spell
-  @md
+  @md@
     Your spelling is showing a **remarkable** improvement - keep it up.
   @md@
     You *really* need to spend more time proof-reading and using a
     spell-checker.
 
 Grammar [rigour style]
-  @keywords@ improvement
+  @keywords@ grammar
   @md@
     I am seeing a definite improvement in your grammar.
   @md@
@@ -27,7 +15,7 @@ Grammar [rigour style]
     difference to the quality of your writing.
 
 Style [style]
-  @keywords@ improvement
+  @keywords@ improvement long
   @md@
     Some sentences are *rather* long. Try to keep them simpler and shorter.
   @md@
@@ -35,6 +23,7 @@ Style [style]
     work.
 
 Structure [style]
+  @keywords@ difficule suggest mind-map
   @md@
     It is a bit difficult to follow your argument. I suggest:
 

@@ -10,10 +10,12 @@ SOURCEDIR     = .
 BUILDDIR      = _build
 export CLIPPETS_EDITOR =
 
-snip_files = $(wildcard reference/file_format/*.snip)
 snip_files += $(wildcard getting-started/first-run/*.snip)
+snip_files = $(wildcard reference/file_format/*.snip)
 snip_files += $(wildcard user-guide/basics/*.snip)
+snip_files += $(wildcard user-guide/editing/*.snip)
 snip_files += $(wildcard user-guide/groups/*.snip)
+snip_files += $(wildcard user-guide/moving/*.snip)
 
 svg_files = $(patsubst %.snip, %.svg, $(snip_files))
 

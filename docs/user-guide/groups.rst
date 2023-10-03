@@ -1,6 +1,8 @@
-============
-Using groups
-============
+.. _folding:
+
+==================
+Groups and folding
+==================
 
 Groups allow you to collect related snippets together into a tree hierarchy,
 parts of which can be folded so you can easily see a useful subset of your
@@ -28,10 +30,9 @@ If all groups are folded then ``F9`` will unfold all groups, recursively. ``F9``
 is useful when you only want a few select folds to be open.
 
 
-.. rubric:: Mouse button 1 on a group.
+.. rubric:: Left click on a group.
 
-Clicking on a group name using button 1 (typically the left button) simply
-toggles the folded state of the group.
+Left clicking on a group name simply toggles the folded state of the group.
 
 
 .. rubric:: Keyboard group selection.
@@ -42,6 +43,9 @@ selection mode' to 'group selection mode', which looks like this:
 .. figure:: groups/group-mode.svg
 
     Group selection mode.
+
+.. todo::
+    There is some duplication here WRT user-guide/basics.rst
 
 When in group mode, the ``up`` and ``down`` keys move between group labels and
 pressing either ``f`` or the ``Ins`` key [#ins]_ will toggle the folded state
@@ -55,15 +59,15 @@ selected group is unfolded.
 
 The tags listed after group labels ('rigour', 'style' and 'para' in these
 examples) allow multiple groups to be folded/unfolded at once. Simply click on
-one of the tag labels using mouse button 1. The figure below show the effect of
-clicking on the 'para' tag.
+one of the tag labels using the left mouse button. The figure below shows the
+effect of clicking on the 'para' tag.
 
 .. figure:: groups/para-fold.svg
 
     The effect of folding using the 'para' tag.
 
-The ``F9`` key in combination with group tags provide a mechanism for quickly
-getting the fold state you want.
+The ``F9`` key in combination with group tags provides a mechanism for quickly
+getting just a few open folds.
 
 ----
 
