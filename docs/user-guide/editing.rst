@@ -52,16 +52,24 @@ menu provides 3 editing choices:
 :Duplicate: Duplicates the snippet, adds it below and opens it in the editor.
 :Edit: Opens the snippet in the editor.
 
-The corresponding keyboard shortcuts are ``'a'``, ``'d'`` and ``'e'``. When
-using the built-in editor you will see a window as shown above. This is split
-into an upper (preview) pane and the lower (editing) pane. The preview updates
-as you type.
+The corresponding keyboard shortcuts are ``'a'``, ``'d'`` and ``'e'``.
+
+.. sidebar:: Abandoning externl edits.
+
+    If you are using an external editor and wish to abandon changes either:
+
+    - Quit the editor without saving any changes.
+    - If you have already saved some changes, delete all text, save and exit.
+
+When using the built-in editor you will see a window as shown above. This is
+split into an upper (preview) pane and the lower (editing) pane. The preview
+updates as you type.
 
 You can also add new snippet at the start of a group by selecting 'Add snippet'
 from the group context menu.
 
-Once you are satisfied with your changes, press ``Ctrl+S`` to save your changes
-and exit the editor. To abandon your changes press ``Ctrl+Q`` instead.
+Once you are satisfied with your changes, press ``Control+S`` to save your changes
+and exit the editor. To abandon your changes press ``Control+Q`` instead.
 
 
 Editing groups

@@ -20,7 +20,7 @@ async def watchdog():
 
             to_be_dropped.add(task)
             exc = None if task.cancelled() else task.exception()
-            if exc:
+            if exc:                                          # pragma: no cover
                 traceback.print_exception(exc, file=sys.__stderr__)
                 task.print_stack(file=sys.__stderr__)
                 sys.exit(str(exc))
@@ -36,7 +36,11 @@ def create_task(coro, *, name=None, context=None) -> asyncio.Task:
     """Create a task and add to the set of monitored tasks."""
     global monitor_task
 
-    task = asyncio.create_task(coro, name=name, context=context)
+    version = sys.version_info[:2]
+    if version < (3, 11):                                    # pragma: no cover
+        task = asyncio.create_task(coro, name=name)
+    else:
+        task = asyncio.create_task(coro, name=name, context=context)
     tasks[task] = None
 
     if monitor_task is None:

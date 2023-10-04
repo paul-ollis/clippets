@@ -28,7 +28,7 @@ Your terminal should look like:
 .. image:: first-run/basics.svg
 
 Open or switch to a word processor program and perform a paste operation (for
-example by typing ``Control-V``). The 2 snippets you chose should be pasted
+example by typing ``Control+V``). The 2 snippets you chose should be pasted
 into your document.
 
 

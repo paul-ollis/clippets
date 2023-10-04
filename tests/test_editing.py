@@ -89,6 +89,30 @@ class TestKeyboardControlled:
         assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
+    async def test_snippet_editing_can_be_aborted(
+            self, infile, edit_text_file, snapshot_run):
+        """Clearing all text aborts editing of a snippet."""
+        populate(edit_text_file, '')
+        actions = (
+            ['down']                         # Move to Snippet 2
+            + ['e']                          # Edit it
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert 'Snippet 2' == edit_text_file.prev_text
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
     async def test_a_snippet_can_be_duplicated(
             self, infile, edit_text_file, snapshot_run):
         """A snippet's contents may be duplicated and immediately edited."""
@@ -107,6 +131,30 @@ class TestKeyboardControlled:
             Snippet: 'Snippet 2'
             MarkdownSnippet: 'Snippet 3'
             MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert 'Snippet 3' == edit_text_file.prev_text
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_duplicating_a_snippet_can_be_aborted(
+            self, infile, edit_text_file, snapshot_run):
+        """Clearing all text aborts duplication of a snippet."""
+        populate(edit_text_file, '')
+        actions = (
+            ['down'] * 2          # Move to Snippet 3
+            + ['d']               # Duplicate and edit it
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
         ''')
         runner, snapshot_ok = await snapshot_run(infile, actions)
         assert expect == runner.app.root.full_repr()
@@ -194,6 +242,30 @@ class TestKeyboardControlled:
         assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
+    async def test_adding_a_new_snippet_can_be_aborted(
+            self, infile, edit_text_file, snapshot_run):
+        """Clearing all text aborts adding of a snippet."""
+        populate(edit_text_file, '')
+        actions = (
+            ['down'] * 2          # Move to Snippet 3.
+            + ['a']               # Add a new snippet.
+            + ['wait:0.5:EditorHasExited']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert '' == edit_text_file.prev_text
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
     async def test_a_new_snippet_can_be_added_at_group_start(
             self, infile, edit_text_file, snapshot_run):
         """A snippet may be added at the start of a group."""
@@ -260,6 +332,33 @@ class TestKeyboardControlled:
             MarkdownSnippet: 'Snippet 3'
             Group: Second
             KeywordSet:
+            Group: Third
+            KeywordSet:
+            MarkdownSnippet: 'Snippet 4'
+        ''')
+        runner, snapshot_ok = await snapshot_run(two_group_infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_adding_a_group_can_be_aborted(
+            self, two_group_infile, snapshot_run):
+        """Adding of a new group can be aborted."""
+        actions = (
+            ['left']              # Move to group.
+            + ['A']               # Add a new group.
+            + list('Second')
+            + ['tab'] * 2
+            + ['enter']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
             Group: Third
             KeywordSet:
             MarkdownSnippet: 'Snippet 4'
@@ -828,6 +927,58 @@ class TestInternalEditor:
             + ['end']
             + list(' - edited')
             + ['ctrl+q']
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_adding_a_snippet_can_be_aborted(
+            self, infile, snapshot_run):
+        """Addition of a snippet is aborted if the editor is quit."""
+        actions = (
+            ['down']              # Move to Snippet 2.
+            + ['a']               # Start adding a new snippet.
+            + ['end']
+            + list(' - edited')
+            + ['ctrl+q']
+
+            + ['down']            # Move to the next snippet.
+        )
+        expect = clean_text('''
+            Group: <ROOT>
+            KeywordSet:
+            Group: Main
+            KeywordSet:
+            Snippet: 'Snippet 1'
+            Snippet: 'Snippet 2'
+            MarkdownSnippet: 'Snippet 3'
+        ''')
+        runner, snapshot_ok = await snapshot_run(infile, actions)
+        assert expect == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_duplicating_a_snippet_can_be_aborted(
+            self, infile, snapshot_run):
+        """Duplication of a snippet is aborted if the editor is quit."""
+        actions = (
+            ['down']              # Move to Snippet 2.
+            + ['d']               # Start duplicating the snippet.
+            + ['end']
+            + list(' - edited')
+            + ['ctrl+q']
+
+            + ['down']            # Move to the next snippet.
         )
         expect = clean_text('''
             Group: <ROOT>

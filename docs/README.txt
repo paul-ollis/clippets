@@ -17,6 +17,8 @@ application.
 Status
 ======
 
+The most recent release is 0.5.2.
+
 This is a *beta* software. It is definitely useful and usable in its current
 form:
 

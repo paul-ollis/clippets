@@ -406,7 +406,7 @@ class Paragraph(BlockElement):         # pylint: disable=too-few-public-methods
     def gather_code_block(self, blocks):
         """Consume any immediately following code block."""
         m = rc_code_block_start.search(self.lines[-1])
-        if m:
+        if m:                                                # pragma: no cover
             # Everything indented more than this paragraph is the literal text.
             lit_blocks = []
             for lines in blocks:
@@ -421,7 +421,7 @@ class Paragraph(BlockElement):         # pylint: disable=too-few-public-methods
                 self.lines[-1] = self.lines[-1][:-len(m.group()) + 1]
 
 
-class CodeBlock(Paragraph):
+class CodeBlock(Paragraph):                                  # pragma: no cover
     """A block of code or uninterpreted text."""
 
     widget_class: type = Markdown
@@ -429,7 +429,7 @@ class CodeBlock(Paragraph):
 
     def __init__(self, blocks, parent, lang):
         lines = list(blocks[0])
-        for block in blocks[1:]:                             # pragma: no cover
+        for block in blocks[1:]:
             lines.append('')
             lines.extend(block)
         super().__init__(lines, parent, ['code'])
@@ -443,7 +443,7 @@ class CodeBlock(Paragraph):
 
     def _snippet(self) -> str:
         """Format a snippet of text for use by __repr__."""
-        return f'{self.lang}: {self.lines[0]}'               # pragma: no cover
+        return f'{self.lang}: {self.lines[0]}'
 
 
 class Definition(Paragraph):

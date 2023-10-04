@@ -1013,13 +1013,13 @@ class GroupPlaceHolder(Group, PlaceHolder):
 
     def keywords(self) -> set[str]:
         """Provide all the keywords applicable to this group's snippets."""
-        return set()
+        return set()                                         # pragma: no cover
 
     def full_repr(
             self, *, end='\n', debug: bool = False, details: bool = False,
         ) -> str:
         """Format a simple representation of this element."""
-        return ''
+        return ''                                            # pragma: no cover
 
 
 class Root(Group):

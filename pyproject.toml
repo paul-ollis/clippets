@@ -5,7 +5,7 @@ authors = [
   { name="Paul Ollis", email="paul@cleversheep.org" },
 ]
 description = "TUI to build up clipboard content from (rich) text snippets."
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.12"
 readme = "README.rst"
 classifiers = [
     'Development Status :: 4 - Beta',
@@ -58,6 +58,7 @@ ignore = [
     "RET505",  # Unnecessary else after return.
     "S603",    # General subprocess security warning.
     "T20",     # Allow the print function to be used.
+    "R001",    # Allow me to figure out when a directory is a namespace package.
 
     # Below are checks I wish re-enable, once the code is cleaner.
     "ANN001",  # Missing return type argument.
