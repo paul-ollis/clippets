@@ -41,7 +41,7 @@ Get started
 ===========
 
 The full `documentation`_ includes instructions on installing and running
-Clippets for the first time. See@
+Clippets for the first time. See:
 
 - `Windows installation`_.
 - `Linux installation`_.

@@ -33,7 +33,7 @@ Now add the Python script directory to your PATH as follows:
 
       c:\Users\Paul\AppData\Local\Programs\Python\Pytheon311\python.exe
 
-#. Type 'environment' in the Windows search box. The open "Edit the system
+#. Type 'environment' in the Windows search box. Then open "Edit the system
    environment variables, Control panel".
 
    i. Click on the "Environment Variables" near the bottom of the "System

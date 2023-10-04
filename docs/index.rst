@@ -5,7 +5,7 @@ Welcome to Clippets' documentation
 Introduction
 ============
 
-Clippets is a terminal user interface (TUI) application designed make very easy
+Clippets is a Terminal User Interface (TUI) application designed make it easy
 to build up *rich* text within your computer's clipboard, by selecting text
 snippets from a organised collection. You can view this short `video`_ to get
 the basic idea.
@@ -36,15 +36,13 @@ Features
   - Clippets watches for changes to this file and allows them to be loaded
     without restarting.
 
-  - Alternatively, you can use the built-in or an external editor to add or
-    modify snippets.
+  - You can also use the built-in or an external editor to add or change
+    snippets.
 
 - The group and snippet hierarchy can be reorganised within the TUI.
 
 - Full keyboard support, plus mouse support for many operations.
 
-
-.. include:: credits.txt
 
 
 Table of contents, indices and tables
@@ -59,5 +57,8 @@ Table of contents, indices and tables
 
 - :ref:`genindex`
 - :ref:`search`
+
+.. include:: credits.txt
+
 
 .. _video: https://github.com/paul-ollis/snippets/assets/6062510/acc93396-c7b8-429f-825e-cfd940959760

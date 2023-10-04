@@ -5,10 +5,9 @@ The basics
 Anatomy
 =======
 
-Clippets' sole purpose is to make it quick and easy to repeatedly assemble a
-sequences of text snippets and paste the result into a document. Below is an
-example of Clippets running in the terminal, annotated to show the principle
-components.
+Clippets' sole purpose is to make it quick and easy to assemble a sequences of
+text snippets and paste the result into a document. Below is an example of
+Clippets running in the terminal, annotated to show the principle components.
 
 .. _comp:
 .. figure:: basics/components.svg
@@ -34,13 +33,13 @@ Clipboard scrollbar
     when the mouse pointer is over the clipboard contents.
 
 Groups
-    Snippets are collected into groups to make it easier to quickly navigate to
-    the snippet you want. Groups may also contains other groups, forming a
-    group hierarchy.
+    Snippets are collected into groups to make it easier to navigate to the
+    snippet you want. Groups may also contain other groups, forming a group
+    hierarchy.
 
     If you click on a group's name it will fold (or unfold). You can also press
-    the ``F9`` key to quickly fold or unfold all the groups at once. See
-    :ref:`folding` for how to fold groups using the keyboard.
+    the ``F9`` key to fold or unfold all the groups at once. See :ref:`folding`
+    for how to fold groups using the keyboard.
 
 Group tags
     Each group may be followed by one or more, single word, tags. If you click
@@ -68,7 +67,7 @@ Snippet scrollbar
 Highlighted keyword
     Each group can have a set of keywords, which are shown highlighted within
     its snippets. In the above example, 'improvement' is one such keyword. Well
-    chosen keywords can be a useful to quickly spotting the snippet you want.
+    chosen keywords can be a useful aid for spotting the snippet you want.
 
 Menu bar
     At the bottom of the terminal, Clippets lists the most useful action keys.
@@ -88,15 +87,15 @@ Clippets normally has one snippet or group selected. When a snippet is
 selected, it is highlight by having box drawn around it. A selected
 snippet is labelled in :numref:`comp`.
 
-When a group is selected is is highlighted by having a solid block before and
+When a group is selected it is highlighted by having a solid block before and
 after the group label. The first group is selected the figure below.
 
 .. figure:: basics/group-mode.svg
 
     Group selection mode.
 
-The selection is move using the  ``up``, ``down``, ``left`` and ``right`` (arrow)
-keys; and also for ``Vim`` users the ``'k'``, ``'j'``, ``'h'`` and ``'l'`` keys.
+The selection is moved using the  ``up``, ``down``, ``left`` and ``right`` (arrow)
+keys. For ``Vim`` users the ``'k'``, ``'j'``, ``'h'`` and ``'l'`` keys also work.
 Keys ``left`` and ``right`` move between *snippet selection mode* and *group
 selection mode*. The ``up`` and ``down`` keys change the selected snippet or group.
 
@@ -170,7 +169,7 @@ As shown in the menu bar, use ``Control-S`` to save your changes and
     edits will be lost. The undo key ``Control-U`` will restore the clipboard
     back to how it was immediately after your edits.
 
-    Currently is is not possible to edit the clipboard and then add/remove
+    Currently it is impossible to edit the clipboard and then add/remove
     snippets while preserving your edits.
 
 ----

@@ -34,7 +34,7 @@ reused).
 Search tool
 ===========
 
-.. _search:
+.. _search_tool:
 .. figure:: basics/searching.svg
 
     An example of searching for snippets.
@@ -45,10 +45,9 @@ Search tool
     for the full, gory details of the regular expression 'flavour' used by
     Clippets.
 
-    In regular expressions many punctuation characters have special meanings;
-    for example a plain asterisk (``'*'``) will not match asterisk characters in
-    your snippets. So if you are not experienced with *regular expressions* and
-    do not want to get confused, avoid using punctuation characters.
+    In regular expressions many punctuation characters have special meanings.
+    So if you are not experienced with *regular expressions* and do not want to
+    get confused, avoid using punctuation characters.
 
     Certain punctuation characters do not have special meanings and can be
     safely used. Safe characters include ``'#'``, ``'@'``, comma, single and
@@ -56,7 +55,7 @@ Search tool
 
     One special character you might find useful is the vertical bar (or pipe)
     symbol. This allows you to specify several difference pieces of text, any
-    one of which can match a snippet. This is shown in :numref:`search`.
+    one of which can match a snippet. This is shown in :numref:`search_tool`.
 
 At the top of the Clippets display is a search/filter box. You can press
 ``control-f`` or click on the box to edit its contents. As you type into this
