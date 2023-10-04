@@ -1,6 +1,7 @@
 config-path
 markdown
 markdown_strings
+textual
 
 jinja2
 pycodestyle
@@ -8,6 +9,7 @@ pylint
 pytest
 pytest-asyncio
 pytest-cov
+pytest-xdist
 syrupy
 types-Markdown
 

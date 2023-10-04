@@ -35,12 +35,7 @@ User guide
       counter-intuitive.
     - When all groups are folded, the 'right' key moves off the selected group,
       which should not be allowed.
-    - Snippet moving does not cope with collapsed groups.
-    - An empty snippet does not render properly. It needs to be a proper blank
-      line.
     - The help page is woefully out of date.
-    - Cancelling add-snippet still adds a snippet to the tree, but does not add
-      a widget. Causes a crash.
     - PgUp and PgDn should do something useful.
     - Does the context menu show ``Move`` when snippet movement is not possible.
       Yes it does. It should be greyed out.

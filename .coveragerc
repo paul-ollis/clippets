@@ -3,6 +3,8 @@ source = src
 omit =
     src/clippets/win.py
     src/clippets/abc.py
+    src/clippets/robot.py
+    src/clippets/dummy_editor.py
 
 [report]
 exclude_also =

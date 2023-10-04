@@ -42,12 +42,12 @@ from .platform import (
 from .snippets import (
     CannotMove, DefaultLoader, Group, GroupChild, GroupInsertionPointer,
     GroupPlaceHolder, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
-    SnippetInsertionPointer, is_group, is_group_child, is_snippet,
+    SnippetInsertionPointer, SnippetLike, is_group, is_group_child, is_snippet,
     is_snippet_like)
 from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
-    MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText,
-    MyVerticalScroll, SnippetMenu)
+    MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
+    SnippetMenu)
 
 from . import patches
 
@@ -208,7 +208,7 @@ class HelpScreen(Screen):
             for c in walk_depth_first(ff) if c.__class__ is Static)
 
         for cc in statics:
-            if isinstance(cc.renderable, Syntax):
+            if isinstance(cc.renderable, Syntax):            # pragma: no cover
                 cc.renderable.padding = 0, 0, 0, 0
                 cc.renderable.indent_guides = False
 
@@ -239,7 +239,7 @@ class MainScreen(Screen):
         with MyVerticalScroll(id='view', classes='result') as view:
             view_height = self.app.args.view_height
             if view_height:
-                view.styles.height = view_height
+                view.styles.height = view_height             # pragma: no cover
             if self.app.args.raw:
                 yield Static(id='result')
             else:
@@ -403,7 +403,7 @@ class EditSession:
     def __init__(
             self,
             app: Clippets,
-            on_complete: Callable[[str], None]):
+            on_complete: Callable[[str, bool], None]):
         self.app = app
         self.on_complete = on_complete
 
@@ -413,12 +413,13 @@ class EditSession:
         text = '\n'.join(ta.lines)
         self.app.pop_screen()
         self.app.edit_session = None
-        self.on_complete(text)
+        self.on_complete(text, False)
 
     def quit(self):                                                # noqa: A003
         """Quite the editor."""
         self.app.pop_screen()
         self.app.edit_session = None
+        self.on_complete('', True)
 
 
 class ExtEditSession(EditSession):
@@ -429,7 +430,7 @@ class ExtEditSession(EditSession):
             app: Clippets,
             temp_path: SharedTempFile,
             proc: asyncio.subprocess.Process |None,
-            on_complete: Callable[[str], None]):
+            on_complete: Callable[[str, bool], None]):
         super().__init__(app, on_complete)
         self.temp_path = temp_path
         self.proc = proc
@@ -438,7 +439,6 @@ class ExtEditSession(EditSession):
     async def check_if_edit_finished(self):
         """Poll to see if the editor process has finished."""
         if self.proc and self.proc.returncode is not None:
-            print("Editor finished")
             # Note that more calls to this method may already be queued. We
             # cannot rely on simply stopping the timer. So we use self.proc
             # being ``None`` as a guard.
@@ -449,7 +449,7 @@ class ExtEditSession(EditSession):
             text = self.temp_path.read_text(encoding='utf8')
             self.temp_path.clean_up()
             self.app.pop_screen()
-            self.on_complete(text)
+            self.on_complete(text, not bool(text.strip()))
             self.app.edit_session = None
             self.app.post_message(EditorHasExited())
 
@@ -468,6 +468,7 @@ class AppMixin:
     resolver: asyncio.Task | None
     screen: Screen
     context_name: Callable[[], str]
+    post_message: Callable
     _bindings: _Bindings
     MODES: ClassVar[dict[str, str | Screen | Callable[[], Screen]]]
 
@@ -622,9 +623,8 @@ class AppMixin:
     ## Handling of mouse operations.
     async def on_my_input_clicked(self, msg: Message):
         """React to a click on the filter input widget."""
-        print("INPUT CLICK", msg.widget.id)
-        w = msg.widget
-        if w.id == 'filter':
+        w = getattr(msg, 'widget', None)
+        if w is not None and w.id == 'filter':
             self.action_enter_filter()
 
     async def on_click(self, ev) -> None:                          # noqa: C901
@@ -1036,7 +1036,7 @@ class AppMixin:
         try:
             put_to_clipboard(
                 text, mode='raw' if self.args.raw else 'styled')
-        except (OSError, subprocess.CalledProcessError):
+        except (OSError, subprocess.CalledProcessError):     # pragma: no cover
             if not self.args.svg_run:
                 raise
 
@@ -1086,23 +1086,24 @@ class AppMixin:
     async def add_snippet(self, id_str: str):
         """Add and the edit a new snippet."""
 
-        def on_edit_complete(text):
-            new_snippet.set_text(text)
-            self._selection_stack[:] = [
-                Selection(uid=new_snippet.uid(), user=True)]
-            self.rebuild_after_edits()
-            w = self.find_widget(new_snippet)
-            w.scroll_visible(animate=False)
+        def on_edit_complete(text: str, aborted: bool):
+            if not aborted:
+                new_snippet = add()
+                new_snippet.set_text(text)
+                self._selection_stack[:] = [
+                    Selection(uid=new_snippet.uid(), user=True)]
+                self.rebuild_after_edits()
+                w = self.find_widget(new_snippet)
+                w.scroll_visible(animate=False)
 
         if id_str.startswith('snippet-'):
             snippet = cast(Snippet, self.root.find_group_child(id_str))
-            new_snippet = snippet.add_new()
+            add = partial(snippet.add_new)
         elif id_str.startswith('group-'):
             group = cast(Group, self.root.find_group_child(id_str))
-            new_snippet = group.add_new()
+            add = partial(group.add_new)
         await self.run_editor(
-            new_snippet.text, 'Currently editing a new snippet',
-            on_edit_complete)
+            '', 'Currently editing a new snippet', on_edit_complete)
 
     def backup_and_save(self):
         """Create a new snippet file backup and then save."""
@@ -1112,26 +1113,29 @@ class AppMixin:
     async def duplicate_snippet(self, id_str: str):
         """Duplicate and the edit the current snippet."""
 
-        def on_edit_complete(text):
-            new_snippet.set_text(text)
-            self._selection_stack[:] = [
-                Selection(uid=new_snippet.uid(), user=True)]
-            self.rebuild_after_edits()
-            w = self.find_widget(new_snippet)
-            w.scroll_visible(animate=False)
+        def on_edit_complete(text, aborted: bool):
+            if not aborted:
+                new_snippet = add()
+                new_snippet.set_text(text)
+                self._selection_stack[:] = [
+                    Selection(uid=new_snippet.uid(), user=True)]
+                self.rebuild_after_edits()
+                w = self.find_widget(new_snippet)
+                w.scroll_visible(animate=False)
 
         if id_str.startswith('snippet-'):
             snippet = cast(Snippet, self.root.find_group_child(id_str))
-            new_snippet = snippet.duplicate()
+            text = snippet.text
+            add = partial(snippet.duplicate)
             await self.run_editor(
-                new_snippet.text, 'Currently editing a duplicate snippet',
+                text, 'Currently editing a duplicate snippet',
                 on_edit_complete)
 
     async def edit_snippet(self, id_str) -> None:
         """Invoke the editor on a snippet."""
 
-        def on_edit_complete(text):
-            if text.strip() != snippet.text.strip():
+        def on_edit_complete(text, aborted: bool):
+            if not aborted and text.strip() != snippet.text.strip():
                 snippet.set_text(text)
                 self.rebuild_after_edits()
 
@@ -1165,12 +1169,12 @@ class AppMixin:
 
     async def run_editor(
             self, text: str, message: str,
-            on_complete: Callable[[str], None]) -> None:
+            on_complete: Callable[[str, bool], None]) -> None:
         """Run the user's preferred editor on a textual element."""
         ext_editor = get_editor_command('CLIPPETS_EDITOR', '')
         if ext_editor:
             self.push_screen(GreyoutScreen(message, id='greyout'))
-            self.app.post_message(ScreenGreyedOut())
+            self.post_message(ScreenGreyedOut())
             temp_path = SharedTempFile()
             proc = await run_editor(text, temp_path)
             self.edit_session = ExtEditSession(
@@ -1308,7 +1312,7 @@ class AppMixin:
 
     async def action_edit_clipboard(self) -> None:
         """Run the user's editor on the current clipboard contents."""
-        def on_edit_complete(new_text: str):
+        def on_edit_complete(new_text: str, aborted: bool):
             if new_text.strip() != text.strip():
                 self.edited_text = new_text
                 self.update_result()
@@ -1320,7 +1324,7 @@ class AppMixin:
 
     async def action_edit_keywords(self) -> None:
         """Invoke the user's editor on the current group's keyword list."""
-        def on_edit_complete(new_text: str):
+        def on_edit_complete(new_text: str, aborted: bool):
             new_words = set(new_text.split())
             if new_words != kw.words:
                 kw.words = new_words
@@ -1587,6 +1591,7 @@ class Clippets(AppMixin, App):
             description='Leave filter input')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
+        # Key bindings when the intenal editor is active.
         bind = partial(
             self.key_handler.bind, contexts=('editor',), show=True,
             priority=True)
@@ -1805,7 +1810,7 @@ def is_display_node(obj: GroupChild) -> type[GroupChild] | None:
     return GroupChild if isinstance(obj, display_node_types) else None
 
 
-def perform_svg_run(args: argparse.Namespace) -> None:
+def perform_svg_run(args: argparse.Namespace) -> None:       # pragma: no cover
     """Performa run in order to generate an SVG image."""
     def resolve_includes(lines):
         """Resolve simple-include directives."""

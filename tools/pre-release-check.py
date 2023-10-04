@@ -23,16 +23,22 @@ def check_version():
     """Check that version information matches and is correct."""
     pyproject = Path('pyproject.toml')
     help_text = Path('src/clippets/help.txt')
+    readme = Path('README.rst')
     pyproject_version = help_version = ''
-    for line in pyproject.read_text().splitlines():
+    for line in pyproject.read_text(encoding='utf-8').splitlines():
         if line.startswith('version = "'):
             _, _, rem = line.partition('"')
             pyproject_version, *_ = rem.partition('"')
             break
-    for line in help_text.read_text().splitlines():
+    for line in help_text.read_text(encoding='utf-8').splitlines():
         if line.startswith(':version: '):
             *_, help_version = line.rpartition(':')
             help_version = help_version.strip()
+            break
+    for line in readme.read_text(encoding='utf-8').splitlines():
+        if line.startswith('The most recent release is '):
+            *_, readme_version = line.rpartition(' ')
+            readme_version = readme_version.strip()[:-1]
             break
     if not pyproject_version:
         sys.exit(f'Could not find version in {pyproject}')
@@ -40,6 +46,8 @@ def check_version():
         sys.exit(f'Could not find version in {help_text}')
     if pyproject_version != help_version:
         sys.exit(f'Versions to not match in {pyproject} and {help_text}')
+    if readme_version != help_version:
+        sys.exit(f'Versions to not match in {readme} and {help_text}')
 
     version_tag = f'v{pyproject_version}'
     tags_text = run(['git', 'show-ref', '--tags']).stdout.splitlines()

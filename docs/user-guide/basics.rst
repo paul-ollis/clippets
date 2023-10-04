@@ -161,12 +161,12 @@ The lower part of the terminal is where editing takes place. The upper area is
 there to give a better idea of how the text will look when pasted into a word
 processing application.
 
-As shown in the menu bar, use ``Control-S`` to save your changes and
-``Control-Q`` to discard them.
+As shown in the menu bar, use ``Control+S`` to save your changes and
+``Control+Q`` to discard them.
 
 .. warning::
     If you add or remove a snippet after editing the clipboard content, you
-    edits will be lost. The undo key ``Control-U`` will restore the clipboard
+    edits will be lost. The undo key ``Control+U`` will restore the clipboard
     back to how it was immediately after your edits.
 
     Currently it is impossible to edit the clipboard and then add/remove
