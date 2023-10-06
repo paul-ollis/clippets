@@ -37,8 +37,8 @@ from textual.widgets._markdown import MarkdownFence
 from . import markup, robot, snippets
 from .editor import TextArea
 from .platform import (
-    SharedTempFile, dump_clipboard, get_editor_command, get_winpos,
-    put_to_clipboard, terminal_title)
+    dump_clipboard, get_editor_command, get_winpos, put_to_clipboard,
+    shared_tempfile, terminal_title)
 from .snippets import (
     CannotMove, DefaultLoader, Group, GroupChild, GroupInsertionPointer,
     GroupPlaceHolder, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
@@ -428,7 +428,7 @@ class ExtEditSession(EditSession):
     def __init__(
             self,
             app: Clippets,
-            temp_path: SharedTempFile,
+            temp_path: shared_tempfile,
             proc: asyncio.subprocess.Process |None,
             on_complete: Callable[[str, bool], None]):
         super().__init__(app, on_complete)
@@ -1175,7 +1175,7 @@ class AppMixin:
         if ext_editor:
             self.push_screen(GreyoutScreen(message, id='greyout'))
             self.post_message(ScreenGreyedOut())
-            temp_path = SharedTempFile()
+            temp_path = shared_tempfile()
             proc = await run_editor(text, temp_path)
             self.edit_session = ExtEditSession(
                 cast(Clippets, self), temp_path, proc, on_complete)

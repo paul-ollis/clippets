@@ -5,7 +5,7 @@ authors = [
   { name="Paul Ollis", email="paul@cleversheep.org" },
 ]
 description = "TUI to build up clipboard content from (rich) text snippets."
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9"
 readme = "README.rst"
 classifiers = [
     'Development Status :: 4 - Beta',
