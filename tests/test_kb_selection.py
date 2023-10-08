@@ -226,7 +226,7 @@ async def test_l_moves_back_to_snippets(longfile, snapshot_run):
     """The 'l' moves out the groups, back into the snippets."""
     actions = (
         ['left']                           # Move into the group names.
-        + ['l']                           # Move back to the snippets.
+        + ['l']                            # Move back to the snippets.
     )
     _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok, 'Snapshot does not match stored version'
@@ -305,7 +305,7 @@ async def test_unfold_after_group_move_scrolls(ext_nested_file, snapshot_run):
         ['left']                           # Move into the group names.
         + ['f9']                           # Close all groups.
         + ['down']                         # Move to the last group.
-        + ['f9']                           # Close all groups.
+        + ['f9']                           # Open all groups.
     )
     _, snapshot_ok = await snapshot_run(ext_nested_file, actions)
     assert snapshot_ok, 'Snapshot does not match stored version'
@@ -411,6 +411,24 @@ async def test_cannot_enter_closed_group(
         + ['right']                        # Try to enter it.
     )
     _, snapshot_ok = await snapshot_run(nested_file, actions)
+    assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+@pytest.mark.asyncio
+async def test_cannot_leave_all_closed_groups(
+            longfile, snapshot_run):
+    """Right key does nothing when all groups are closed."""
+    actions = (
+        ['f9']                             # Close all groups.
+        + ['right']                        # Try to exit first group.
+        + ['down']
+        + ['right']                        # Try to exit second group.
+        + ['down']
+        + ['right']                        # Try to exit third group.
+        + ['down']
+        + ['right']                        # Try to exit fourth group.
+    )
+    _, snapshot_ok = await snapshot_run(longfile, actions)
     assert snapshot_ok, 'Snapshot does not match stored version'
 
 

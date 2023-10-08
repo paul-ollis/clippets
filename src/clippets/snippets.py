@@ -241,7 +241,7 @@ class GroupChild:
         return self.parent.root
 
     def depth(self) -> int:
-        """Calculete the depth of this element within the snippet tree."""
+        """Calculate the depth of this element within the snippet tree."""
         return self.parent.depth() + 1
 
     def uid(self) -> str:
@@ -756,6 +756,14 @@ class Group(GroupDebugMixin, Element, GroupChild, Persistent):
         return [
             self.groups[name] for name in self._ordered_groups
             if not isinstance(self.groups[name], PlaceHolder)]
+
+    @property
+    def ancestors(self):
+        """A list of this group's ancestor groups, uoungest first."""
+        if self.parent:
+            return [self.parent, *self.parent.ancestors]
+        else:
+            return []
 
     def rename(self, name) -> None:
         """Change the name of this group."""

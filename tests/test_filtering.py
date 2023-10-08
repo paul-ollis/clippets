@@ -88,21 +88,10 @@ class TestMouseControlled:
 
     @pytest.mark.asyncio
     async def test_fold_can_move_selection(self, infile, snapshot_run):
-        """The selection is moved if its group is folded."""
+        """The selection moves to the selected snippet is in it."""
         actions = (
             ['left:group-1']              # Fold the first group, forcing the
-                                          # selection to move.
-        )
-        _, snapshot_ok = await snapshot_run(infile, actions)
-        assert snapshot_ok, 'Snapshot does not match stored version'
-
-    @pytest.mark.asyncio
-    async def test_fold_can_move_selection_up(self, infile, snapshot_run):
-        """The selection is moved up if a fold leaves no snippets below."""
-        actions = (
-            ['down'] * 4                  # Move to Snippet 3.
-            + ['left:group-5']            # Fold the last group, forcing the
-                                          # selection to move.
+                                          # selection to move to the group.
         )
         _, snapshot_ok = await snapshot_run(infile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
@@ -349,7 +338,7 @@ class TestKeyboardControlled:
     @pytest.mark.asyncio
     async def test_filter_up_drops_focus(
             self, infile, snapshot_run):
-        """The Up key switches back to snippet selection.
+        """The Up key switches back to snippet/group selection.
 
         The highlighted snippet will change if the previously highlighted
         snippet was hidden.
@@ -388,7 +377,7 @@ class TestKeyboardControlled:
     @pytest.mark.asyncio
     async def test_filter_ctrl_b_clears_the_filter(
             self, infile, snapshot_run):
-        """The Ctrl+B key clears any actiove filter."""
+        """The Ctrl+B key clears any active filter."""
         actions = (
             ['ctrl+f']          # Switch to the filter field.
             + list('spam')      # Hide all the snippets.

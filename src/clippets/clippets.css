@@ -2,6 +2,13 @@ Screen {
     background: $panel-darken-2;
 }
 
+#debug {
+    height: auto;
+    layout: grid;
+    grid-size: 2;
+    grid-columns: auto 1fr;
+}
+
 /* The single line filter input. */
 #filter {
     margin: 0 0 0 0;

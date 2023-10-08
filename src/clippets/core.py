@@ -1,7 +1,6 @@
 """Program to allow efficient composition of text snippets."""
 # pylint: disable=too-many-lines
 
-# 3. A user guide will be needed if this is to be made available to others.
 # 6. Global keywords?
 # 8. Make it work on Macs.
 # 10. Generate frozen versions for all platforms.
@@ -16,12 +15,13 @@ import re
 import subprocess
 import sys
 import time
+import traceback
 from collections import deque
 from contextlib import suppress
 from dataclasses import dataclass
 from functools import partial, wraps
 from pathlib import Path
-from typing import Callable, ClassVar, TYPE_CHECKING, Union, cast
+from typing import Callable, ClassVar, Iterator, TYPE_CHECKING, Union, cast
 
 from rich.syntax import Syntax
 from rich.text import Text
@@ -35,6 +35,7 @@ from textual.widgets import Header, Input, Static
 from textual.widgets._markdown import MarkdownFence
 
 from . import markup, robot, snippets
+from .debug import DebugBase, DebugPanel, DummyDebugPanel
 from .editor import TextArea
 from .platform import (
     SharedTempFile, dump_clipboard, get_editor_command, get_winpos,
@@ -107,7 +108,7 @@ def only_in_context(name: str):
 
 @dataclass
 class Selection:
-    """Information about a widget selection.
+    """Information about a general selection.
 
     @uid:    The ID of the slected widget.
     @user: True if the user manually made the selection.
@@ -119,6 +120,179 @@ class Selection:
     def __repr__(self):
         mode = 'user' if self.user else 'auto'
         return f'Sel-{mode}:{self.uid}'
+
+
+@dataclass
+class TreeSelection(Selection):
+    """Information about a selection within the snippet tree.
+
+    @uid:    The ID of the slected widget.
+    @user: True if the user manually made the selection.
+    """
+
+    element: Snippet| Group
+
+    def __repr__(self):
+        mode = 'user' if self.user else 'auto'
+        return f'TreeSel-{mode}:{self.uid}'
+
+
+class Selector:
+    """The tracker of the current selection.
+
+    This class enforces the following invariants.
+
+    1. if active_group then active_snippet None or a child of active_group.
+
+    @snippet_sel:
+        A `TreeSelection` for the most recently selected snippet. This may be
+        ``None``, in which case `group_sel` will not be ``None``.
+    @group_sel:
+        A `TreeSelection` for the most recently selected group. This may be
+        ``None``, in which case `snippet` will not be ``None``.
+    @search:
+        A `Selection` for the search snippet. This is only set if the user is
+        currently searching.
+    """
+
+    snippet_sel: TreeSelection | None
+    group_sel: TreeSelection | None
+    search_sel: Selection | None
+
+    def __init__(self, *, snippet: Snippet | None, group: Group | None):
+        self.on_set_callback:Callable[[GroupChild], None] = self.null_cb
+        self.init(snippet=snippet, group=group, user=False)
+
+    # TODO: Questionable name.
+    def init(
+            self, *,
+            snippet: Snippet | None = None,
+            group: Group | None = None,
+            user: bool):
+        """Re-initialise with just a group or snipper."""
+        self.snippet_sel = self.group_sel = self.search_sel = None
+        if snippet:
+            self.set_snippet(snippet, user=user)
+        else:
+            self.set_group(group, user=user)
+
+    @property
+    def searching(self) -> bool:
+        """True if the search box is currently selected."""
+        return self.search_sel is not None
+
+    @property
+    def snippet(self) -> Snippet | None:
+        """The selected snippet, active or not."""
+        return self.snippet_sel and cast(Snippet, self.snippet_sel.element)
+
+    @property
+    def group(self) -> Group | None:
+        """The selected group, active or not."""
+        return self.group_sel and cast(Group, self.group_sel.element)
+
+    @property
+    def active_group(self) -> Group | None:
+        """The active selected group or None."""
+        if self.search_sel:
+            return None                                      # pragma: no cover
+        else:
+            sel = self.group_sel
+            return cast(Group, sel.element) if sel else None
+
+    @property
+    def active_snippet(self) -> Snippet | None:
+        """The active selected snippet or None."""
+        if self.search_sel or self.group_sel:
+            return None
+        else:
+            sel = self.snippet_sel
+            return cast(Snippet, sel.element) if sel else None
+
+    @property
+    def active_element(self) -> GroupChild | None:
+        """The active selected snippet or group."""
+        if self.search_sel:
+            return None                                      # pragma: no cover
+        elif self.group_sel:
+            return self.group_sel.element
+        else:
+            return self.snippet_sel.element
+
+    @property
+    def active_sel(self) -> Selection:
+        """The active selection."""
+        if self.search_sel:
+            return self.search_sel
+        elif self.group_sel:
+            return self.group_sel
+        else:
+            return self.snippet_sel
+
+    @property
+    def current_tree_sel(self) -> Selection | None:
+        """The currently active tree selection, if any"""
+        if self.search_sel:
+            return None
+        else:
+            return self.active_sel
+
+    def set_snippet(self, snippet: Snippet, *, user: bool) -> None:
+        """Set the selected snippet."""
+        if self.snippet is not snippet or self.group is not None:
+            self.snippet_sel = TreeSelection(snippet.uid(), user, snippet)
+            assert isinstance(self.snippet_sel, TreeSelection)
+            self.group_sel = None
+            self.on_set_callback(snippet)
+
+    def set_group(self, group: Group, *, user: bool) -> None:
+        """Set the selected snippet."""
+        if self.group is not group:
+            self.group_sel = TreeSelection(group.uid(), user, group)
+            if self.snippet and self.snippet.parent is not group:
+                self.snippet_sel = None
+            self.on_set_callback(group)
+
+    def handle_group_fold(self, group: Group):
+        """Move selection to a newly folded group if necessary."""
+        if self.active_snippet and self.active_snippet.parent is group:
+            self.set_group(group, user=False)
+
+    def set_search(self, *, user: bool) -> None:
+        """Set the search box as the current selection."""
+        self.search_sel = Selection('filter', user)
+
+    def unset_search(self) -> None:
+        """Unset the search box as the current selection."""
+        self.search_sel = None
+
+    def restore_snippet(self, check: Callable[[Snippet], bool]) -> bool:
+        """Attempt to restore selection to last selected snippet.
+
+        :check:
+            A function that is used to check if any previous snippet is
+            currently usable as a selection.
+        :return:
+            True if restoration occurred.
+        """
+        if self.group_sel and check(self.snippet):
+            self.group_sel = None
+            return True
+        else:
+            return False
+
+    def null_cb(self, el: GroupChild) -> None:
+        """Provide dummy on_set_callback."""
+
+    def __repr__(self):
+        s = []
+        if self.search_sel:
+            s.append(f'{self.search_sel.uid}')
+        if self.group_sel:
+            s.append(f'{self.group_sel.uid}')
+        if self.snippet_sel:
+            s.append(f'{self.snippet_sel.uid}')
+        return ' -> '.join(s)
 
 
 class SetupDefaultFile(Message):
@@ -218,6 +392,7 @@ class MainScreen(Screen):
 
     tag_id_sources: ClassVar[dict[str, itertools.count]] = {}
     app: Clippets
+    debug: DebugBase
 
     def __init__(self, root: Root, uid: str):
         super().__init__(name='main', id=uid)
@@ -246,6 +421,11 @@ class MainScreen(Screen):
                 yield MyMarkdown(id='result')
         with MyVerticalScroll(id='snippet-list', classes='bbb'):
             yield from self.build_tree_part()
+        if self.app.args.debug:                              # pragma: no cover
+            self.debug = DebugPanel(id='debug')
+            yield self.debug
+        else:
+            self.debug = DummyDebugPanel()
         footer = MyFooter()
         footer.add_class('footer')
         yield footer
@@ -469,6 +649,7 @@ class AppMixin:
     screen: Screen
     context_name: Callable[[], str]
     post_message: Callable
+    selector: Selector
     _bindings: _Bindings
     MODES: ClassVar[dict[str, str | Screen | Callable[[], Screen]]]
 
@@ -479,12 +660,12 @@ class AppMixin:
                 self.MODES.pop(name)
         self.added: list[str] = []
         self.collapsed: set[str] = set()
+        self.filtered: set[str] = set()
         self.edited_text = ''
-        self.filter: re.Pattern | Matcher = Matcher('')
         self.root = root
         self.hover_uid = None
-        first_el = self.root.first_snippet() or self.root.first_group()
-        self._selection_stack = [Selection(uid=first_el.uid(), user=False)]
+        self.selector = Selector(
+            snippet=self.root.first_snippet(), group=self.root.first_group())
         self.pointer: Pointer | None = None
         self.hidden_snippets: set[Widget] = set()
         self.redo_buffer: deque = deque(maxlen=20)
@@ -508,17 +689,17 @@ class AppMixin:
     @property
     def selection_uid(self) -> str:
         """The UID of the currently selected group or snippet."""
-        return self._selection_stack[-1].uid
+        return self.selector.active_sel.uid
 
     @property
     def selection(self) -> tuple[GroupChild, Widget] | tuple[None, None]:
         """The currently selected element and widget."""
-        el_id = self._selection_stack[-1].uid
-        el = self.root.find_group_child(el_id)
-        if el is not None:
-            return el, self.find_widget(el)
-        else:
-            return None, None
+        sel = self.selector.current_tree_sel
+        if sel:
+            el = self.root.find_group_child(sel.uid)
+            if el:
+                return el, self.find_widget(el)
+        return None, None
 
     @only_in_context('normal')
     def handle_blur(self, w: Widget):
@@ -535,9 +716,12 @@ class AppMixin:
             self.lookup[uid] = self.query_one(f'#{uid}')
         return self.lookup[uid]
 
-    def find_widget(self, el) -> Widget:
-        """Find the widget for a given element."""
-        return self.find_widget_by_uid(el.uid())
+    def find_widget(self, el: SnippetLike | str) -> Widget:
+        """Find the widget for a given element or ID string."""
+        if isinstance(el, str):
+            return self.find_widget_by_uid(el)
+        else:
+            return self.find_widget_by_uid(el.uid())
 
     def walk_snippet_widgets(self) -> Iterator[Widget]:
         """Iterate over of the tree of Snippet widgets."""
@@ -551,7 +735,10 @@ class AppMixin:
 
     ## Management of dynanmic display features.
     def set_visuals(self) -> None:
-        """Set and clear widget classes that control visual highlighting."""
+        """Set and clear widget classes that control visual highlighting.
+
+        This needs to be called whenever the selection stack is changed.
+        """
         self.set_snippet_visuals()
         self.set_input_visuals()
 
@@ -625,7 +812,7 @@ class AppMixin:
         """React to a click on the filter input widget."""
         w = getattr(msg, 'widget', None)
         if w is not None and w.id == 'filter':
-            self.action_enter_filter()
+            self.action_enter_search()
 
     async def on_click(self, ev) -> None:                          # noqa: C901
         """Process a mouse click."""
@@ -669,7 +856,7 @@ class AppMixin:
         """Process a mouse left-click."""
         # If the filter input is focused, just switch back to normal mode.
         if self.context_name() == 'filter':
-            self.action_leave_filter()
+            self.action_leave_search()
             return
 
         w = getattr(ev, 'widget', None)
@@ -688,11 +875,8 @@ class AppMixin:
             self.update_result()
 
         elif isinstance(el, Group):
-            if id_str in self.collapsed:
-                self.collapsed.remove(id_str)
-            else:
-                self.collapsed.add(id_str)
-            self.filter_view()
+            self._toggle_group_fold(el)
+            self.set_visibilty()
 
         elif isinstance(w, MyTag):
             self.action_toggle_tag(w.name)
@@ -748,40 +932,17 @@ class AppMixin:
             self.push_screen(SnippetMenu(id='snippet-menu'), on_close)
 
     ## Handling of keyboard operations.
-    def fix_selection(self, *, kill_filter: bool = False):
-        """Update the keyboard selected focus when widgets get hidden."""
-        # Do nothing if the filter input is focused and should remain so.
-        sel = self._selection_stack[-1]
-        if sel.uid == 'filter':
-            if kill_filter:
-                self._selection_stack.pop()
-            else:
-                return
-
-        # If the top of the stack is a group and the user moved there, do
-        # nothing.
-        if sel.uid.startswith('group-') and sel.user:
+    # TODO: Put this in a sensible place.
+    def _scroll_visible(self, element: GroupChild):
+        """Scroll so that the givent group or snippet is visible."""
+        try:
+            w = self.find_widget(element.uid())
+        except NoMatches:
             return
-
-        # If there is selection history (from previous fix-ups) try to reselect
-        # the oldest entry in the history.
-        for i, sel in enumerate(self._selection_stack):
-            wid = sel.uid
-            if i > 0 and wid is not None:
-                w = self.query_one(f'#{wid}')
-                if w.display:
-                    self._selection_stack[:] = self._selection_stack[:i]
-                    self.set_visuals()
-                    self.screen.set_focus(None)
-                    return
-
-        # The selection history could not be used so find the best alternative
-        # snippet to select, saving the currently selection in the history.
-        self.action_select_move(inc=0)
+        w.scroll_visible(animate=False)
 
     def action_select_move(
-            self, inc: int, mode: str ='vertically', *, push: bool = False,
-            user: bool = True,
+            self, inc: int, mode: str ='vertically', *, user: bool = True,
         ) -> bool:
         """Move the selection up, down, left or right.
 
@@ -805,36 +966,13 @@ class AppMixin:
             value is guaranteed to be ``True``.
         """
         _, w = self.selection
-        if w is None:
-            # Selection has been broken. This can occur when a file reload
-            # occurs.
-            el: Group | Snippet | None = self.root.first_snippet()
-            if el is None:
-                el = self.root.first_group()
-            w = self.find_widget(el)
-            self._selection_stack[:] = [Selection(uid=el.uid(), user=False)]
-            self.screen.set_focus(None)
-            self.set_visuals()
-            w.scroll_visible(animate=False)
-            return True
-
-        elif inc == 0:
-            if w.display:
-                return True
-            else:
-                move = partial(
-                    self.action_select_move, push=True, mode=mode, user=False)
-                to_group = partial(move, mode='horizontally')
-                return move(-1) or move(1) or to_group(-1)
-
-        elif mode == 'vertically':
-            return self.select_move_vertically(inc, push=push, user=user)
-
+        selector = self.selector
+        if mode == 'vertically':
+            return self.select_move_vertically(inc, user=user)
         else:
             return self.select_move_horizontally(inc, user=user)
 
-    def select_move_vertically(
-            self, inc: int, *, push: bool = False, user: bool) -> bool:
+    def select_move_vertically(self, inc: int, *, user: bool) -> bool:
         """Move the selection to the next available snippet.
 
         :inc:  -1 => move up, 1 => move down.
@@ -845,14 +983,12 @@ class AppMixin:
         :return:
             True if a widget was succesffuly selected.
         """
-        sel_id = self._selection_stack[-1].uid
-        if sel_id and sel_id.startswith('group-'):
+        if self.selector.active_group:
             return self.move_vertically_group_wise(inc, user=user)
         else:
-            return self.move_vertically_snippet_wise(inc, push=push, user=user)
+            return self.move_vertically_snippet_wise(inc, user=user)
 
-    def move_vertically_snippet_wise(
-            self, inc: int, *, push: bool = False, user: bool) -> bool:
+    def move_vertically_snippet_wise(self, inc: int, *, user: bool) -> bool:
         """Move the snippet selection up or down.
 
         This may *only* be called when the current selection is a snippet.
@@ -865,22 +1001,16 @@ class AppMixin:
         :return:
             True if a widget was succesffuly selected.
         """
-        snippet, _ = self.selection
-        if snippet is not None:
-            for next_snippet in self.root.walk(
-                    predicate=is_snippet, after=snippet, backwards=inc < 0):
-                next_widget = self.find_widget(next_snippet)
-                if next_widget.display:
-                    if push:
-                        self._selection_stack.append(
-                            Selection(uid=next_snippet.uid(), user=user))
-                    else:
-                        self._selection_stack[:] = [
-                            Selection(uid=next_snippet.uid(), user=user)]
-                    self.screen.set_focus(None)
-                    self.set_visuals()
-                    next_widget.scroll_visible(animate=False)
-                    return True
+        snippet = cast(Snippet, self.selector.active_snippet)
+        for next_snippet in self.root.walk(
+                predicate=is_snippet, after=snippet, backwards=inc < 0):
+            next_widget = self.find_widget(next_snippet)
+            if next_widget.display:
+                self.selector.set_snippet(next_snippet, user=user)
+                self.screen.set_focus(None)
+                self.set_visuals()
+                next_widget.scroll_visible(animate=False)
+                return True
 
         return False
 
@@ -895,15 +1025,13 @@ class AppMixin:
         :return:
             True if a widget was succesffuly selected.
         """
-        sel_id = self._selection_stack[-1].uid
-        group = cast(Group, self.root.find_group_child(sel_id))
+        group = cast(Group, self.selector.active_group)
         next_group = group.step_group(backwards=inc < 0)
         while next_group is not None:
             next_widget = self.find_widget(next_group)
             if next_widget.display:
                 w = self.find_widget(next_group)
-                self._selection_stack[-1] = Selection(
-                    uid=next_group.uid(), user=user)
+                self.selector.set_group(next_group, user=user)
                 self.set_visuals()
                 w.scroll_visible(animate=False)
                 return
@@ -912,78 +1040,72 @@ class AppMixin:
 
     def select_move_horizontally(self, inc: int, *, user: bool):
         """Move the selection to/from group mode."""
-        sel_id = self._selection_stack[-1].uid
-        if inc == -1:
-            if not sel_id.startswith('snippet-'):
-                return
-            group = cast(Group, self.root.find_group_child(sel_id)).parent
-            self._selection_stack.append(
-                Selection(uid=group.uid(), user=user))
+        selector = self.selector
+        if inc == -1 and not selector.active_group:
+            # Moving into group mode.
+            group = selector.active_snippet.parent
+            selector.set_group(group, user=user)
             w = self.find_widget(group)
             self.set_visuals()
             w.scroll_visible(animate=False)
-        else:
-            if not sel_id.startswith('group-'):
-                return
-            group_id = self._selection_stack.pop().uid
-            group = cast(Group, self.root.find_group_child(group_id))
-            sel_id = self._selection_stack[-1].uid
-            snippet = cast(Snippet, self.root.find_group_child(sel_id))
-            if snippet.parent is not group:
-                for snippet in group.snippets():
-                    w = self.find_widget(snippet)
-                    if w.display:
-                        self._selection_stack[-1] = Selection(
-                            uid=snippet.uid(), user=user)
-                        break
-                else:
-                    # No snippet selectable in this gruop.
-                    self._selection_stack.append(
-                        Selection(uid=group_id, user=user))
-                    return
 
-            w = self.find_widget(snippet)
+        elif inc == 1 and selector.active_group:
+            # See if we can restore the previous snippet selection.
+            if not selector.restore_snippet(self._snippet_is_visible):
+                # We cannot restore a previous selection, chosse a visible
+                # snippet from the group.
+                for snippet in selector.active_group.snippets():
+                    if self.find_widget(snippet).display:
+                        selector.set_snippet(snippet, user=user)
+                        self.find_widget(snippet.uid()).scroll_visible(
+                            animate=False)
+                        break
             self.set_visuals()
-            w.scroll_visible(animate=False)
 
     ## Ways to limit visible snippets.
-    def filter_view(self) -> None:
-        """Hide snippets that have been filtered out or folded away."""
-        def st_opened():
-            return all(ste.uid() not in self.collapsed for ste in stack)
+    def set_visibilty(self) -> None:
+        """Set the visibility of snippets, base on folds and search filter."""
+        def st_folded():
+            """Test if current group or anu ancestors is folded."""
+            return any(ste.uid() in self.collapsed for ste in group_stack)
 
         def set_disp_if_changed(w: Widget, *, flag: bool):
+            """Set display flag if it has changed."""
             if w.display != flag:
                 w.display = flag
 
-        matcher = self.filter
-        stack: list[GroupChild] = []
-        opened = True
+        # TODO: Make used of _iter_snippet_visibilty
+        group_stack: list[GroupChild] = []
+        folded = False
         for el in self.walk(predicate=is_group_child):
-            if isinstance(el, PlaceHolder):
-                pass
-            elif isinstance(el, Group):
-                while stack and stack[-1].depth() >= el.depth():
-                    stack.pop()
+            if isinstance(el, Group) and not isinstance(el, PlaceHolder):
+                # Remove exited layers of the group stack.
+                while group_stack and group_stack[-1].depth() >= el.depth():
+                    group_stack.pop()
+
+                # Set the visibility of this group's widgets.
                 w = cast(MyLabel, self.find_widget(el))
                 w_parent = cast(MyLabel, w.parent)
-                set_disp_if_changed(w, flag=st_opened())
-                set_disp_if_changed(w_parent, flag=st_opened())
+                visible = not st_folded()
+                set_disp_if_changed(w, flag=visible)
+                set_disp_if_changed(w_parent, flag=visible)
 
-                opened = el.uid() not in self.collapsed
-                if opened:
-                    w.update(Text.from_markup(f'▽ {HL_GROUP}{el.name}'))
-                else:
+                # Set the group lable to indicate the folded state.
+                folded = el.uid() in self.collapsed
+                if folded:
                     w.update(Text.from_markup(f'▶ {HL_GROUP}{el.name}'))
+                else:
+                    w.update(Text.from_markup(f'▽ {HL_GROUP}{el.name}'))
 
-                stack.append(el)
-                opened = st_opened()
+                # Add the group to the stack and set the folded indicator for
+                # use with snippet processing in later iterations.
+                group_stack.append(el)
+                folded = st_folded()
 
-            elif isinstance(el, Snippet):
-                w_snippet = cast(SnippetWidget, self.find_widget(el))
-                w_snippet.display = bool(matcher.search(el.text)) and opened
-        self.fix_selection()
-        self.ensure_selection_visible()
+            elif isinstance(el, Snippet) and not isinstance(el, PlaceHolder):
+                w = self.find_widget(el)
+                hidden = folded or w.id in self.filtered
+                set_disp_if_changed(w, flag=not hidden)
 
     ## UNCLASSIFIED
     def is_fully_collapsed(self):
@@ -1000,6 +1122,9 @@ class AppMixin:
 
     def on_input_changed(self, message: Input.Changed) -> None:
         """Handle a change to the filter text input."""
+        if not self.selector.searching:
+            return
+
         rexp: re.Pattern | Matcher
         if message.input.id == 'filter':
             pat = message.value
@@ -1010,8 +1135,12 @@ class AppMixin:
                     rexp = re.compile(f'(?i){pat}')
                 except re.error:
                     rexp = Matcher(pat)
-            self.filter = rexp
-            self.filter_view()
+            for snippet in self.walk(predicate=is_snippet):
+                if rexp.search(snippet.text):
+                    self.filtered.discard(snippet.uid())
+                else:
+                    self.filtered.add(snippet.uid())
+            self.set_visibilty()
 
     @only_in_context('normal')
     def update_hover(self, w) -> None:
@@ -1071,8 +1200,7 @@ class AppMixin:
                 new_group = group.parent.add_group(
                     screen.group_name, after=group.name)
                 new_group.clean()
-                self._selection_stack[-1:] = [
-                    Selection(uid=new_group.uid(), user=True)]
+                self.selector.set_group(new_group, user=True)
                 self.rebuild_after_edits()
                 w = self.find_widget(new_group)
                 w.scroll_visible(animate=False)
@@ -1090,11 +1218,11 @@ class AppMixin:
             if not aborted:
                 new_snippet = add()
                 new_snippet.set_text(text)
-                self._selection_stack[:] = [
-                    Selection(uid=new_snippet.uid(), user=True)]
+                self.selector.set_snippet(new_snippet, user=True)
                 self.rebuild_after_edits()
                 w = self.find_widget(new_snippet)
                 w.scroll_visible(animate=False)
+                self.set_visuals()
 
         if id_str.startswith('snippet-'):
             snippet = cast(Snippet, self.root.find_group_child(id_str))
@@ -1117,11 +1245,11 @@ class AppMixin:
             if not aborted:
                 new_snippet = add()
                 new_snippet.set_text(text)
-                self._selection_stack[:] = [
-                    Selection(uid=new_snippet.uid(), user=True)]
+                self.selector.set_snippet(new_snippet, user=True)
                 self.rebuild_after_edits()
                 w = self.find_widget(new_snippet)
                 w.scroll_visible(animate=False)
+                self.set_visuals()
 
         if id_str.startswith('snippet-'):
             snippet = cast(Snippet, self.root.find_group_child(id_str))
@@ -1159,7 +1287,7 @@ class AppMixin:
                 self.find_widget)
 
         self.update_result()
-        self.filter_view()
+        self.set_visibilty()
         self.set_visuals()
 
     def rebuild_after_edits(self):
@@ -1256,12 +1384,6 @@ class AppMixin:
             container.styles.padding = top, right, 1, left
         self.set_visuals()
 
-    def ensure_selection_visible(self):
-        """Make sure that the selected snippet/group is visible."""
-        if self.selection_uid:
-            w = self.find_widget_by_uid(self.selection_uid)
-            w.scroll_visible(animate=False)
-
     ## Binding handlers.
     async def action_add_group(self) -> None:
         """Add and edit a new group."""
@@ -1286,8 +1408,7 @@ class AppMixin:
         if p and p.move_source():
             self.rebuild_after_edits()
             if p.source.uid().startswith('snippet-'):
-                self._selection_stack[:] = [
-                    Selection(uid=p.source.uid(), user=True)]
+                self.selector.set_snippet(p.source, user=True)
             self.set_visuals()
 
     def action_do_redo(self) -> None:
@@ -1345,21 +1466,80 @@ class AppMixin:
         await self.run_editor(
             kw.text, 'Currently editing group keywords', on_edit_complete)
 
-    def action_enter_filter(self) -> None:
+    def action_enter_search(self) -> None:
         """Move focus to the filter input field."""
         w = self.query_one('#filter')
         w.can_focus = True
         self.screen.set_focus(w)
-        self._selection_stack.append(Selection(uid='filter', user=True))
+        self.selector.set_search(user=True)
         self.set_visuals()
 
-    def action_leave_filter(self) -> None:
-        """Move focus away from the filter input field."""
-        w = self.query_one('#filter')
-        w.can_focus = False
+    def action_leave_search(self) -> None:
+        """Move focus away from the filter input field.
+
+        The previous active snippet selection is restored if possible.
+        """
+        selector = self.selector
+        if selector.searching:
+            w = self.query_one('#filter')
+            w.can_focus = False
+            selector.unset_search()
+            self._reestablish_selector()
+        self._scroll_visible(selector.active_element)
         self.screen.set_focus(None)
-        self.fix_selection(kill_filter=True)
         self.set_visuals()
+
+    # TODO: Put in sensible place.
+    def _reestablish_selector(self):
+        """Re-establish most approrpaiet selector, if possible."""
+        selector = self.selector
+        if not selector.active_group:
+            snippet = selector.snippet
+            if not self._snippet_is_visible(snippet):
+                fallback_snippet = self._find_selectable_snippet()
+                if not fallback_snippet:
+                    selector.set_group(snippet.parent, user=False)
+                else:
+                    selector.init(
+                        snippet=fallback_snippet,
+                        group=self.root.first_group(),
+                        user=False)
+
+    # TODO: Put in sensible place.
+    def _find_selectable_snippet(self) -> Snippet | None:
+        """Find the first selectable snippet."""
+        for snippet, visible in self._iter_snippet_visibilty():
+            if visible:
+                return snippet
+        return None
+
+    def _iter_snippet_visibilty(self) -> Iterator[tuple[Snippet, bool]]:
+        """Iterate over all snippet, testing visibility.
+
+        :yield: A tuple of the snippet and ``True`` if the snippet is visible.
+        """
+        for el in self.walk(predicate=is_group_child):
+            if isinstance(el, PlaceHolder):
+                continue
+            if isinstance(el, Group):
+                folded = self._group_is_folded(el)
+            elif isinstance(el, Snippet):
+                hidden = folded or el.uid() in self.filtered
+                yield el, not hidden
+
+    def _group_is_folded(self, group: Group) -> bool:
+        """Test whether a group or one if its ancestors is folded."""
+        return group.uid() in self.collapsed or any(
+            g.uid() in self.collapsed for g in group.ancestors)
+
+    def _snippet_is_visible(self, snippet: Snippet) -> bool:
+        """Test whether a given snippet is visible."""
+        if not snippet:
+            return False
+        elif snippet.uid() in self.filtered:
+            return False
+        else:
+            return not self._group_is_folded(snippet.parent)
 
     async def action_edit_snippet(self) -> None:
         """Edit the currently selected snippet."""
@@ -1411,14 +1591,45 @@ class AppMixin:
         self.sel_order = not self.sel_order
         self.update_result()
 
+    def _fold_group(self, group: Group):
+        """Fold a given group.
+
+        :group: The group to be folded.
+        """
+        if group.uid() not in self.collapsed:
+            self.collapsed.add(group.uid())
+            self.selector.handle_group_fold(group)
+            self.set_visuals()
+            self.set_visibilty()
+
+    def _unfold_group(self, group: Group):
+        """Unfoldold a given group.
+
+        :group: The group to be unfolded.
+        """
+        if group.uid() in self.collapsed:
+            self.collapsed.remove(group.uid())
+            self.set_visibilty()
+            if self.selector.restore_snippet(self._snippet_is_visible):
+                self.set_visuals()
+
+    def _toggle_group_fold(self, group: Group):
+        """Toggle the folded state of a group."""
+        if group.uid() in self.collapsed:
+            self._unfold_group(group)
+        else:
+            self._fold_group(group)
+
     def action_toggle_collapse_all(self) -> None:
         """Toggle open/closed state of all groups."""
         if not self.is_fully_collapsed():
             for group in self.walk(is_group):
-                self.collapsed.add(group.uid())
+                self._fold_group(group)
         else:
-            self.collapsed = set()
-        self.filter_view()
+            for group in self.walk(is_group):
+                self._unfold_group(group)
+            self._scroll_visible(self.selector.active_element)
+        self.set_visibilty()
 
     def action_toggle_collapse_group(self) -> None:
         """Toggle open/closed state of selected group.
@@ -1426,26 +1637,11 @@ class AppMixin:
         This is triggerd by a key press. The same operation can be triggered by
         a mouse click, but is handled, differently, by `on_left_click`.
         """
-        sel = self._selection_stack[-1]
-        if sel.uid.startswith('snippet-'):
-            group = cast(
-                Snippet, self.root.find_group_child(sel.uid)).parent
-            using_snippet = True
-        elif sel.uid.startswith('group-'):
-            group = cast(Group, self.root.find_group_child(sel.uid))
-            using_snippet = False
-        else:
-            return                                           # pragma: no cover
-
-        if group.uid() in self.collapsed:
-            self.collapsed.remove(group.uid())
-        else:
-            self.collapsed.add(group.uid())
-            if using_snippet:
-                self._selection_stack.append(
-                    Selection(uid=group.uid(), user=False))
-                self.set_visuals()
-        self.filter_view()
+        selector = self.selector
+        if selector.active_group:
+            self._toggle_group_fold(selector.active_group)
+        elif selector.active_snippet:
+            self._toggle_group_fold(selector.active_snippet.parent)
 
     def action_toggle_add(self):
         """Handle any key that is used to add/remove a snippet."""
@@ -1467,17 +1663,19 @@ class AppMixin:
         fully_open = self.is_fully_open(tag)
         for group in tagged_groups:
             if fully_open:
-                self.collapsed.add(group.uid())
+                self._fold_group(group)
             else:
-                self.collapsed.discard(group.uid())
-        self.filter_view()
+                self._unfold_group(group)
+        self.set_visibilty()
 
     def action_zap_filter(self) -> None:
-        """Clear he contents of the filter input field."""
+        """Clear the contents of the filter input field."""
         w = cast(Input, self.query_one('#filter'))
-        self.on_input_changed(Input.Changed(input=w, value=''))
         w.value = ''
-
+        self.filtered.clear()
+        self.set_visibilty()
+        if self.selector.restore_snippet(self._snippet_is_visible):
+            self.set_visuals()
 
 class Clippets(AppMixin, App):
     """The textual application object."""
@@ -1525,7 +1723,11 @@ class Clippets(AppMixin, App):
             if  v == 'load':
                 self.loader.load()
                 self.rebuild()
-                self.fix_selection()
+                self.selector.init(
+                    snippet=self.root.first_snippet(),
+                    group=self.root.first_group(),
+                    user=False)
+                self.set_visuals()
 
         self.push_screen(FileChangedMenu(id='file-changed-menu'), on_close)
 
@@ -1554,7 +1756,7 @@ class Clippets(AppMixin, App):
         bind('right l', 'select_move(1, "horizontally")')
         bind('ctrl+b', 'zap_filter', description='Clear filter input')
         bind(
-            'ctrl+f tab shit-tab', 'enter_filter',
+            'ctrl+f tab shift-tab', 'enter_search',
             description='Enter filter input')
         bind('ctrl+u', 'do_undo', description='Undo', priority=True)
         bind('ctrl+r', 'do_redo', description='Redo', priority=True)
@@ -1584,10 +1786,10 @@ class Clippets(AppMixin, App):
         bind('enter', 'complete_move', description='Insert')
         bind('escape', 'stop_moving', description='Cancel')
 
-        # Key bindings when the filter intput field is focused.
+        # Key bindings when the search intput field is focused.
         bind = partial(self.key_handler.bind, contexts=('filter',), show=True)
         bind(
-            'ctrl+f up down tab shift-tab', 'leave_filter',
+            'ctrl+f up down tab shift-tab', 'leave_search',
             description='Leave filter input')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
@@ -1625,7 +1827,6 @@ class Clippets(AppMixin, App):
                 def_loader = cast(DefaultLoader, self.loader)
                 self.loader = await def_loader.become_manifest()
                 self.rebuild()
-                self.fix_selection()
             elif  v == 'quit':
                 self.exit()
 
@@ -1651,8 +1852,11 @@ class Clippets(AppMixin, App):
         self.screen.set_focus(None)
         self.set_visuals()
         self.loader.start_monitoring(self.handle_file_changed)
+        self.selector.on_set_callback = self._scroll_visible
         if self.no_file_yet:
             self.post_message(SetupDefaultFile())
+        debug = self.screen.debug
+        debug.connect('Selection', self.selector, repr)
 
     def action_show_help(self) -> None:
         """Show the help screen."""
@@ -1702,7 +1906,7 @@ class KeyHandler:
         else:
             return False
 
-    def bind(                                                   # noqa: PLR0913
+    def bind(                              # pylint: disable=too-many-arguments
         self,
         keys: str,
         action: str,
@@ -1773,7 +1977,6 @@ async def run_editor(text: str, path: Path) -> asyncio.subprocess.Process:
         dims = {'w': 80, 'h': 25}
     edit_cmd += ' ' + str(path)
     cmd = edit_cmd.format(**dims).split()
-    print("RUN EDITOR", edit_cmd, cmd)
     return await asyncio.create_subprocess_exec(
         *cmd, stderr=subprocess.DEVNULL)
 
@@ -1794,13 +1997,14 @@ def parse_args(sys_args: list[str] | None = None) -> argparse.Namespace:
     # responsive to the user, but can make it harder (or slower) to create
     # reliable snapshot based tests.
     add_hidden_arg = partial(parser.add_argument, help=argparse.SUPPRESS)
-    parser.add_argument( '--sync-mode', action='store_true')
-    parser.add_argument('--svg', type=Path)
-    parser.add_argument('--svg-run', action='store_true')
-    parser.add_argument('--work-dir', type=Path)
-    parser.add_argument('--dims', type=str)
-    parser.add_argument('--dummy-editor', action='store_true')
-    parser.add_argument('--view-height', type=int)
+    add_hidden_arg( '--sync-mode', action='store_true')
+    add_hidden_arg('--svg', type=Path)
+    add_hidden_arg('--svg-run', action='store_true')
+    add_hidden_arg('--work-dir', type=Path)
+    add_hidden_arg('--dims', type=str)
+    add_hidden_arg('--dummy-editor', action='store_true')
+    add_hidden_arg('--view-height', type=int)
+    add_hidden_arg('--debug', action='store_true')
     return parser.parse_args(sys_args or sys.argv[1:])
 
 
@@ -1849,8 +2053,7 @@ def perform_svg_run(args: argparse.Namespace) -> None:       # pragma: no cover
     try:
         robot.run_capture(
             args, make_app=lambda args: Clippets(parse_args(args)))
-    except Exception as e:
-        import traceback
+    except Exception as e:             # pylint: disable=broad-exception-caught
         traceback.print_exc()
         sys.exit(str(e))
 

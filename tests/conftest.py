@@ -252,6 +252,9 @@ def pytest_terminal_summary(
         console.print("[b red]Textual Snapshot Report", style="red")
         console.print(
             f'\n[white on red]{len(diffs)} mismatched snapshots[/]\n'
-            f'\n[b]View the [link=file://{snapshot_report_location}]'
-            'failure report[/].\n'
-        )
+            f'\n[b]View the report at: file://{snapshot_report_location}')
+        #console.print(
+        #    f'\n[white on red]{len(diffs)} mismatched snapshots[/]\n'
+        #    f'\n[b]View the [link=file://{snapshot_report_location}]'
+        #    'failure report[/].\n'
+        #)

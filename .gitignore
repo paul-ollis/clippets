@@ -13,3 +13,5 @@ temp.txt
 temp.txt.bak*
 textual_textarea/
 textual-textarea-repos/
+/.ctags.d
+/.pssrc

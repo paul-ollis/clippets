@@ -226,8 +226,8 @@ class GroupNameMenu(PopupDialog):
     '''
 
     def __init__(
-            self, message: str, root: Root, orig_name: str = '',
-            *args, **kwargs):
+            self, message: str, root: Root, *args, orig_name: str = '',
+            **kwargs):
         super().__init__(*args, **kwargs)
         self.message = message
         self.root = root
@@ -246,17 +246,17 @@ class GroupNameMenu(PopupDialog):
             b1 = Button('Add below', variant='primary', id='add_below')
         b2 = Button('Cancel', variant='primary', id='cancel')
         self.yes_buttons.extend([b1])
-        input = partial(
+        make_input = partial(
             Input, id='field_input', classes='field_input',
             validators=[
                 Function(self.is_unique, 'Not a valid and unique name')])
         if self.orig_name:
-            input = partial(input, self.orig_name)
+            make_input = partial(make_input, self.orig_name)
         else:
-            input = partial(input, placeholder='Unique group name')
+            make_input = partial(make_input, placeholder='Unique group name')
         for b in self.yes_buttons:
             b.disabled = True
-        yield Grid(input(), b1, b2, id='dialog', classes='popup')
+        yield Grid(make_input(), b1, b2, id='dialog', classes='popup')
 
     def is_unique(self, name):
         """Check if the name is legal and unique."""
@@ -338,7 +338,7 @@ class MyFooter(Footer, AppChild):
         self._context = self.app.context_name()
 
     def check_context(self):
-        """Check whether the appliation context has changed."""
+        """Check whether the application context has changed."""
         new_name = self.app.context_name()
         if new_name != self._context:
             self._context = new_name
