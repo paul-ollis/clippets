@@ -130,9 +130,6 @@ class Pointer(FixedPointer):
     def move(self, *, backwards: bool = False) -> bool:
         """Move to the next insertion point.
 
-        This performs the smallest possible move, which may results in an
-        equivalent position.
-
         :backwards:
             If set then move the insertion point backwards.
         :return:

@@ -467,6 +467,16 @@ class TestKeyboardControlled:
         assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
+    async def test_placehoders_are_shown_during_a_snippet_move(
+            self, infile_g0, snapshot_run):
+        """A snippet move may insert into an empty group."""
+        actions = (
+            ['m']                 # Start moving
+        )
+        _, snapshot_ok = await snapshot_run(infile_g0, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
     async def test_move_can_insert_in_a_sub_group(
             self, infile_g0, snapshot_run):
         """A snippet move may insert into a sub-group."""
@@ -673,7 +683,7 @@ class TestKeyboardControlled:
         assert snapshot_ok, 'Snapshot does not match stored version'
 
     @pytest.mark.asyncio
-    async def test_move_ignore_for_single_snippet(
+    async def test_move_ignored_for_single_snippet(
             self, single_snippet, snapshot_run):
         """The move command is ignored for a single snippet file."""
         actions = (
@@ -681,6 +691,20 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(
             single_snippet, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_move_ignored_for_single_visible_snippet(
+            self, infile_g1, snapshot_run):
+        """The move command is ignored for a single visible snippet file."""
+        actions = (
+            ['down'] * 2             # Move to lone snippet in group 2.
+            + ['left:group-1']       # Fold the first and third groups.
+            + ['left:group-3']
+            + ['m']                  # Try to start moving
+        )
+        _, snapshot_ok = await snapshot_run(
+            infile_g1, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
 
 
@@ -786,4 +810,28 @@ class TestMouseControlled:
         )
         runner, snapshot_ok = await snapshot_run_dyn(infile, actions)
         assert std_result == runner.app.root.full_repr()
+        assert snapshot_ok, 'Snapshot does not match stored version'
+    @pytest.mark.asyncio
+
+    async def test_move_disabled_for_single_snippet(
+            self, single_snippet, snapshot_run):
+        """The move button is disabled for a single snippet file."""
+        actions = (
+            ['right:snippet-0']       # Open snippet menu
+        )
+        _, snapshot_ok = await snapshot_run(
+            single_snippet, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_move_ignored_for_single_visible_snippet(
+            self, infile_g1, snapshot_run):
+        """The move command is ignored for a single visible snippet file."""
+        actions = (
+            ['left:group-1']         # Fold the first and third groups.
+            + ['left:group-3']
+            + ['right:snippet-2']    # Open menu for only visible snippet.
+        )
+        _, snapshot_ok = await snapshot_run(
+            infile_g1, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'

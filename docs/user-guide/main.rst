@@ -33,14 +33,8 @@ User guide
     - I think that 'added snippet highlighting' disappears after using the
       internal editor on the clipboard. This appears deliberate, but feels
       counter-intuitive.
-    - When all groups are folded, the 'right' key moves off the selected group,
-      which should not be allowed.
     - The help page is woefully out of date.
     - PgUp and PgDn should do something useful.
-    - Does the context menu show ``Move`` when snippet movement is not possible.
-      Yes it does. It should be greyed out.
-    - Should all snippet place-holders be made visible during snippet moving to
-      be consistent with group moving?
 
 
 .. RST syntax highlighting bugs.

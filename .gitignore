@@ -1,6 +1,7 @@
 *.bak*
 build/
 .coverage
+.coverage.*
 coverage.json
 dist/
 .dmypy.json

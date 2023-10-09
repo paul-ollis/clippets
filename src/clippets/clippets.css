@@ -90,13 +90,15 @@ TextArea {
     outline-bottom: solid  $success;
 }
 
-.is_placehoder {
+.is_placeholder {
+    height: 2;
     color: $text-disabled;
 }
-.is_placehoder.is_group {
+.is_placeholder.is_group {
+    height: 1;
     background: $background;
 }
-.is_placehoder.dest_above {
+.is_placeholder.dest_above {
     height: 3;
     padding: 0 0 0 0;
     margin: 0 1 0 4;

@@ -43,8 +43,8 @@ from .platform import (
 from .snippets import (
     CannotMove, DefaultLoader, Group, GroupChild, GroupInsertionPointer,
     GroupPlaceHolder, Loader, MarkdownSnippet, PlaceHolder, Root, Snippet,
-    SnippetInsertionPointer, SnippetLike, is_group, is_group_child, is_snippet,
-    is_snippet_like)
+    SnippetInsertionPointer, SnippetLike, SnippetPlaceHolder, is_group,
+    is_group_child, is_snippet, is_snippet_like)
 from .widgets import (
     DefaulFileMenu, FileChangedMenu, GreyoutScreen, GroupMenu, GroupNameMenu,
     MyFooter, MyInput, MyLabel, MyMarkdown, MyTag, MyText, MyVerticalScroll,
@@ -455,7 +455,7 @@ class MainScreen(Screen):
         classes = 'is_group'
         fields = []
         if isinstance(group, GroupPlaceHolder):
-            classes += ' is_placehoder'
+            classes += ' is_placeholder'
             label = MyLabel(
                 f'{HL_GROUP}{group.name}', id=uid, classes=classes)
         else:
@@ -509,7 +509,7 @@ def make_snippet_widget(uid: str, snippet: Snippet | PlaceHolder) -> Widget:
         classes = f'{classes} is_text'
         w = MyText(id=uid, classes=classes)
     else:
-        classes = f'{classes} is_placehoder'
+        classes = f'{classes} is_placeholder'
         w = Static('-- place holder --', id=uid, classes=classes)
         w.display = False
     w.styles.margin = 0, 1, 0, (snippet.depth() - 1) * 4
@@ -761,8 +761,6 @@ class AppMixin:
                 if isinstance(dest.child, PlaceHolder):
                     after = False
                 w.add_class('dest_below' if after else 'dest_above')
-            if isinstance(dest.child, PlaceHolder):
-                w.display = True
 
     def set_snippet_visuals(self) -> None:
         """Set and clear widget classes that control snippet highlighting."""
@@ -775,11 +773,7 @@ class AppMixin:
             w.remove_class('kb_focussed')
             w.remove_class('mouse_hover')
             self._clear_move_marker(el, w)
-            if isinstance(el, PlaceHolder):
-                w.display = False
             if p is not None:
-                if moving_group and isinstance(el, GroupPlaceHolder):
-                    w.display = True
                 if w.id != p.source.uid():
                     self._set_move_marker(p.source, p, w)
             else:
@@ -913,6 +907,9 @@ class AppMixin:
 
     async def on_right_click_snippet(self, w: Widget) -> None:
         """Process a mouse right-click on a snippet."""
+        def is_usable(el: SnippetLike) -> bool:
+            w = self.find_widget(el)
+            return w.display or isinstance(el, PlaceHolder) if w else False
 
         async def on_close(v):
             # Note: Menu screen is popped before this is called.
@@ -929,7 +926,14 @@ class AppMixin:
         wid = cast(str, w.id)
         snippet = self.root.find_group_child(wid)
         if snippet:
-            self.push_screen(SnippetMenu(id='snippet-menu'), on_close)
+            def post_process(menu):
+                try:
+                    pointer = SnippetInsertionPointer(
+                        snippet, self._snippet_is_visible)
+                except CannotMove:
+                    menu.disable('move')
+            menu = SnippetMenu(id='snippet-menu', post_process=post_process)
+            self.push_screen(menu, on_close)
 
     ## Handling of keyboard operations.
     # TODO: Put this in a sensible place.
@@ -1078,7 +1082,17 @@ class AppMixin:
         group_stack: list[GroupChild] = []
         folded = False
         for el in self.walk(predicate=is_group_child):
-            if isinstance(el, Group) and not isinstance(el, PlaceHolder):
+            if isinstance(el, SnippetPlaceHolder):
+                w = self.find_widget(el)
+                hidden = folded or self.context_name() != 'moving-snippet'
+                set_disp_if_changed(w, flag=not hidden)
+
+            elif isinstance(el, GroupPlaceHolder):
+                w = self.find_widget(el)
+                hidden = folded or self.context_name() != 'moving-group'
+                set_disp_if_changed(w, flag=not hidden)
+
+            elif isinstance(el, Group):
                 # Remove exited layers of the group stack.
                 while group_stack and group_stack[-1].depth() >= el.depth():
                     group_stack.pop()
@@ -1090,7 +1104,7 @@ class AppMixin:
                 set_disp_if_changed(w, flag=visible)
                 set_disp_if_changed(w_parent, flag=visible)
 
-                # Set the group lable to indicate the folded state.
+                # Set the group label to indicate the folded state.
                 folded = el.uid() in self.collapsed
                 if folded:
                     w.update(Text.from_markup(f'▶ {HL_GROUP}{el.name}'))
@@ -1102,7 +1116,7 @@ class AppMixin:
                 group_stack.append(el)
                 folded = st_folded()
 
-            elif isinstance(el, Snippet) and not isinstance(el, PlaceHolder):
+            elif isinstance(el, Snippet):
                 w = self.find_widget(el)
                 hidden = folded or w.id in self.filtered
                 set_disp_if_changed(w, flag=not hidden)
@@ -1363,6 +1377,7 @@ class AppMixin:
             self.pointer = SnippetInsertionPointer(snippet, is_usable)
         except CannotMove:
             return
+        self.set_visibilty()
         sel_w.add_class('moving')
         self.set_visuals()
 
@@ -1374,6 +1389,7 @@ class AppMixin:
         except CannotMove:
             return
 
+        self.set_visibilty()
         for w in self.walk_snippet_widgets():
             if w.display and isinstance(w.id, str):
                 self.hidden_snippets.add(w)
@@ -1546,7 +1562,7 @@ class AppMixin:
         await self.edit_snippet(self.selection_uid)
 
     def action_move_insertion_point(self, direction: str) -> bool:
-        """Move the snippet insertion up of down.
+        """Move the snippet insertion up or down.
 
         :direction: Either 'up' or 'down'.
         """
@@ -1584,6 +1600,7 @@ class AppMixin:
                 container.styles.padding = top, right, 0, left
         self.hidden_snippets.clear()
         self.pointer = None
+        self.set_visibilty()
         self.set_visuals()
 
     def action_toggle_order(self) -> None:
@@ -1731,11 +1748,14 @@ class Clippets(AppMixin, App):
 
         self.push_screen(FileChangedMenu(id='file-changed-menu'), on_close)
 
+    # TODO: I cannot rememebr this name. Try 'mode_name'.
     def context_name(self) -> str:
         """Provide a name identifying the current context."""
         if self.screen.id == 'main':
-            if self.pointer is not None:
-                return 'moving'
+            if isinstance(self.pointer, SnippetInsertionPointer):
+                return 'moving-snippet'
+            elif isinstance(self.pointer, GroupInsertionPointer):
+                return 'moving-group'
             elif self.selection_uid == 'filter':
                 return 'filter'
             else:
@@ -1777,7 +1797,9 @@ class Clippets(AppMixin, App):
         bind('enter space', 'toggle_add', description='Toggle add')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
-        bind = partial(self.key_handler.bind, contexts=('moving',), show=True)
+        bind = partial(
+            self.key_handler.bind, contexts=('moving-snippet', 'moving-group'),
+            show=True)
         bind(
             'up k', 'move_insertion_point("up")', description='Cursor up')
         bind(
@@ -1850,6 +1872,7 @@ class Clippets(AppMixin, App):
         """React to the DOM having been created."""
         self.start_population()
         self.screen.set_focus(None)
+        self.set_visibilty()
         self.set_visuals()
         self.loader.start_monitoring(self.handle_file_changed)
         self.selector.on_set_callback = self._scroll_visible

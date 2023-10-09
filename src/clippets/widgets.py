@@ -118,12 +118,24 @@ class PopupDialog(ModalScreen):
     '''
 
     def __init__(self, *args, **kwargs):
+        self.post_process: Callable[[PopupDialog], None] | None = kwargs.pop(
+            'post_process', None)
         super().__init__(*args, **kwargs)
         self.add_class('popup')
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Process a mouse click on a button."""
         self.dismiss(event.button.id)
+
+    def on_screen_resume(self):
+        """React to the DOM having been created."""
+        if self.post_process:
+            self.post_process(self)
+
+    def disable(self, uid: str):
+        """Disable a button with a given ID."""
+        b = self.query_one(f'#{uid}')
+        b.disabled = True
 
 
 class GreyoutScreen(PopupDialog):
