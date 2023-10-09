@@ -209,3 +209,29 @@ class TestKeyboardControlled:
         )
         _, snapshot_ok = await snapshot_run(single_group_infile, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_help_can_be_viewed(
+        self, infile, snapshot_run, clean_version):
+        """Help can be viewed when moving a group."""
+        actions = (
+            ['left']              # Move to first group.
+            + ['m']               # Start moving groups.
+            + ['f1']              # Show the help.
+        )
+        _, snapshot_ok = await snapshot_run(
+            infile, actions, clean=clean_version)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+
+    @pytest.mark.asyncio
+    async def test_help_can_be_closed(self, infile, snapshot_run):
+        """Help can be viewed then closed when moving a group."""
+        actions = (
+            ['left']              # Move to first group.
+            + ['m']               # Start moving groups.
+            + ['f1']              # Show the help.
+            + ['f1']              # The close the help.
+        )
+        _, snapshot_ok = await snapshot_run(infile, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'

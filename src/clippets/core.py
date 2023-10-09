@@ -1593,6 +1593,7 @@ class AppMixin:
         w.remove_class('moving')
         if isinstance(p, GroupInsertionPointer):
             for w in self.hidden_snippets:
+                print("D>> show", w.id)
                 w.display = True
             for w in self.walk_group_widgets():
                 container = cast(Horizontal, w.parent)
@@ -1775,9 +1776,7 @@ class Clippets(AppMixin, App):
         bind('left h', 'select_move(-1, "horizontally")')
         bind('right l', 'select_move(1, "horizontally")')
         bind('ctrl+b', 'zap_filter', description='Clear filter input')
-        bind(
-            'ctrl+f tab shift-tab', 'enter_search',
-            description='Enter filter input')
+        bind('ctrl+f tab', 'enter_search', description='Enter filter input')
         bind('ctrl+u', 'do_undo', description='Undo', priority=True)
         bind('ctrl+r', 'do_redo', description='Redo', priority=True)
         bind('a', 'add_snippet')
@@ -1797,9 +1796,11 @@ class Clippets(AppMixin, App):
         bind('enter space', 'toggle_add', description='Toggle add')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
+        # Key bindings when the moving a snippet or group.
         bind = partial(
             self.key_handler.bind, contexts=('moving-snippet', 'moving-group'),
             show=True)
+        bind('f1', 'show_help', description='Help')
         bind(
             'up k', 'move_insertion_point("up")', description='Cursor up')
         bind(
@@ -1808,10 +1809,10 @@ class Clippets(AppMixin, App):
         bind('enter', 'complete_move', description='Insert')
         bind('escape', 'stop_moving', description='Cancel')
 
-        # Key bindings when the search intput field is focused.
+        # Key bindings when the search input field is focused.
         bind = partial(self.key_handler.bind, contexts=('filter',), show=True)
         bind(
-            'ctrl+f up down tab shift-tab', 'leave_search',
+            'ctrl+f up down tab', 'leave_search',
             description='Leave filter input')
         bind('ctrl+q', 'quit', description='Quit', priority=True)
 
@@ -1822,6 +1823,7 @@ class Clippets(AppMixin, App):
         bind('ctrl+s', 'edit_save_and_quit', description='Save and quit')
         bind('ctrl+q', 'edit_quit', description='Quit and discard changes')
 
+        # Key bindings when the help screen is displayed.
         bind = partial(self.key_handler.bind, contexts=('help',), show=True)
         bind('f1', 'pop_screen', description='Close help')
 

@@ -266,7 +266,7 @@ class TextInput(Static, can_focus=True):
                     self.cursor = Cursor(
                         new_lidx, min(first.cidx,
                         len(self.lines[new_lidx]) - 1))
-        elif name in ('u', 'v'):
+        elif name in ('v'):
             self._insert_clipboard_at_selection(selection_before, self.cursor)
         else:
             return False                                     # pragma: no cover

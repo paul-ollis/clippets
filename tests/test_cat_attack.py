@@ -68,7 +68,7 @@ valid_normal_action_keys = set([
     'ctrl+b', 'ctrl+f', 'ctrl+u', 'ctrl+r',
     'space', 'tab', 'shift-tab', 'enter'])
 valid_menu_keys = set(['enter', 'tab', 'shift-tab'])
-valid_move_keys = set(['up', 'down', 'escape', 'enter'])
+valid_move_keys = set(['up', 'down', 'escape', 'enter', 'f1'])
 valid_help_keys = set(['f1'])
 
 

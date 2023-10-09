@@ -29,8 +29,8 @@ indicated.
 ## All modes
 
 **Ctrl+C**
-    Abort Clippets. Similar to *Ctrl+Q*, but this works when not in *normal
-    mode*.
+    Abort Clippets. Similar to *Ctrl+Q*, but this works regardless of the
+    current mode.
 
 ## Normal mode keys
 
@@ -61,17 +61,23 @@ indicated.
     below any currently selected snippet or, if a group is selected, the
     snippet becomes the first in the group.
 
-    [Mouse: Right click the snippet and then select the 'Add' button.]
+    [Mouse: Right click a snippet and then select the 'Add' button.
+    Mouse: Right click a group and then select the 'Add snippet' button.]
+
+**A**
+    When a group is selected, add a new group below it.
+
+    [Mouse: Right click a group and then select the 'Add group' button.]
 
 **d**
     Duplicate the currently selected snippet and then edit the copy.
 
-    [Mouse: Right click the snippet and then select the 'Duplicate' button.]
+    [Mouse: Right click a snippet and then select the 'Duplicate' button.]
 
 **e**
     Edit the contents of the currently selected snippet.
 
-    [Mouse: Right click the snippet and then select the 'Edit' button.]
+    [Mouse: Right click a snippet and then select the 'Edit' button.]
 
 **f, Ins**
     Collapse or open the selected group (or group containing the selected snippet).
@@ -79,11 +85,11 @@ indicated.
     [Mouse: Left click on the group label.]
 
 **m**
-    Start moving the currently selected snippet. This switches Clippets to
-    the *snippet movement mode*.
+    Start moving the currently selected snippet or group. This switches Clippets to
+    the *snippet moving mode* or *group moving mode*.
 
-    [Mouse: Right click the snippet and then select the 'Move' button. Or
-    Alt+Right click the snippet.]
+    [Mouse: Right click a snippet and then select the 'Move' button. Or
+    Alt+Right click a snippet.]
 
 **Enter (Return), Space**
     If the selected snippet is already in the clipboard, remove it. Otherwise
@@ -92,14 +98,13 @@ indicated.
 
     [Mouse: Left click on a snippet.]
 
-**Up, Down**
-    If the filter field currently has focus then the exit filter field.
-    Otherwise move the selection to the previous or next snippet/group.
+**Up, Down (also 'k', 'j')**
+    Move the selection to the previous or next snippet/group.
 
-**Left**
+**Left (also 'h')**
     If a snippet is selected, moves the selection into the group headings.
 
-**Right**
+**Right (also 'l'**
     If a group heading is selected and it has at least one visible snippet, move
     the selection into that group's snippets.
 
@@ -107,20 +112,20 @@ indicated.
     Clears (Blanks) the filter field's contents.
 
 **Ctrl+F, Tab**
-    Toggle the focus to or away from the filter field at the top of the display.
-    See (TBD) for how this is used.
+    Switch to search mode. The selection is moved to the search field at the
+    top of the display. See *search mode* below.
 
     [Mouse: Left click the field to give it focus.]
-
-**Ctrl+Q**
-    Exit Clippets.
 
 **Ctrl+U, Ctrl+R**
     *Ctrl+U* undoes the last change to the clipboard. Use *Ctrl+R* reverse the
     effect of undo. Up to the last 20 changes can be undone.
 
+**Ctrl+Q**
+    Exit Clippets.
 
-## Snippet movement mode keys.
+
+## Snippet and group moving mode keys.
 
 **Enter (Return)**
     Complete the move operation and go back to *normal mode*.
@@ -128,5 +133,70 @@ indicated.
 **Escape (Esc)**
     Abandon *snippet movement mode* and go back to *normal mode*.
 
-**Up, Down**
+**Up, Down (also 'k', 'j')**
     Move the insertion point.
+
+
+## Search mode
+
+**Ctrl+F, Up, Down, Tab**
+    Exit search mode, but do not clear the current search string.
+
+Clippets will try to use the text entered in the search box as a *regular
+expression* to match against the text in the snippets. When the text is not a
+valid regular expression, simple text matching is performed.
+
+
+## Internal editor
+
+### Movement keys
+
+**Up, Down, Left, Right**
+    Move the cursor by single character.
+
+**Page Up, Page Down**
+    Move up or down by a page.
+
+**Home**
+    Move to the start of the line.
+
+**End**
+    Move to the end of the line.
+
+**Ctlr+Home**
+    Move to the first line.
+
+**Ctlr+End**
+    Move to the last line.
+
+
+### Cut and paste.
+
+Hold down the **Shift** key while using the above movement keys to select text.
+
+**Ctrl+A**
+    Select all the text.
+
+**Ctrl+C+**
+    Copy the selection to the internal clipboard.
+
+**Ctrl+X+**
+    Delete the selection after copying it to the internal clipboard.
+
+**Ctrl+V+**
+    Paste the internal clipboard at the cursor's position.
+
+
+### Typing text
+
+Normal keys simply enter test. Any selected is text is deleted as soon as a
+normal character is entered.
+
+**Tab**
+    Insert 4 spaces.
+
+**Delete**
+    Delete the character after the cursor.
+
+**Backspace*
+    Delete the character before the cursor.

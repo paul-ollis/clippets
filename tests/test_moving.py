@@ -706,6 +706,29 @@ class TestKeyboardControlled:
         _, snapshot_ok = await snapshot_run(
             infile_g1, actions)
         assert snapshot_ok, 'Snapshot does not match stored version'
+    @pytest.mark.asyncio
+    async def test_help_can_be_viewed(
+            self, infile_g0, snapshot_run, clean_version):
+        """Help can be viewed when moving a snippet."""
+        actions = (
+            ['m']                 # Start moving.
+            + ['f1']              # Show the help.
+        )
+        _, snapshot_ok = await snapshot_run(
+            infile_g0, actions, clean=clean_version)
+        assert snapshot_ok, 'Snapshot does not match stored version'
+
+    @pytest.mark.asyncio
+    async def test_help_can_be_closed(
+            self, infile_g0, snapshot_run):
+        """Help can be viewed then closed when moving a snippet."""
+        actions = (
+            ['m']                 # Start moving.
+            + ['f1']              # Show the help.
+            + ['f1']              # The close the help.
+        )
+        _, snapshot_ok = await snapshot_run(infile_g0, actions)
+        assert snapshot_ok, 'Snapshot does not match stored version'
 
 
 class TestMouseControlled:

@@ -44,7 +44,6 @@ Features
 - Full keyboard support, plus mouse support for many operations.
 
 
-
 Table of contents, indices and tables
 =====================================
 

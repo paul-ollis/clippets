@@ -57,6 +57,12 @@ def clean_version():
     return clean
 
 
+def rename_styles(svg: str) -> str:
+    """Rename style names to prevent clashes when combined in HTML report."""
+    return re.sub(
+        r'terminal-r(\d+)', r'terminal-rx\1', svg)
+
+
 class MyTemporaryDirectory(TemporaryDirectory):
     """A version of TemporaryDirectory that survives forking.
 
@@ -299,7 +305,7 @@ def _get_svg_diffs(session: Session):                        # pragma: no cover
         if not passed:
             diffs.append(SvgSnapshotDiff(
                 snapshot=str(expect_svg_text),
-                actual=str(svg_text),
+                actual=rename_styles(svg_text),
                 test_name=name,
                 path=full_path,
                 line_number=line_index + 1,

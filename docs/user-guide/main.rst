@@ -33,7 +33,6 @@ User guide
     - I think that 'added snippet highlighting' disappears after using the
       internal editor on the clipboard. This appears deliberate, but feels
       counter-intuitive.
-    - The help page is woefully out of date.
     - PgUp and PgDn should do something useful.
 
 
